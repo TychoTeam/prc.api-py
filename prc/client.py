@@ -6,6 +6,7 @@ The main prc.api client
 
 from .server import Server
 from .utility import Cache, CacheConfig
+from .utility.requests import CleanAsyncClient
 from typing import Optional, TYPE_CHECKING
 import re
 
@@ -41,6 +42,7 @@ class PRC:
         self._default_server_key = default_server_key
         self._base_url = base_url
         self._global_cache = cache
+        self._session = CleanAsyncClient()
 
     def get_server(
         self, server_key: Optional[str] = None, ignore_global_key: bool = False

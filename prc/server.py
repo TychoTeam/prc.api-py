@@ -88,7 +88,9 @@ class Server:
         if global_key and not ignore_global_key:
             headers["Authorization"] = global_key
         self._requests = requests or Requests(
-            base_url=client._base_url + "/server", headers=headers
+            base_url=client._base_url + "/server",
+            headers=headers,
+            session=client._session,
         )
         self._ignore_global_key = ignore_global_key
 
@@ -110,9 +112,6 @@ class Server:
                 return player
             if name and player.name == name:
                 return player
-
-    async def _safe_close(self):
-        await self._requests._close()
 
     def _handle_error_code(self, error_code: Optional[int] = None):
         if error_code is None:
