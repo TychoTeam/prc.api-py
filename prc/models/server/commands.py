@@ -296,6 +296,7 @@ _supports_multi_targets: List[CommandName] = [
     "teleport",
     "tp",
     "kick",
+    "ban",
     "pm",
     "privatemessage",
 ]
