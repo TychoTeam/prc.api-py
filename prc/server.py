@@ -1,4 +1,14 @@
-from typing import Optional, List, TYPE_CHECKING, Callable, Type, TypeVar, Dict, Union
+from typing import (
+    Optional,
+    List,
+    TYPE_CHECKING,
+    Callable,
+    Type,
+    TypeVar,
+    Dict,
+    Union,
+    Literal,
+)
 from .utility import KeylessCache, Cache, CacheConfig, Requests, InsensitiveEnum
 from .utility.exceptions import *
 from .models import *
@@ -17,28 +27,13 @@ class ServerCache:
     def __init__(
         self,
         players: CacheConfig = (50, 0),
-        bans: CacheConfig = (500, 0),
         vehicles: CacheConfig = (50, 1 * 60 * 60),
-        join_logs: CacheConfig = (100, 12 * 60 * 60),
-        kill_logs: CacheConfig = (100, 12 * 60 * 60),
-        command_logs: CacheConfig = (100, 12 * 60 * 60),
-        mod_call_logs: CacheConfig = (100, 12 * 60 * 60),
+        join_logs: CacheConfig = (150, 6 * 60 * 60),
     ):
         self.players = Cache[int, ServerPlayer](*players)
-        self.bans = Cache[int, Player](*bans)
         self.vehicles = KeylessCache[Vehicle](*vehicles)
-
         self.join_logs = KeylessCache[JoinEntry](
             *join_logs, sort=(lambda e: e.created_at, True)
-        )
-        self.kill_logs = KeylessCache[KillEntry](
-            *kill_logs, sort=(lambda e: e.created_at, True)
-        )
-        self.command_logs = KeylessCache[CommandEntry](
-            *command_logs, sort=(lambda e: e.created_at, True)
-        )
-        self.mod_call_logs = KeylessCache[ModCallEntry](
-            *mod_call_logs, sort=(lambda e: e.created_at, True)
         )
 
 
@@ -95,7 +90,8 @@ class Server:
             base_url=client._base_url + "/server", headers=headers
         )
 
-        self.logs = ServerLog(self)
+        self.logs = ServerLogs(self)
+        self.commands = ServerCommands(self)
 
     name: Optional[str] = None
     owner: Optional[ServerOwner] = None
@@ -180,11 +176,8 @@ class Server:
     async def get_bans(self):
         """Get all server bans."""
         return [
-            self._server_cache.bans.set(p.id, p)
-            for p in [
-                Player(self._client, data=p)
-                for p in (self._handle(await self._requests.get("/bans"), Dict)).items()
-            ]
+            Player(self._client, data=p)
+            for p in (self._handle(await self._requests.get("/bans"), Dict)).items()
         ]
 
     @_refresh_server
@@ -211,7 +204,7 @@ class ServerModule:
         self._handle = server._handle
 
 
-class ServerLog(ServerModule):
+class ServerLogs(ServerModule):
     """Interact with PRC ER:LC server logs APIs."""
 
     def __init__(self, server: Server):
@@ -231,28 +224,174 @@ class ServerLog(ServerModule):
     @_ephemeral
     async def get_kills(self):
         """Get server kill logs."""
-        [
+        return [
             KillEntry(self._server, data=e)
             for e in self._handle(await self._requests.get("/killlogs"), List[Dict])
         ]
-        return self._server_cache.kill_logs.items()
 
     @_refresh_server
     @_ephemeral
     async def get_commands(self):
         """Get server command logs."""
-        [
+        return [
             CommandEntry(self._server, data=e)
             for e in self._handle(await self._requests.get("/commandlogs"), List[Dict])
         ]
-        return self._server_cache.command_logs.items()
 
     @_refresh_server
     @_ephemeral
     async def get_mod_calls(self):
         """Get server mod call logs."""
-        [
+        return [
             ModCallEntry(self._server, data=e)
             for e in self._handle(await self._requests.get("/modcalls"), List[Dict])
         ]
-        return self._server_cache.mod_call_logs.items()
+
+
+CommandTargetPlayerNameWithAll = Literal["all"]
+CommandTargetPlayerWithAll = Union[CommandTargetPlayerNameWithAll, int]
+CommandTargetPlayer = Union[str, int]
+
+
+class ServerCommands(ServerModule):
+    """Interact with the PRC ER:LC server remote command execution API."""
+
+    def __init__(self, server: Server):
+        super().__init__(server)
+
+    async def _raw(self, command: str):
+        """Run a raw string command as a remote player in the server."""
+        self._handle(
+            await self._requests.post("/command", json={"command": command.strip()}),
+            Dict,
+        )
+
+    async def run(
+        self,
+        name: CommandName,
+        targets: Optional[List[CommandTargetPlayer]] = None,
+        args: Optional[List[CommandArg]] = None,
+        text: Optional[str] = None,
+    ):
+        """Run any command as a remote player in the server."""
+        command = f":{name} "
+
+        if targets:
+            command += ",".join([str(t) for t in targets]) + " "
+
+        if args:
+            command += (
+                " ".join(
+                    [
+                        (a.value if isinstance(a, InsensitiveEnum) else str(a))
+                        for a in args
+                    ]
+                )
+                + " "
+            )
+
+        if text:
+            command += text
+
+        print(f'"{command}"')
+        await self._raw(command)
+
+    async def kill(self, targets: List[CommandTargetPlayerNameWithAll]):
+        """Kill players in the server."""
+        await self.run("kill", targets=targets)
+
+    async def heal(self, targets: List[CommandTargetPlayerNameWithAll]):
+        """Heal players in the server."""
+        await self.run("heal", targets=targets)
+
+    async def wanted(self, targets: List[CommandTargetPlayerNameWithAll]):
+        """Make players wanted in the server."""
+        await self.run("wanted", targets=targets)
+
+    async def unwanted(self, targets: List[CommandTargetPlayerNameWithAll]):
+        """Remove wanted status from players in the server."""
+        await self.run("unwanted", targets=targets)
+
+    async def jail(self, targets: List[CommandTargetPlayerNameWithAll]):
+        """Jail players in the server."""
+        await self.run("jail", targets=targets)
+
+    async def unjail(self, targets: List[CommandTargetPlayerNameWithAll]):
+        """Unjail players in the server."""
+        await self.run("unjail", targets=targets)
+
+    async def refresh(self, targets: List[CommandTargetPlayerNameWithAll]):
+        """Refresh players in the server."""
+        await self.run("refresh", targets=targets)
+
+    async def respawn(self, targets: List[CommandTargetPlayerNameWithAll]):
+        """Respawn players in the server."""
+        await self.run("load", targets=targets)
+
+    async def teleport(self, targets: List[CommandTargetPlayerNameWithAll], to: str):
+        """Teleport players to another player in the server."""
+        await self.run("tp", targets=targets, args=[to])
+
+    async def kick(self, targets: List[CommandTargetPlayerNameWithAll]):
+        """Kick players from the server."""
+        await self.run("kick", targets=targets)
+
+    async def ban(self, targets: List[CommandTargetPlayerWithAll]):
+        """Ban players from the server."""
+        await self.run("ban", targets=targets)
+
+    async def unban(self, targets: List[CommandTargetPlayer]):
+        """Unban players from the server."""
+        await self.run("unban", targets=targets)
+
+    async def mod(self, targets: List[CommandTargetPlayerWithAll]):
+        """Grant moderator permissions to players in the server."""
+        await self.run("mod", targets=targets)
+
+    async def unmod(self, targets: List[CommandTargetPlayerWithAll]):
+        """Revoke moderator permissions from players in the server."""
+        await self.run("unmod", targets=targets)
+
+    async def admin(self, targets: List[CommandTargetPlayerWithAll]):
+        """Grant admin permissions to players in the server."""
+        await self.run("admin", targets=targets)
+
+    async def unadmin(self, targets: List[CommandTargetPlayerWithAll]):
+        """Revoke admin permissions from players in the server."""
+        await self.run("unadmin", targets=targets)
+
+    async def hint(self, text: str):
+        """Send a temporary hint (banner) undismissable message to the server."""
+        await self.run("h", text=text)
+
+    async def announce(self, text: str):
+        """Send an announcement (popup) dismissable message to the server."""
+        await self.run("m", text=text)
+
+    async def pm(self, targets: List[CommandTargetPlayerNameWithAll], text: str):
+        """Send a private (popup) dismissable message to players in the server."""
+        await self.run("pm", targets=targets, text=text)
+
+    async def set_priority(self, seconds: int = 0):
+        """Set the server priority timer. Shows an undismissable countdown notification to all players until it reaches `0`. Leave empty or set to `0` to disable."""
+        await self.run("prty", args=[seconds])
+
+    async def set_peace(self, seconds: int = 0):
+        """Set the server peace timer. Shows an undismissable countdown notification to all players until it reaches `0` while disabling PVP damage. Leave empty or set to `0` to disable."""
+        await self.run("pt", args=[seconds])
+
+    async def set_time(self, hour: int):
+        """Set the server current time of day as the given hour. Uses 24-hour formatting (`12` = noon, `0`/`24` = midnight)."""
+        await self.run("time", args=[hour])
+
+    async def set_weather(self, type: Weather):
+        """Set the weather in the server. `Weather.SNOW` can only be set during winter."""
+        await self.run("weather", args=[type])
+
+    async def start_fire(self, type: FireType):
+        """Start a fire at a random location in the server."""
+        await self.run("startfire", args=[type])
+
+    async def stop_fires(self):
+        """Stop all fires in the server."""
+        await self.run("stopfire")

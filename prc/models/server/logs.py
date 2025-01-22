@@ -71,11 +71,7 @@ class KillEntry(LogEntry):
         self.killed = LogPlayer(server, data=data.get("Killed"))
         self.killer = LogPlayer(server, data=data.get("Killer"))
 
-        super().__init__(
-            data,
-            cache=server._server_cache.kill_logs,
-            dedupe=lambda e: e.killed.id == self.killed.id,
-        )
+        super().__init__(data)
 
 
 class CommandEntry(LogEntry):
@@ -87,11 +83,7 @@ class CommandEntry(LogEntry):
         self.author = LogPlayer(server, data=data.get("Player"))
         self.command = Command(server, data=data.get("Command"), author=self.author)
 
-        super().__init__(
-            data,
-            cache=server._server_cache.command_logs,
-            dedupe=lambda e: e.author.id == self.author.id,
-        )
+        super().__init__(data)
 
 
 class ModCallEntry(LogEntry):
