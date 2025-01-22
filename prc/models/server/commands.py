@@ -297,6 +297,10 @@ _supports_multi_targets: List[CommandName] = [
     "tp",
     "kick",
     "ban",
+    "mod",
+    "unmod",
+    "admin",
+    "unadmin",
     "pm",
     "privatemessage",
 ]
