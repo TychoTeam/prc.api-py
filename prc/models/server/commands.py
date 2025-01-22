@@ -13,6 +13,7 @@ class Weather(InsensitiveEnum):
     THUNDERSTORM = "thunderstorm"
     FOG = "fog"
     CLEAR = "clear"
+    SNOW = "snow"
 
 
 class FireType(InsensitiveEnum):
