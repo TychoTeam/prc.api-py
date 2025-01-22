@@ -1,6 +1,6 @@
 from typing import Dict, Optional
 from time import time
-from .cache import Cache
+from .cache import Cache, KeylessCache
 from .exceptions import PRCException
 import asyncio
 import httpx
@@ -72,23 +72,34 @@ class Requests:
         self,
         base_url: str,
         headers: Dict[str, str] = {},
+        session: CleanAsyncClient = CleanAsyncClient(),
         max_retries: int = 3,
         timeout: float = 7.0,
     ):
         self._rate_limiter = RateLimiter()
-        self._session = CleanAsyncClient()
+        self._session = session
 
         self._base_url = base_url
         self._default_headers = headers
         self._max_retries = max_retries
         self._timeout = timeout
 
+        self._invalid_keys = KeylessCache[str](max_size=20)
+
     def _should_retry(self, status_code: int):
         return status_code == 429 or status_code >= 500
+
+    def _check_default_headers(self):
+        for header, value in self._default_headers.items():
+            if value in self._invalid_keys:
+                raise PRCException(
+                    f"Cannot reuse an invalid API key from default header: {header}"
+                )
 
     async def _make_request(
         self, method: str, route: str, retry: int = 0, **kwargs
     ) -> httpx.Response:
+        self._check_default_headers()
         await self._rate_limiter.avoid_limit(route)
 
         headers = kwargs.pop("headers", {})

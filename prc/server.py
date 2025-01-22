@@ -111,7 +111,6 @@ class Server:
 
     async def _safe_close(self):
         await self._requests._close()
-        self._requests = None
 
     def _handle_error_code(self, error_code: Optional[int] = None):
         if error_code is None:
@@ -136,8 +135,18 @@ class Server:
         ]
 
         for error in errors:
-            if error_code == error().error_code:
-                raise error()
+            error = error()
+            if error_code == error.error_code:
+                invalid_key = None
+                if isinstance(error, InvalidGlobalKey):
+                    invalid_key = self._requests._default_headers.get("Authorization")
+                elif isinstance(error, (InvalidServerKey, BannedServerKey)):
+                    invalid_key = self._requests._default_headers.get("Server-Key")
+
+                if invalid_key:
+                    self._requests._invalid_keys.add(invalid_key)
+
+                raise error
 
         raise APIException(error_code, "An unknown API error has occured.")
 
