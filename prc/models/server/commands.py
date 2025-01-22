@@ -229,7 +229,6 @@ _supports_targets: List[CommandName] = [
 ]
 
 _supports_id_targets: List[CommandName] = [
-    "kick",
     "ban",
     "unban",
     "mod",
@@ -296,6 +295,7 @@ _supports_multi_targets: List[CommandName] = [
     "bring",
     "teleport",
     "tp",
+    "kick",
     "pm",
     "privatemessage",
 ]
