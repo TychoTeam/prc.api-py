@@ -72,6 +72,7 @@ class Server:
         ephemeral_ttl: int = 5,
         cache: ServerCache = ServerCache(),
         requests: Optional[Requests] = None,
+        ignore_global_key: bool = False,
     ):
         self._client = client
 
@@ -84,11 +85,12 @@ class Server:
 
         global_key = client._global_key
         headers = {"Server-Key": server_key}
-        if global_key:
+        if global_key and not ignore_global_key:
             headers["Authorization"] = global_key
         self._requests = requests or Requests(
             base_url=client._base_url + "/server", headers=headers
         )
+        self._ignore_global_key = ignore_global_key
 
         self.logs = ServerLogs(self)
         self.commands = ServerCommands(self)

@@ -42,8 +42,10 @@ class PRC:
         self._base_url = base_url
         self._global_cache = cache
 
-    def get_server(self, server_key: Optional[str] = None):
-        """Get a server object using a key. Servers are cached and data is synced across the client."""
+    def get_server(
+        self, server_key: Optional[str] = None, ignore_global_key: bool = False
+    ):
+        """Get a server handler using a key. Defaults to `default_server_key` if no `server_key` is passed. Servers are cached and data is synced across the client. Setting `ignore_global_key` may reset the cached server if cached `ignore_global_key` is conflicting."""
         if not server_key:
             server_key = self._default_server_key
 
@@ -53,10 +55,14 @@ class PRC:
         self._validate_server_key(server_key)
         server_id = self._get_server_id(server_key)
 
-        return self._global_cache.servers.get(
-            server_id
-        ) or self._global_cache.servers.set(
-            server_id, Server(client=self, server_key=server_key)
+        existing_server = self._global_cache.servers.get(server_id)
+        if existing_server and existing_server._ignore_global_key == ignore_global_key:
+            return existing_server
+        return self._global_cache.servers.set(
+            server_id,
+            Server(
+                client=self, server_key=server_key, ignore_global_key=ignore_global_key
+            ),
         )
 
     def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):
