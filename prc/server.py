@@ -293,7 +293,6 @@ class ServerCommands(ServerModule):
         if text:
             command += text
 
-        print(f'"{command}"')
         await self._raw(command)
 
     async def kill(self, targets: List[CommandTargetPlayerNameWithAll]):
