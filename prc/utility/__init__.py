@@ -1,6 +1,6 @@
 """
 
-prc.api utilities
+Internal prc.api utilities and exceptions.
 
 """
 
