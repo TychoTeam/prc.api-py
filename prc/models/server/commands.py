@@ -184,6 +184,7 @@ CommandName = Literal[
     "pm",
     "privatemessage",
     "prty",
+    "priority",
     "peacetimer",
     "pt",
     "time",
@@ -298,6 +299,7 @@ _supports_multi_targets: List[CommandName] = [
 
 _supports_args: Dict[CommandName, int] = {
     "prty": 1,
+    "priority": 1,
     "peacetimer": 1,
     "pt": 1,
     "time": 1,
