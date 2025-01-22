@@ -97,9 +97,6 @@ class Command:
                 self.targets = []
                 parsed_targets = parsed_command.pop(0).split(",")
 
-                if self.name in ["teleport", "tp"]:
-                    parsed_targets.append(parsed_command.pop(0))
-
                 for parsed_target in parsed_targets:
                     if parsed_target:
                         self.targets.append(
@@ -129,6 +126,8 @@ class Command:
                     "snf",
                 ] and FireType.is_member(arg):
                     arg = FireType(arg)
+                elif self.name in ["teleport", "tp"]:
+                    arg = CommandTarget(self, arg, author=author)
                 elif self.name not in [] and arg.isdigit():
                     arg = int(arg)
 
@@ -140,7 +139,7 @@ class Command:
             self.text = None
 
 
-CommandArg = Union[Weather, FireType, str, int]
+CommandArg = Union[CommandTarget, Weather, FireType, str, int]
 
 CommandName = Literal[
     "kill",
@@ -255,6 +254,8 @@ _supports_author_as_target: List[CommandName] = [
     "respawn",
     "load",
     "bring",
+    "teleport",
+    "tp",
     "to",
     "pm",
     "privatemessage",
@@ -293,11 +294,15 @@ _supports_multi_targets: List[CommandName] = [
     "respawn",
     "load",
     "bring",
+    "teleport",
+    "tp",
     "pm",
     "privatemessage",
 ]
 
 _supports_args: Dict[CommandName, int] = {
+    "teleport": 1,
+    "tp": 1,
     "prty": 1,
     "priority": 1,
     "peacetimer": 1,
