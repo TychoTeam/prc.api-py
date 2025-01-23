@@ -95,6 +95,9 @@ class ModCallEntry(LogEntry):
         self.caller = LogPlayer(server, data=data.get("Caller"))
         responder = data.get("Moderator")
         self.responder = LogPlayer(server, data=responder) if responder else None
-        self.is_acknowledged: bool = bool(self.responder)
 
         super().__init__(data)
+
+    def is_acknowledged(self):
+        """Check if this mod call has been responded to."""
+        return bool(self.responder)
