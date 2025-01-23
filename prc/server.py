@@ -101,6 +101,7 @@ class Server:
     owner: Optional[ServerOwner] = None
     co_owners: List[ServerOwner] = []
     player_count: Optional[int] = None
+    staff_count: Optional[int] = None
     max_players: Optional[int] = None
     join_key: Optional[str] = None
     account_requirement = None
@@ -168,10 +169,12 @@ class Server:
     @_ephemeral
     async def get_players(self):
         """Get all online server players."""
-        return [
+        players = [
             ServerPlayer(self, data=p)
             for p in self._handle(await self._requests.get("/players"), List[Dict])
         ]
+        self.staff_count = len([p for p in players if p.is_staff()])
+        return players
 
     @_ephemeral
     async def get_queue(self):
