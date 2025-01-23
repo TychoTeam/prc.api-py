@@ -50,28 +50,35 @@ class CommandTarget:
 
     @property
     def guessed_player(self):
+        """Attempts to find the player referenced in the command from cached server players."""
         return next(
             (
                 player
                 for _, player in self._server._server_cache.players.items()
                 if (
                     player.name.lower().startswith(self.referenced_name.lower())
-                    if self.referenced_name
-                    else player.id == self.referenced_id
+                    if (self.referenced_name is not None)
+                    else (
+                        self.referenced_id is not None
+                        and player.id == self.referenced_id
+                    )
                 )
             ),
             None,
         )
 
     def is_author(self):
+        """Check if this target is the author of the command."""
         if self._author is not None and self.referenced_id is not None:
             return self._author.id == self.referenced_id
         return False
 
     def is_all(self):
+        """Check if this target references `all`; i.e. affects all players in the server."""
         return self.original.lower() in ["all"]
 
     def is_others(self):
+        """Check if this target references `others`; i.e. affects all players in the server except the command author."""
         return self.original.lower() in ["others"]
 
 
