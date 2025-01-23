@@ -33,7 +33,10 @@ class Vehicle:
                 self.year = int(parsed_name.pop(i))
                 self.model: VehicleModel = " ".join(parsed_name)
 
-        self.full_name: VehicleName = f"{self.year or ''} {self.model}".strip()
+    @property
+    def full_name(self) -> "VehicleName":
+        """The vehicle model name suffixed by the model year, if found."""
+        return f"{self.year or ''} {self.model}".strip()
 
 
 # All vehicle names
