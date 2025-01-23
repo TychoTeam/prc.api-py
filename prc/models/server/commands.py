@@ -39,15 +39,14 @@ class CommandTarget:
         self.referenced_id: Optional[int] = None
         if self.original.isdigit() and command.name in _supports_id_targets:
             self.referenced_id = int(self.original)
+        elif (
+            self.original.lower() in ["me"]
+            and command.name in _supports_author_as_target
+        ):
+            self.referenced_id = author.id
+            self.referenced_name = author.name
         else:
-            if (
-                self.original.lower() in ["me"]
-                and command.name in _supports_author_as_target
-            ):
-                self.referenced_id = author.id
-                self.referenced_name = author.name
-            else:
-                self.referenced_name = self.original
+            self.referenced_name = self.original
 
     @property
     def guessed_player(self):
