@@ -17,7 +17,7 @@ It provides a convenient way to interact with PRC APIs, including the [private s
 - **Better Types**  
   The package is strictly typed and all API data is transformed for ease of use. 🎊 **Vehicles and command names are included!**
 
-## Install Latest Stable (`pip`)
+## Install Latest Release (`pip`)
 
 ```sh
 pip install prc.api
