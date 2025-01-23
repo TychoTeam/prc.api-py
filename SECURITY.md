@@ -4,13 +4,13 @@
 
 | Version | Supported |
 | ------- | --------- |
-| 0.x.x   | :x:       |
+| < 1     | :x:       |
 
 ## Reporting a Vulnerability
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-Instead, please send an email to [team@tychosystems.xyz](mailto:team@tychosystems.xyz).
+Instead, send an email to [team@tychosystems.xyz](mailto:team@tychosystems.xyz).
 
 You should receive a response within 24 hours. If for some reason you do not, please follow up via email to ensure we received your original message.
 
