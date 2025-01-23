@@ -50,7 +50,7 @@ class CommandTarget:
 
     @property
     def guessed_player(self):
-        """Attempts to find the player referenced in the command from cached server players."""
+        """The closest matched server player based on the referenced name or ID."""
         return next(
             (
                 player
@@ -141,8 +141,8 @@ class Command:
                 if arg:
                     self.args.append(arg)
 
-        self.text = " ".join(parsed_command)
-        if not self.text.strip():
+        self.text = " ".join(parsed_command).strip()
+        if not self.text:
             self.text = None
 
 

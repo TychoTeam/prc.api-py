@@ -43,6 +43,7 @@ class LogPlayer(Player):
 
     @property
     def player(self):
+        """The full server player, if found."""
         return self._server._get_player(id=self.id)
 
 
@@ -53,7 +54,7 @@ class JoinEntry(LogEntry):
         self._server = server
 
         self.player = LogPlayer(server, data=data.get("Player"))
-        self.is_join: bool = bool(data.get("Join", False))
+        self.joined = bool(data.get("Join", False))
 
         super().__init__(
             data,

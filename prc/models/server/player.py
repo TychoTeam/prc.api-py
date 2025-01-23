@@ -63,6 +63,7 @@ class ServerPlayer(Player):
 
     @property
     def joined_at(self):
+        """When this player last joined the server. Server join logs must be fetched separately."""
         return next(
             (
                 entry.created_at
@@ -73,9 +74,11 @@ class ServerPlayer(Player):
         )
 
     def is_staff(self):
+        """Check if this player is a server staff member based on their permission level."""
         return self.permission != PlayerPermission.NORMAL
 
     def is_leo(self):
+        """Check if this player is on a law enforcement team."""
         return self.team in (PlayerTeam.SHERIFF, PlayerTeam.POLICE)
 
 

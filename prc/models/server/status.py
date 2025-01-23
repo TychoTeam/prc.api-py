@@ -15,6 +15,7 @@ class ServerOwner:
 
     @property
     def player(self):
+        """The full server player, if found."""
         return self._server._get_player(id=self.id)
 
 
@@ -39,7 +40,7 @@ class ServerStatus:
     """Represents a server status with information about the server."""
 
     def __init__(self, server: "Server", data: Dict):
-        self.name: str = str(data.get("Name"))
+        self.name = str(data.get("Name"))
         server.name = self.name
         self.owner = ServerOwner(server, id=data.get("OwnerId"))
         server.owner = self.owner
@@ -48,13 +49,13 @@ class ServerStatus:
             for co_owner_id in data.get("CoOwnerIds")
         ]
         server.co_owners = self.co_owners
-        self.player_count: int = int(data.get("CurrentPlayers"))
+        self.player_count = int(data.get("CurrentPlayers"))
         server.player_count = self.player_count
-        self.max_players: int = int(data.get("MaxPlayers"))
+        self.max_players = int(data.get("MaxPlayers"))
         server.max_players = self.max_players
-        self.join_key: str = str(data.get("JoinKey"))
+        self.join_key = str(data.get("JoinKey"))
         server.join_key = self.join_key
         self.account_requirement = AccountRequirement.parse(data.get("AccVerifiedReq"))
         server.account_requirement = self.account_requirement
-        self.team_balance: bool = bool(data.get("TeamBalance"))
+        self.team_balance = bool(data.get("TeamBalance"))
         server.team_balance = self.team_balance

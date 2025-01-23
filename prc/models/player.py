@@ -21,10 +21,11 @@ class Player:
         if not id.isdigit():
             raise ValueError(f"Malformed player ID received: {data}")
 
-        self.id: int = int(id)
-        self.name: str = str(name)
+        self.id = int(id)
+        self.name = str(name)
 
         client._global_cache.players.set(self.id, self)
 
     def is_remote(self):
+        """Check if this is the remote player (aka. virtual server management)."""
         return self.id == 0

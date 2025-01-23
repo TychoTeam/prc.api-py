@@ -270,7 +270,7 @@ class ServerCommands(ServerModule):
         super().__init__(server)
 
     async def _raw(self, command: str):
-        """Run a raw string command as a remote player in the server."""
+        """Run a raw string command as the remote player in the server."""
         self._handle(
             await self._requests.post("/command", json={"command": command.strip()}),
             Dict,
@@ -283,7 +283,7 @@ class ServerCommands(ServerModule):
         args: Optional[List[CommandArg]] = None,
         text: Optional[str] = None,
     ):
-        """Run any command as a remote player in the server."""
+        """Run any command as the remote player in the server."""
         command = f":{name} "
 
         if targets:

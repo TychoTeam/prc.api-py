@@ -14,6 +14,7 @@ class VehicleOwner:
 
     @property
     def player(self):
+        """The full server player, if found."""
         return self._server._get_player(name=self.name)
 
 
