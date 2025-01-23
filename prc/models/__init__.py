@@ -24,4 +24,4 @@ from .server.logs import (
     ModCallEntry,
 )
 
-from .player import Player
+from ..models.player import Player
