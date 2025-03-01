@@ -1,5 +1,5 @@
 """
 
-Classes to parse and transform PRC server API data.
+Classes to parse and transform PRC server API response data.
 
 """
