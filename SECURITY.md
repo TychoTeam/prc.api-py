@@ -10,7 +10,7 @@
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-Instead, send an email to [team@tychosystems.xyz](mailto:team@tychosystems.xyz).
+Instead, send an email to [contact@tycho.team](mailto:contact@tycho.team).
 
 You should receive a response within 24 hours. If for some reason you do not, please follow up via email to ensure we received your original message.
 
