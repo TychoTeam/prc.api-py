@@ -356,6 +356,14 @@ class ServerCommands(ServerModule):
         """Unban players from the server."""
         await self.run("unban", targets=targets)
 
+    async def helper(self, targets: List[CommandTargetPlayerWithAll]):
+        """Grant helper permissions to players in the server."""
+        await self.run("helper", targets=targets)
+
+    async def unhelper(self, targets: List[CommandTargetPlayerWithAll]):
+        """Revoke helper permissions to players in the server."""
+        await self.run("unhelper", targets=targets)
+
     async def mod(self, targets: List[CommandTargetPlayerWithAll]):
         """Grant moderator permissions to players in the server."""
         await self.run("mod", targets=targets)
