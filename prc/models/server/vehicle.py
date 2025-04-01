@@ -36,7 +36,7 @@ class Vehicle:
 
     @property
     def full_name(self) -> "VehicleName":
-        """The vehicle model name suffixed by the model year, if found."""
+        """The vehicle model name suffixed by the model year, if found. Unique for each game vehicle. A server may have multiple spawned vehicles with the same full name."""
         return f"{self.year or ''} {self.model}".strip()
 
 
@@ -51,6 +51,7 @@ VehicleName = Literal[
     "2016 Chevlon Amigo LZR",
     "1995 Leland Birchwood Hearse",
     "Lawn Mower",
+    "2025 Pea Car",
     "2003 Falcon Prime Eques",
     "2002 Chevlon Camion",
     "1995 Overland Apache",
@@ -225,6 +226,7 @@ VehicleModel = Literal[
     "Chevlon Amigo LZR",
     "Leland Birchwood Hearse",
     "Lawn Mower",
+    "Pea Car",
     "Falcon Prime Eques",
     "Chevlon Camion",
     "Overland Apache",
