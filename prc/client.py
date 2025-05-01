@@ -5,8 +5,9 @@ The main prc.api client
 """
 
 from .server import Server
-from .utility import Cache, CacheConfig
+from .utility import Cache, CacheConfig, Requests
 from .utility.requests import CleanAsyncClient
+from .utility.exceptions import PRCException
 from typing import Optional, TYPE_CHECKING
 import re
 
@@ -66,6 +67,37 @@ class PRC:
                 client=self, server_key=server_key, ignore_global_key=ignore_global_key
             ),
         )
+
+    async def reset_key(self, global_key: Optional[str] = None):
+        """Reset the global key and generate a new one. The new key will be used automatically and will **not** be returned. This will reset all cache."""
+        if not global_key:
+            global_key = self._global_key
+
+        if not global_key:
+            raise ValueError("No [default] global key provided but is required")
+
+        requests = Requests(
+            base_url=self._base_url + "/api-key",
+            headers={"Authorization": global_key},
+            session=self._session,
+        )
+
+        response = await requests.post("/reset")
+
+        if response.is_success:
+            new_key: str = response.json()["new"]
+
+            self._global_cache.servers.clear()
+            self._global_cache.players.clear()
+
+            self._global_key = new_key
+        else:
+            if response.status_code == 403:
+                raise PRCException(
+                    f"The global key provided is invalid and cannot be reset."
+                )
+            else:
+                raise PRCException("An unknown error has occured.")
 
     def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):
         for _, player in self._global_cache.players.items():
