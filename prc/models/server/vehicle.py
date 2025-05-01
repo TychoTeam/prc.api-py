@@ -129,6 +129,7 @@ VehicleName = Literal[
     "2017 Averon R8",
     "2016 Surrey 650S",
     "2020 Strugatti Ettore",
+    "2023 Vellfire Everest VRD Max",
     # CIV JOBS
     "2003 Falcon Prime Eques Taxi",
     "2020 Falcon Scavenger Taxi",
@@ -295,6 +296,7 @@ VehicleModel = Literal[
     "Averon R8",
     "Surrey 650S",
     "Strugatti Ettore",
+    "Vellfire Everest VRD Max",
     "Falcon Prime Eques Taxi",
     "Falcon Scavenger Taxi",
     "Leland Limo",
