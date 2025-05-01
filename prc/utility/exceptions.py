@@ -24,7 +24,7 @@ class APIException(PRCException):
         super().__init__(f"({error_code}) {message}")
 
 
-# Specific Exceptions
+# Exceptions
 
 
 class UnknownError(APIException):

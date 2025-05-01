@@ -154,7 +154,7 @@ class Server:
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
         if not response.is_success:
-            self._handle_error_code(response.json().get("code"))
+            self._handle_error_code((response.json() or {}).get("code"))
         return response.json()
 
     @_refresh_server
