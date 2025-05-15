@@ -65,12 +65,12 @@ class AccessEntry(LogEntry):
         self._server = server
 
         self.type = AccessType.parse(bool(data.get("Join", False)))
-        self.player = LogPlayer(server, data=data.get("Player")) # type: ignore
+        self.subject = LogPlayer(server, data=data.get("Player")) # type: ignore
 
         super().__init__(
             data,
             cache=server._server_cache.access_logs,
-            dedupe=lambda e: e.player.id == self.player.id,
+            dedupe=lambda e: e.subject.id == self.subject.id,
         )
 
     def is_join(self):
