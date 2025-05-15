@@ -29,12 +29,12 @@ class ServerCache:
         self,
         players: CacheConfig = (50, 0),
         vehicles: CacheConfig = (50, 1 * 60 * 60),
-        join_logs: CacheConfig = (150, 6 * 60 * 60),
+        access_logs: CacheConfig = (150, 6 * 60 * 60),
     ):
         self.players = Cache[int, ServerPlayer](*players)
         self.vehicles = KeylessCache[Vehicle](*vehicles)
-        self.join_logs = KeylessCache[AccessEntry](
-            *join_logs, sort=(lambda e: e.created_at, True)
+        self.access_logs = KeylessCache[AccessEntry](
+            *access_logs, sort=(lambda e: e.created_at, True)
         )
 
 
@@ -226,13 +226,13 @@ class ServerLogs(ServerModule):
 
     @_refresh_server
     @_ephemeral
-    async def get_joins(self):
-        """Get server join logs."""
+    async def get_access(self):
+        """Get server access (join/leave) logs."""
         [
             AccessEntry(self._server, data=e)
             for e in self._handle(await self._requests.get("/joinlogs"), List[Dict])
         ]
-        return self._server_cache.join_logs.items()
+        return self._server_cache.access_logs.items()
 
     @_refresh_server
     @_ephemeral

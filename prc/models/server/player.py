@@ -63,11 +63,11 @@ class ServerPlayer(Player):
 
     @property
     def joined_at(self):
-        """When this player last joined the server. Server join logs must be fetched separately."""
+        """When this player last joined the server. Server access (join/leave) logs must be fetched separately."""
         return next(
             (
                 entry.created_at
-                for entry in self._server._server_cache.join_logs.items()
+                for entry in self._server._server_cache.access_logs.items()
                 if entry.player.id == self.id and entry.is_join()
             ),
             None,

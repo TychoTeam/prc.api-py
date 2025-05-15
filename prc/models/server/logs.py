@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Dict, Optional, Callable, TypeVar, Any
+from enum import Enum
 from datetime import datetime
 from ..player import Player
 from .commands import Command
@@ -47,21 +48,32 @@ class LogPlayer(Player):
         return self._server._get_player(id=self.id)
 
 
-class JoinEntry(LogEntry):
-    """Represents a server player join/leave log entry."""
+class AccessType(Enum):
+    """Enum that represents a server access log entry type."""
+
+    JOIN = 0
+    LEAVE = 1
+
+class AccessEntry(LogEntry):
+    """Represents a server access (join/leave) log entry."""
 
     def __init__(self, server: "Server", data: Dict):
         self._server = server
 
-        self.player = LogPlayer(server, data=data.get("Player"))
-        self.joined = bool(data.get("Join", False))
+        self.type: AccessType = AccessType.JOIN if bool(data.get("Join", False)) else AccessType.LEAVE
+        self.player = LogPlayer(server, data=data.get("Player")) # type: ignore
 
         super().__init__(
             data,
-            cache=server._server_cache.join_logs,
+            cache=server._server_cache.access_logs,
             dedupe=lambda e: e.player.id == self.player.id,
         )
 
+    def is_join(self):
+        return self.type == AccessType.JOIN
+
+    def is_leave(self):
+        return self.type == AccessType.LEAVE
 
 class KillEntry(LogEntry):
     """Represents a server player kill log entry."""
