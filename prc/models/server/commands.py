@@ -50,7 +50,7 @@ class CommandTarget:
 
     @property
     def guessed_player(self):
-        """The closest matched server player based on the referenced name or ID."""
+        """The closest matched server player based on the referenced name or ID. Server players must be fetched separately."""
         return next(
             (
                 player
@@ -67,10 +67,12 @@ class CommandTarget:
             None,
         )
 
-    def is_author(self):
-        """Check if this target is the author of the command."""
-        if self._author is not None and self.referenced_id is not None:
+    def is_author(self, guess_player: bool = False):
+        """Check if this target is the author of the command. If `guess_player` is `True`, it will also check against the closest matched server player (`guessed_player`)."""
+        if self.referenced_id is not None:
             return self._author.id == self.referenced_id
+        if guess_player and self.guessed_player is not None:
+            return self._author.id == self.guessed_player.id
         return False
 
     def is_all(self):
@@ -90,7 +92,7 @@ class Command:
     ):
         self._server = server
 
-        self.full_content = data
+        self.full_content: str = data
 
         parsed_command = self.full_content.split(" ")
         if not parsed_command[0].startswith(":"):
