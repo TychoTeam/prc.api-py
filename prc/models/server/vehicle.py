@@ -56,6 +56,7 @@ VehicleName = Literal[
     "2002 Chevlon Camion",
     "1995 Overland Apache",
     "2009 Chevlon Captain",
+    "2002 Falcon Traveller",
     "2003 Falcon Traveller",
     "1995 Vellfire Evertt",
     "1981 Chevlon L/15",
@@ -158,6 +159,7 @@ VehicleName = Literal[
     "2006 Chevlon Captain PPV",
     "2018 Bullhorn Pueblo Pursuit",
     "2011 Chevlon Amigo LZR",
+    "2000 Chevlon Camion PPV",
     "2008 Chevlon Camion PPV",
     "2018 Chevlon Camion PPV",
     "2021 Chevlon Camion PPV",
@@ -186,7 +188,7 @@ VehicleName = Literal[
     "Prisoner Transport Bus",  # SHERIFF ONLY
     "1981 Chevlon Inferno",
     "1988 Bullhorn Foreman",
-    "2000 Chevlon Camion PPV",
+    "2020 Stuttgart Runner",
     # FD
     "Fire Engine",
     "Tanker",
@@ -336,6 +338,7 @@ VehicleModel = Literal[
     "Emergency Services Falcon Advance+",
     "Mobile Command",
     "Prisoner Transport Bus",
+    "Stuttgart Runner",
     # FD only
     "Fire Engine",
     "Tanker",
