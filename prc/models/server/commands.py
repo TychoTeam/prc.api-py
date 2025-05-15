@@ -67,11 +67,11 @@ class CommandTarget:
             None,
         )
 
-    def is_author(self, guess_player: bool = False):
-        """Check if this target is the author of the command. If `guess_player` is `True`, it will also check against the closest matched server player (`guessed_player`)."""
+    def is_author(self, guess: bool = True):
+        """Check if this target is the author of the command. If `guess` is `True` (default), it will also check against the closest matched server player (`guessed_player`)."""
         if self.referenced_id is not None:
             return self._author.id == self.referenced_id
-        if guess_player and self.guessed_player is not None:
+        if guess and self.guessed_player is not None:
             return self._author.id == self.guessed_player.id
         return False
 
