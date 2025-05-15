@@ -186,6 +186,7 @@ VehicleName = Literal[
     "Prisoner Transport Bus",  # SHERIFF ONLY
     "1981 Chevlon Inferno",
     "1988 Bullhorn Foreman",
+    "2000 Chevlon Camion PPV",
     # FD
     "Fire Engine",
     "Tanker",
