@@ -68,7 +68,7 @@ class ServerPlayer(Player):
             (
                 entry.created_at
                 for entry in self._server._server_cache.join_logs.items()
-                if entry.player.id == self.id and entry.is_join
+                if entry.player.id == self.id and entry.joined
             ),
             None,
         )
