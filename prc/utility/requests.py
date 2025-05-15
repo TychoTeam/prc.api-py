@@ -31,7 +31,7 @@ class RateLimiter:
         self.buckets = Cache[str, Bucket](max_size=10)
 
     def parse_headers(self, route: str, headers: Dict[str, str]) -> None:
-        bucket_name: str = headers.get("X-RateLimit-Bucket")
+        bucket_name: str = headers.get("X-RateLimit-Bucket", "Unknown")
         limit = int(headers.get("X-RateLimit-Limit", 0))
         remaining = int(headers.get("X-RateLimit-Remaining", 0))
         reset_at = float(headers.get("X-RateLimit-Reset", time()))
@@ -59,7 +59,7 @@ class RateLimiter:
             else:
                 self.buckets.delete(bucket.name)
 
-    async def wait_to_retry(self, headers: Dict[str, str]) -> None:
+    async def wait_to_retry(self, headers: httpx.Headers) -> None:
         retry_after = float(headers.get("Retry-After", 0))
         if retry_after > 0:
             await asyncio.sleep(retry_after)

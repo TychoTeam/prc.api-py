@@ -1,4 +1,4 @@
-from typing import Optional, Literal, TYPE_CHECKING, Dict
+from typing import Optional, Literal, TYPE_CHECKING, Dict, cast
 
 if TYPE_CHECKING:
     from prc.server import Server
@@ -22,22 +22,22 @@ class Vehicle:
     """Represents a currently spawned server vehicle."""
 
     def __init__(self, server: "Server", data: Dict):
-        self.owner = VehicleOwner(server, data.get("Owner"))
+        self.owner = VehicleOwner(server, data.get("Owner")) # type: ignore
         self.texture: Optional[str] = data.get("Texture")
 
-        self.model: VehicleModel = data.get("Name", "Unknown")
+        self.model: VehicleModel = cast(VehicleModel, data.get("Name")) 
         self.year: Optional[int] = None
 
         parsed_name = self.model.split(" ")
         for i in [0, -1]:
             if parsed_name[i].isdigit() and len(parsed_name[i]) == 4:
                 self.year = int(parsed_name.pop(i))
-                self.model: VehicleModel = " ".join(parsed_name)
+                self.model = cast(VehicleModel, " ".join(parsed_name))
 
     @property
     def full_name(self) -> "VehicleName":
         """The vehicle model name suffixed by the model year, if found. Unique for each game vehicle. A server may have multiple spawned vehicles with the same full name."""
-        return f"{self.year or ''} {self.model}".strip()
+        return cast(VehicleName, f"{self.year or ''} {self.model}".strip())
 
 
 # All vehicle names

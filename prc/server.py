@@ -8,6 +8,7 @@ from typing import (
     Dict,
     Union,
     Literal,
+    Sequence
 )
 from .utility import KeylessCache, Cache, CacheConfig, Requests, InsensitiveEnum
 from .utility.exceptions import *
@@ -32,7 +33,7 @@ class ServerCache:
     ):
         self.players = Cache[int, ServerPlayer](*players)
         self.vehicles = KeylessCache[Vehicle](*vehicles)
-        self.join_logs = KeylessCache[JoinEntry](
+        self.join_logs = KeylessCache[AccessEntry](
             *join_logs, sort=(lambda e: e.created_at, True)
         )
 
@@ -104,7 +105,7 @@ class Server:
     staff_count: Optional[int] = None
     max_players: Optional[int] = None
     join_key: Optional[str] = None
-    account_requirement = None
+    account_requirement: Optional[AccountRequirement] = None
     team_balance: Optional[bool] = None
 
     def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):
@@ -228,7 +229,7 @@ class ServerLogs(ServerModule):
     async def get_joins(self):
         """Get server join logs."""
         [
-            JoinEntry(self._server, data=e)
+            AccessEntry(self._server, data=e)
             for e in self._handle(await self._requests.get("/joinlogs"), List[Dict])
         ]
         return self._server_cache.join_logs.items()
@@ -275,14 +276,14 @@ class ServerCommands(ServerModule):
     async def _raw(self, command: str):
         """Run a raw string command as the remote player in the server."""
         self._handle(
-            await self._requests.post("/command", json={"command": command.strip()}),
+            await self._requests.post("/command", json={"command": command}),
             Dict,
         )
 
     async def run(
         self,
         name: CommandName,
-        targets: Optional[List[CommandTargetPlayer]] = None,
+        targets: Optional[Sequence[Union[CommandTargetPlayerNameWithAll, CommandTargetPlayerWithAll, CommandTargetPlayer]]] = None,
         args: Optional[List[CommandArg]] = None,
         text: Optional[str] = None,
     ):
@@ -306,7 +307,7 @@ class ServerCommands(ServerModule):
         if text:
             command += text
 
-        await self._raw(command)
+        await self._raw(command.strip())
 
     async def kill(self, targets: List[CommandTargetPlayerNameWithAll]):
         """Kill players in the server."""

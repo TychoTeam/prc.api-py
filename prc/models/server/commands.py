@@ -1,4 +1,4 @@
-from typing import Literal, Optional, List, Dict, Union, TYPE_CHECKING
+from typing import Literal, Optional, List, Dict, Union, TYPE_CHECKING, cast
 from prc.utility import InsensitiveEnum
 
 if TYPE_CHECKING:
@@ -28,7 +28,7 @@ class CommandTarget:
     """Represents a player referenced in a command."""
 
     def __init__(
-        self, command: "Command", data: str, author: Optional["LogPlayer"] = None
+        self, command: "Command", data: str, author: "LogPlayer"
     ):
         self._server = command._server
         self._author = author
@@ -86,7 +86,7 @@ class Command:
     """Represents a server staff-only command."""
 
     def __init__(
-        self, server: "Server", data: str, author: Optional["LogPlayer"] = None
+        self, server: "Server", data: str, author: "LogPlayer"
     ):
         self._server = server
 
@@ -96,7 +96,7 @@ class Command:
         if not parsed_command[0].startswith(":"):
             raise ValueError(f"Malformed command received: {self.full_content}")
 
-        self.name: CommandName = parsed_command.pop(0).replace(":", "").lower()
+        self.name: CommandName = cast(CommandName, parsed_command.pop(0).replace(":", "").lower())
 
         self.targets: Optional[List[CommandTarget]] = None
         if parsed_command and self.name in _supports_targets:
@@ -118,7 +118,7 @@ class Command:
 
         self.args: Optional[List[CommandArg]] = None
         if parsed_command and self.name in _supports_args:
-            args_count = _supports_args.get(self.name)
+            args_count = _supports_args.get(self.name, 0)
             self.args = []
             for _ in range(args_count):
                 if not parsed_command:
@@ -144,7 +144,6 @@ class Command:
         self.text = " ".join(parsed_command).strip()
         if not self.text:
             self.text = None
-
 
 CommandArg = Union[CommandTarget, Weather, FireType, str, int]
 

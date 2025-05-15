@@ -1,7 +1,7 @@
 from typing import Dict, Generic, Optional, TypeVar, Tuple, List, Callable, Any
 from time import time
 
-CacheConfig = Optional[Tuple[int, int]]
+CacheConfig = Tuple[int, int]
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -26,7 +26,7 @@ class Cache(Generic[K, V]):
 
     def _delete_oversize(self) -> None:
         while len(self._cache) > self.max_size:
-            oldest_key = min(self._timestamps, key=self._timestamps.get)
+            oldest_key = min(self._timestamps, key=lambda k: self._timestamps[k])
             self.delete(oldest_key)
 
     def set(self, key: K, value: V) -> V:

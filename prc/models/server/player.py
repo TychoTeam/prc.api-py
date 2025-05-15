@@ -54,11 +54,11 @@ class ServerPlayer(Player):
     def __init__(self, server: "Server", data: Dict):
         self._server = server
 
-        self.permission = PlayerPermission.parse(data.get("Permission"))
+        self.permission = PlayerPermission.parse(data.get("Permission")) # type: ignore
         self.callsign: Optional[str] = data.get("Callsign")
-        self.team = PlayerTeam.parse(data.get("Team"))
+        self.team = PlayerTeam.parse(data.get("Team")) # type: ignore
 
-        super().__init__(server._client, data=data.get("Player"))
+        super().__init__(server._client, data=data.get("Player")) # type: ignore
         server._server_cache.players.set(self.id, self)
 
     @property
@@ -68,7 +68,7 @@ class ServerPlayer(Player):
             (
                 entry.created_at
                 for entry in self._server._server_cache.join_logs.items()
-                if entry.player.id == self.id and entry.joined
+                if entry.player.id == self.id and entry.is_join()
             ),
             None,
         )

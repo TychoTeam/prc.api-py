@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from prc.server import Server
     from prc.utility import KeylessCache
 
-E = TypeVar("E")
+E = TypeVar("E", bound="LogEntry")
 
 
 class LogEntry:
@@ -30,7 +30,7 @@ class LogEntry:
                     else:
                         break
             else:
-                cache.add(self)
+                cache.add(self) # type: ignore
 
 
 class LogPlayer(Player):
@@ -69,8 +69,8 @@ class KillEntry(LogEntry):
     def __init__(self, server: "Server", data: Dict):
         self._server = server
 
-        self.killed = LogPlayer(server, data=data.get("Killed"))
-        self.killer = LogPlayer(server, data=data.get("Killer"))
+        self.killed = LogPlayer(server, data=data.get("Killed")) # type: ignore
+        self.killer = LogPlayer(server, data=data.get("Killer")) # type: ignore
 
         super().__init__(data)
 
@@ -81,8 +81,8 @@ class CommandEntry(LogEntry):
     def __init__(self, server: "Server", data: Dict):
         self._server = server
 
-        self.author = LogPlayer(server, data=data.get("Player"))
-        self.command = Command(server, data=data.get("Command"), author=self.author)
+        self.author = LogPlayer(server, data=data.get("Player")) # type: ignore
+        self.command = Command(server, data=data.get("Command"), author=self.author) # type: ignore
 
         super().__init__(data)
 
@@ -93,7 +93,7 @@ class ModCallEntry(LogEntry):
     def __init__(self, server: "Server", data: Dict):
         self._server = server
 
-        self.caller = LogPlayer(server, data=data.get("Caller"))
+        self.caller = LogPlayer(server, data=data.get("Caller")) # type: ignore
         responder = data.get("Moderator")
         self.responder = LogPlayer(server, data=responder) if responder else None
 

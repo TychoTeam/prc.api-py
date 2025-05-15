@@ -18,7 +18,8 @@ from .server.commands import (
 from .server.logs import (
     LogEntry,
     LogPlayer,
-    JoinEntry,
+    AccessType,
+    AccessEntry,
     KillEntry,
     CommandEntry,
     ModCallEntry,
