@@ -51,6 +51,10 @@ class LogPlayer(Player):
 class AccessType(Enum):
     """Enum that represents a server access log entry type."""
 
+    @staticmethod
+    def parse(value: bool):
+        return AccessType.JOIN if value else AccessType.LEAVE
+
     JOIN = 0
     LEAVE = 1
 
@@ -60,7 +64,7 @@ class AccessEntry(LogEntry):
     def __init__(self, server: "Server", data: Dict):
         self._server = server
 
-        self.type: AccessType = AccessType.JOIN if bool(data.get("Join", False)) else AccessType.LEAVE
+        self.type = AccessType.parse(bool(data.get("Join", False)))
         self.player = LogPlayer(server, data=data.get("Player")) # type: ignore
 
         super().__init__(
