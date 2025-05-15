@@ -27,9 +27,7 @@ class FireType(InsensitiveEnum):
 class CommandTarget:
     """Represents a player referenced in a command."""
 
-    def __init__(
-        self, command: "Command", data: str, author: "LogPlayer"
-    ):
+    def __init__(self, command: "Command", data: str, author: "LogPlayer"):
         self._server = command._server
         self._author = author
 
@@ -87,9 +85,7 @@ class CommandTarget:
 class Command:
     """Represents a server staff-only command."""
 
-    def __init__(
-        self, server: "Server", data: str, author: "LogPlayer"
-    ):
+    def __init__(self, server: "Server", data: str, author: "LogPlayer"):
         self._server = server
 
         self.full_content: str = data
@@ -98,7 +94,9 @@ class Command:
         if not parsed_command[0].startswith(":"):
             raise ValueError(f"Malformed command received: {self.full_content}")
 
-        self.name: CommandName = cast(CommandName, parsed_command.pop(0).replace(":", "").lower())
+        self.name: CommandName = cast(
+            CommandName, parsed_command.pop(0).replace(":", "").lower()
+        )
 
         self.targets: Optional[List[CommandTarget]] = None
         if parsed_command and self.name in _supports_targets:
@@ -117,12 +115,12 @@ class Command:
                 ]
         elif not parsed_command and self.name in _supports_blank_target:
             self.targets = [CommandTarget(self, data="me", author=author)]
- 
+
         self.args: Optional[List[CommandArg]] = None
         if parsed_command and self.name in _supports_args:
             self.args = []
-            args_count: int = _supports_args.get(self.name) # type: ignore
-            
+            args_count: int = _supports_args.get(self.name)  # type: ignore
+
             while parsed_command and (args_count == 0 or len(self.args) < args_count):
                 arg = parsed_command.pop(0)
 
@@ -145,6 +143,7 @@ class Command:
         self.text = " ".join(parsed_command).strip()
         if not self.text:
             self.text = None
+
 
 CommandArg = Union[CommandTarget, Weather, FireType, str, int]
 
@@ -332,6 +331,6 @@ _supports_args: Dict[CommandName, int] = {
     "startfire": 1,
     "startnearfire": 1,
     "snf": 1,
-    "log": 0, # infinite possible arguments
+    "log": 0,  # infinite possible arguments
     "weather": 1,
 }

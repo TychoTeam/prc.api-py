@@ -31,7 +31,7 @@ class LogEntry:
                     else:
                         break
             else:
-                cache.add(self) # type: ignore
+                cache.add(self)  # type: ignore
 
 
 class LogPlayer(Player):
@@ -58,6 +58,7 @@ class AccessType(Enum):
     JOIN = 0
     LEAVE = 1
 
+
 class AccessEntry(LogEntry):
     """Represents a server access (join/leave) log entry."""
 
@@ -65,7 +66,7 @@ class AccessEntry(LogEntry):
         self._server = server
 
         self.type = AccessType.parse(bool(data.get("Join", False)))
-        self.subject = LogPlayer(server, data=data.get("Player")) # type: ignore
+        self.subject = LogPlayer(server, data=data.get("Player"))  # type: ignore
 
         super().__init__(
             data,
@@ -79,14 +80,15 @@ class AccessEntry(LogEntry):
     def is_leave(self):
         return self.type == AccessType.LEAVE
 
+
 class KillEntry(LogEntry):
     """Represents a server player kill log entry."""
 
     def __init__(self, server: "Server", data: Dict):
         self._server = server
 
-        self.killed = LogPlayer(server, data=data.get("Killed")) # type: ignore
-        self.killer = LogPlayer(server, data=data.get("Killer")) # type: ignore
+        self.killed = LogPlayer(server, data=data.get("Killed"))  # type: ignore
+        self.killer = LogPlayer(server, data=data.get("Killer"))  # type: ignore
 
         super().__init__(data)
 
@@ -97,8 +99,8 @@ class CommandEntry(LogEntry):
     def __init__(self, server: "Server", data: Dict):
         self._server = server
 
-        self.author = LogPlayer(server, data=data.get("Player")) # type: ignore
-        self.command = Command(server, data=data.get("Command"), author=self.author) # type: ignore
+        self.author = LogPlayer(server, data=data.get("Player"))  # type: ignore
+        self.command = Command(server, data=data.get("Command"), author=self.author)  # type: ignore
 
         super().__init__(data)
 
@@ -109,7 +111,7 @@ class ModCallEntry(LogEntry):
     def __init__(self, server: "Server", data: Dict):
         self._server = server
 
-        self.caller = LogPlayer(server, data=data.get("Caller")) # type: ignore
+        self.caller = LogPlayer(server, data=data.get("Caller"))  # type: ignore
         responder = data.get("Moderator")
         self.responder = LogPlayer(server, data=responder) if responder else None
 

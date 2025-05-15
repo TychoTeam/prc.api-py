@@ -8,7 +8,7 @@ from typing import (
     Dict,
     Union,
     Literal,
-    Sequence
+    Sequence,
 )
 from .utility import KeylessCache, Cache, CacheConfig, Requests, InsensitiveEnum
 from .utility.exceptions import *
@@ -283,7 +283,15 @@ class ServerCommands(ServerModule):
     async def run(
         self,
         name: CommandName,
-        targets: Optional[Sequence[Union[CommandTargetPlayerNameWithAll, CommandTargetPlayerWithAll, CommandTargetPlayer]]] = None,
+        targets: Optional[
+            Sequence[
+                Union[
+                    CommandTargetPlayerNameWithAll,
+                    CommandTargetPlayerWithAll,
+                    CommandTargetPlayer,
+                ]
+            ]
+        ] = None,
         args: Optional[List[CommandArg]] = None,
         text: Optional[str] = None,
     ):

@@ -42,20 +42,20 @@ class ServerStatus:
     def __init__(self, server: "Server", data: Dict):
         self.name = str(data.get("Name"))
         server.name = self.name
-        self.owner = ServerOwner(server, id=data.get("OwnerId")) # type: ignore
+        self.owner = ServerOwner(server, id=data.get("OwnerId"))  # type: ignore
         server.owner = self.owner
         self.co_owners = [
             ServerOwner(server, id=co_owner_id)
-            for co_owner_id in data.get("CoOwnerIds") # type: ignore
+            for co_owner_id in data.get("CoOwnerIds")  # type: ignore
         ]
         server.co_owners = self.co_owners
-        self.player_count = int(data.get("CurrentPlayers")) # type: ignore
+        self.player_count = int(data.get("CurrentPlayers"))  # type: ignore
         server.player_count = self.player_count
-        self.max_players = int(data.get("MaxPlayers")) # type: ignore
+        self.max_players = int(data.get("MaxPlayers"))  # type: ignore
         server.max_players = self.max_players
         self.join_key = str(data.get("JoinKey"))
         server.join_key = self.join_key
-        self.account_requirement = AccountRequirement.parse(data.get("AccVerifiedReq")) # type: ignore
+        self.account_requirement = AccountRequirement.parse(data.get("AccVerifiedReq"))  # type: ignore
         server.account_requirement = self.account_requirement
         self.team_balance = bool(data.get("TeamBalance"))
         server.team_balance = self.team_balance

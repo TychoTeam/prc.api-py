@@ -22,10 +22,10 @@ class Vehicle:
     """Represents a currently spawned server vehicle."""
 
     def __init__(self, server: "Server", data: Dict):
-        self.owner = VehicleOwner(server, data.get("Owner")) # type: ignore
+        self.owner = VehicleOwner(server, data.get("Owner"))  # type: ignore
         self.texture: Optional[str] = data.get("Texture")
 
-        self.model: VehicleModel = cast(VehicleModel, data.get("Name")) 
+        self.model: VehicleModel = cast(VehicleModel, data.get("Name"))
         self.year: Optional[int] = None
 
         parsed_name = self.model.split(" ")
