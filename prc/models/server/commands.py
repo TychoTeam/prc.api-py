@@ -117,14 +117,13 @@ class Command:
                 ]
         elif not parsed_command and self.name in _supports_blank_target:
             self.targets = [CommandTarget(self, data="me", author=author)]
-
+ 
         self.args: Optional[List[CommandArg]] = None
         if parsed_command and self.name in _supports_args:
-            args_count = _supports_args.get(self.name, 0)
             self.args = []
-            for _ in range(args_count):
-                if not parsed_command:
-                    break
+            args_count: int = _supports_args.get(self.name) # type: ignore
+            
+            while parsed_command and (args_count == 0 or len(self.args) < args_count):
                 arg = parsed_command.pop(0)
 
                 if self.name in ["weather"] and Weather.is_member(arg):
@@ -333,5 +332,6 @@ _supports_args: Dict[CommandName, int] = {
     "startfire": 1,
     "startnearfire": 1,
     "snf": 1,
+    "log": 0, # infinite possible arguments
     "weather": 1,
 }
