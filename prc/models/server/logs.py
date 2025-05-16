@@ -33,6 +33,20 @@ class LogEntry:
             else:
                 cache.add(self)  # type: ignore
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, LogEntry):
+            return self.created_at == other.created_at
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
+    def __gt__(self, other: "LogEntry"):
+        return self.created_at > other.created_at
+
+    def __lt__(self, other: "LogEntry"):
+        return self.created_at < other.created_at
+
 
 class LogPlayer(Player):
     """Represents a player referenced in a log entry."""

@@ -29,3 +29,11 @@ class Player:
     def is_remote(self):
         """Check if this is the remote player (aka. virtual server management)."""
         return self.id == 0
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Player):
+            return self.id == other.id
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)

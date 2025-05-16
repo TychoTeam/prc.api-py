@@ -18,6 +18,14 @@ class ServerOwner:
         """The full server player, if found."""
         return self._server._get_player(id=self.id)
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ServerOwner):
+            return self.id == other.id
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
 
 class AccountRequirement(Enum):
     """Enum that represents a server account verification requirements that players must fulfill in order to join."""

@@ -17,6 +17,14 @@ class VehicleOwner:
         """The full server player, if found."""
         return self._server._get_player(name=self.name)
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, VehicleOwner):
+            return self.name == other.name
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
 
 class Vehicle:
     """Represents a currently spawned server vehicle."""
@@ -38,6 +46,14 @@ class Vehicle:
     def full_name(self) -> "VehicleName":
         """The vehicle model name suffixed by the model year, if found. Unique for each game vehicle. A server may have multiple spawned vehicles with the same full name."""
         return cast(VehicleName, f"{self.year or ''} {self.model}".strip())
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Vehicle):
+            return self.full_name == other.full_name
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
 
 
 # All vehicle names

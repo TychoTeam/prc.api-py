@@ -83,9 +83,17 @@ class ServerPlayer(Player):
 
 
 class QueuedPlayer:
-    """Represents a server player in the server join queue."""
+    """Represents a partial player in the server join queue."""
 
     def __init__(self, server: "Server", id: int):
         self._server = server
 
         self.id = int(id)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, QueuedPlayer):
+            return self.id == other.id
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
