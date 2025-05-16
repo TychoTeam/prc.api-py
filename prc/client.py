@@ -20,7 +20,7 @@ class GlobalCache:
 
     def __init__(
         self,
-        servers: CacheConfig = (2, 0),
+        servers: CacheConfig = (4, 0),
         players: CacheConfig = (100, 0),
     ):
         self.servers = Cache[str, Server](*servers)
