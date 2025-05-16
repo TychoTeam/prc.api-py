@@ -94,6 +94,9 @@ class AccessEntry(LogEntry):
     def is_leave(self):
         return self.type == AccessType.LEAVE
 
+    def __repr__(self) -> str:
+        return f"<{self.type.name} {self.__class__.__name__}, subject={self.subject.name, self.subject.id}>"
+
 
 class KillEntry(LogEntry):
     """Represents a server player kill log entry."""
@@ -106,6 +109,9 @@ class KillEntry(LogEntry):
 
         super().__init__(data)
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} killed={self.killed.name, self.killed.id}>"
+
 
 class CommandEntry(LogEntry):
     """Represents a server command execution log entry."""
@@ -117,6 +123,9 @@ class CommandEntry(LogEntry):
         self.command = Command(server, data=data.get("Command"), author=self.author)  # type: ignore
 
         super().__init__(data)
+
+    def __repr__(self) -> str:
+        return f"<:{self.command.name} {self.__class__.__name__} author={self.author.name, self.author.id}>"
 
 
 class ModCallEntry(LogEntry):
@@ -134,3 +143,6 @@ class ModCallEntry(LogEntry):
     def is_acknowledged(self):
         """Check if this mod call has been responded to."""
         return bool(self.responder)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} caller={self.caller.name, self.caller.id}>"

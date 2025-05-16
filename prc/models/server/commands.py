@@ -81,6 +81,9 @@ class CommandTarget:
         """Check if this target references `others`; i.e. affects all players in the server except the command author."""
         return self.original.lower() in ["others"]
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} name={self.referenced_name}, id={self.referenced_id}>"
+
 
 class Command:
     """Represents a server staff-only command."""
@@ -144,6 +147,8 @@ class Command:
         if not self.text:
             self.text = None
 
+    def __repr__(self) -> str:
+        return f"<:{self.name} {self.__class__.__name__}>"
 
 CommandArg = Union[CommandTarget, Weather, FireType, str, int]
 

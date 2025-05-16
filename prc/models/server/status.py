@@ -26,6 +26,9 @@ class ServerOwner:
     def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} id={self.id}>"
+
 
 class AccountRequirement(Enum):
     """Enum that represents a server account verification requirements that players must fulfill in order to join."""
@@ -68,3 +71,8 @@ class ServerStatus:
         server.account_requirement = self.account_requirement
         self.team_balance = bool(data.get("TeamBalance"))
         server.team_balance = self.team_balance
+
+    def __repr__(self) -> str:
+        return (
+            f"<{self.__class__.__name__} name={self.name}, join_code={self.join_code}>"
+        )
