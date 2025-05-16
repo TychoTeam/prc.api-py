@@ -103,6 +103,7 @@ class Server:
     co_owners: List[ServerOwner] = []
     player_count: Optional[int] = None
     staff_count: Optional[int] = None
+    queue_count: Optional[int] = None
     max_players: Optional[int] = None
     join_key: Optional[str] = None
     account_requirement: Optional[AccountRequirement] = None
@@ -174,21 +175,24 @@ class Server:
             ServerPlayer(self, data=p)
             for p in self._handle(await self._requests.get("/players"), List[Dict])
         ]
+        self.player_count = len(players)
         self.staff_count = len([p for p in players if p.is_staff()])
         return players
 
     @_ephemeral
     async def get_queue(self):
         """Get all players in the server join queue."""
-        return [
+        players = [
             QueuedPlayer(self, id=p)
             for p in self._handle(await self._requests.get("/queue"), List[int])
         ]
+        self.queue_count = len(players)
+        return players
 
     @_refresh_server
     @_ephemeral
     async def get_bans(self):
-        """Get all server bans."""
+        """Get all banned players."""
         return [
             Player(self._client, data=p)
             for p in (self._handle(await self._requests.get("/bans"), Dict)).items()
