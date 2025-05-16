@@ -20,10 +20,12 @@ class GlobalCache:
 
     def __init__(
         self,
-        servers: CacheConfig = (4, 0),
+        servers: CacheConfig = (3, 0),
+        join_codes: CacheConfig = (3, 0),
         players: CacheConfig = (100, 0),
     ):
         self.servers = Cache[str, Server](*servers)
+        self.join_codes = Cache[str, str](*join_codes, unique=True)
         self.players = Cache[int, "Player"](*players)
 
 

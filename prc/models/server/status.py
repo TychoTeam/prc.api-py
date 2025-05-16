@@ -55,6 +55,7 @@ class ServerStatus:
         server.max_players = self.max_players
         self.join_code = str(data.get("JoinKey"))
         server.join_code = self.join_code
+        server._client._global_cache.join_codes.set(self.join_code, server._id)
         self.account_requirement = AccountRequirement.parse(data.get("AccVerifiedReq"))  # type: ignore
         server.account_requirement = self.account_requirement
         self.team_balance = bool(data.get("TeamBalance"))
