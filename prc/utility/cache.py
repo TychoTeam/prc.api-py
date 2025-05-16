@@ -12,10 +12,12 @@ class Cache(Generic[K, V]):
         self,
         max_size: int = 100,
         ttl: Optional[int] = None,
+        unique: bool = False,
     ):
-        """A custom cache class with size limitation and TTL."""
+        """A custom cache class with size limitation, TTL, and optional value uniqueness."""
         self.max_size: int = max_size
         self.ttl: Optional[int] = ttl or None
+        self.unique: bool = unique
         self._cache: Dict[K, V] = {}
         self._timestamps: Dict[K, float] = {}
 
@@ -30,6 +32,12 @@ class Cache(Generic[K, V]):
             self.delete(oldest_key)
 
     def set(self, key: K, value: V) -> V:
+        if self.unique:
+            keys_to_remove = [
+                k for k, v in self._cache.items() if v == value and k != key
+            ]
+            for k in keys_to_remove:
+                self.delete(k)
         if key in self._cache:
             self._timestamps[key] = time()
             self._cache[key] = value
