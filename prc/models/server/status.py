@@ -53,8 +53,8 @@ class ServerStatus:
         server.player_count = self.player_count
         self.max_players = int(data.get("MaxPlayers"))  # type: ignore
         server.max_players = self.max_players
-        self.join_key = str(data.get("JoinKey"))
-        server.join_key = self.join_key
+        self.join_code = str(data.get("JoinKey"))
+        server.join_code = self.join_code
         self.account_requirement = AccountRequirement.parse(data.get("AccVerifiedReq"))  # type: ignore
         server.account_requirement = self.account_requirement
         self.team_balance = bool(data.get("TeamBalance"))

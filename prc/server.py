@@ -105,7 +105,7 @@ class Server:
     staff_count: Optional[int] = None
     queue_count: Optional[int] = None
     max_players: Optional[int] = None
-    join_key: Optional[str] = None
+    join_code: Optional[str] = None
     account_requirement: Optional[AccountRequirement] = None
     team_balance: Optional[bool] = None
 
