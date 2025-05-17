@@ -84,7 +84,7 @@ class CommandTarget:
                 None,
             )
 
-    def is_author(self, guess: bool = True):
+    def is_author(self, guess: bool = True) -> bool:
         """Check if this target is the author of the command. If `guess` is `True` (default), it will also check against the closest matched server player (`guessed_player`)."""
         if self.referenced_id is not None:
             return self._author.id == self.referenced_id
@@ -92,11 +92,11 @@ class CommandTarget:
             return self._author.id == self.guessed_player.id
         return False
 
-    def is_all(self):
+    def is_all(self) -> bool:
         """Check if this target references `all`; i.e. affects all players in the server."""
         return self.original.lower() in ["all"]
 
-    def is_others(self):
+    def is_others(self) -> bool:
         """Check if this target references `others`; i.e. affects all players in the server except the command author."""
         return self.original.lower() in ["others"]
 

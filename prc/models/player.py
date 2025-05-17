@@ -26,7 +26,7 @@ class Player:
 
         client._global_cache.players.set(self.id, self)
 
-    def is_remote(self):
+    def is_remote(self) -> bool:
         """Check if this is the remote player (aka. virtual server management)."""
         return self.id == 0
 

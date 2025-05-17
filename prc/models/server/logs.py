@@ -88,10 +88,10 @@ class AccessEntry(LogEntry):
             dedupe=lambda e: e.subject.id == self.subject.id,
         )
 
-    def is_join(self):
+    def is_join(self) -> bool:
         return self.type == AccessType.JOIN
 
-    def is_leave(self):
+    def is_leave(self) -> bool:
         return self.type == AccessType.LEAVE
 
     def __repr__(self) -> str:
@@ -140,7 +140,7 @@ class ModCallEntry(LogEntry):
 
         super().__init__(data)
 
-    def is_acknowledged(self):
+    def is_acknowledged(self) -> bool:
         """Check if this mod call has been responded to."""
         return bool(self.responder)
 

@@ -77,7 +77,7 @@ class ServerPlayer(Player):
         """Check if this player is a server staff member based on their permission level."""
         return self.permission != PlayerPermission.NORMAL
 
-    def is_leo(self):
+    def is_leo(self) -> bool:
         """Check if this player is on a law enforcement team."""
         return self.team in (PlayerTeam.SHERIFF, PlayerTeam.POLICE)
 
