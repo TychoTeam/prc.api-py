@@ -27,7 +27,9 @@ class Bucket:
 
 class RateLimiter:
     def __init__(self):
-        self.route_buckets = Cache[str, str](max_size=50, ttl=(1 * 24 * 60 * 60), unique=False)
+        self.route_buckets = Cache[str, str](
+            max_size=50, ttl=(1 * 24 * 60 * 60), unique=False
+        )
         self.buckets = Cache[str, Bucket](max_size=10)
 
     def parse_headers(self, route: str, headers: Dict[str, str]) -> None:
