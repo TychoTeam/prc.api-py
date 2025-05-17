@@ -3,7 +3,7 @@ from prc.utility import InsensitiveEnum
 
 if TYPE_CHECKING:
     from prc.server import Server
-    from .logs import LogPlayer
+    from ..player import Player
 
 
 class Weather(InsensitiveEnum):
@@ -27,7 +27,7 @@ class FireType(InsensitiveEnum):
 class CommandTarget:
     """Represents a player referenced in a command."""
 
-    def __init__(self, command: "Command", data: str, author: "LogPlayer"):
+    def __init__(self, command: "Command", data: str, author: "Player"):
         self._server = command._server
         self._author = author
 
@@ -88,7 +88,7 @@ class CommandTarget:
 class Command:
     """Represents a server staff-only command."""
 
-    def __init__(self, server: "Server", data: str, author: "LogPlayer"):
+    def __init__(self, server: "Server", data: str, author: "Player"):
         self._server = server
 
         self.full_content: str = data
