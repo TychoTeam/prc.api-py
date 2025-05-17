@@ -25,7 +25,7 @@ class GlobalCache:
         players: CacheConfig = (100, 0),
     ):
         self.servers = Cache[str, Server](*servers)
-        self.join_codes = Cache[str, str](*join_codes, unique=True)
+        self.join_codes = Cache[str, str](*join_codes)
         self.players = Cache[int, "Player"](*players)
 
 
