@@ -81,6 +81,9 @@ class ServerPlayer(Player):
         """Check if this player is on a law enforcement team."""
         return self.team in (PlayerTeam.SHERIFF, PlayerTeam.POLICE)
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} name={self.name}, id={self.id}, permission={self.permission.name}, team={self.team.name}>"
+
 
 class QueuedPlayer:
     """Represents a partial player in the server join queue."""
