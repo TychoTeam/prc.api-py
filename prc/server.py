@@ -342,15 +342,15 @@ class ServerCommands(ServerModule):
         await self.run("jail", targets=targets)
 
     async def unjail(self, targets: List[CommandTargetPlayerNameWithAll]):
-        """Unjail players in the server."""
+        """Remove jailed status from players in the server."""
         await self.run("unjail", targets=targets)
 
     async def refresh(self, targets: List[CommandTargetPlayerNameWithAll]):
-        """Refresh players in the server."""
+        """Respawn players in the server and return them to their last positions."""
         await self.run("refresh", targets=targets)
 
     async def respawn(self, targets: List[CommandTargetPlayerNameWithAll]):
-        """Respawn players in the server."""
+        """Respawn players in the server and return them to their set spawn location."""
         await self.run("load", targets=targets)
 
     async def teleport(self, targets: List[CommandTargetPlayerNameWithAll], to: str):
@@ -394,15 +394,15 @@ class ServerCommands(ServerModule):
         await self.run("unadmin", targets=targets)
 
     async def hint(self, text: str):
-        """Send a temporary hint (banner) undismissable message to the server."""
+        """Send a temporary message to the server (undismissable banner)."""
         await self.run("h", text=text)
 
     async def announce(self, text: str):
-        """Send an announcement (popup) dismissable message to the server."""
+        """Send an announcement message to the server (dismissable popup)."""
         await self.run("m", text=text)
 
     async def pm(self, targets: List[CommandTargetPlayerNameWithAll], text: str):
-        """Send a private (popup) dismissable message to players in the server."""
+        """Send a private message to players in the server (dismissable popup)."""
         await self.run("pm", targets=targets, text=text)
 
     async def set_priority(self, seconds: int = 0):
@@ -414,11 +414,11 @@ class ServerCommands(ServerModule):
         await self.run("pt", args=[seconds])
 
     async def set_time(self, hour: int):
-        """Set the server current time of day as the given hour. Uses 24-hour formatting (`12` = noon, `0`/`24` = midnight)."""
+        """Set the current server time of day as the given hour. Uses 24-hour formatting (`12` = noon, `0`/`24` = midnight)."""
         await self.run("time", args=[hour])
 
     async def set_weather(self, type: Weather):
-        """Set the weather in the server. `Weather.SNOW` can only be set during winter."""
+        """Set the current server weather. `Weather.SNOW` can only be set during winter."""
         await self.run("weather", args=[type])
 
     async def start_fire(self, type: FireType):
