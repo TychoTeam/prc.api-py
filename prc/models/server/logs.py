@@ -120,7 +120,7 @@ class CommandEntry(LogEntry):
         self._server = server
 
         self.author = LogPlayer(server, data=data.get("Player"))  # type: ignore
-        self.command = Command(server, data=data.get("Command"), author=self.author)  # type: ignore
+        self.command = Command(data=data.get("Command"), author=self.author, server=server)  # type: ignore
 
         super().__init__(data)
 

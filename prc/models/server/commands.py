@@ -3,6 +3,7 @@ from prc.utility import InsensitiveEnum
 
 if TYPE_CHECKING:
     from prc.server import Server
+    from prc.client import PRC
     from ..player import Player
 
 
@@ -28,6 +29,7 @@ class CommandTarget:
     """Represents a player referenced in a command."""
 
     def __init__(self, command: "Command", data: str, author: "Player"):
+        self._client = command._client
         self._server = command._server
         self._author = author
 
@@ -48,22 +50,39 @@ class CommandTarget:
 
     @property
     def guessed_player(self):
-        """The closest matched server player based on the referenced name or ID. Server players must be fetched separately."""
-        return next(
-            (
-                player
-                for _, player in self._server._server_cache.players.items()
-                if (
-                    player.name.lower().startswith(self.referenced_name.lower())
-                    if (self.referenced_name is not None)
-                    else (
-                        self.referenced_id is not None
-                        and player.id == self.referenced_id
+        """The closest matched player (in webhooks) or server player (in command logs) based on the referenced name or ID. Server players must be fetched separately."""
+        if self._server:
+            return next(
+                (
+                    player
+                    for _, player in self._server._server_cache.players.items()
+                    if (
+                        player.name.lower().startswith(self.referenced_name.lower())
+                        if (self.referenced_name is not None)
+                        else (
+                            self.referenced_id is not None
+                            and player.id == self.referenced_id
+                        )
                     )
-                )
-            ),
-            None,
-        )
+                ),
+                None,
+            )
+        elif self._client:
+            return next(
+                (
+                    player
+                    for _, player in self._client._global_cache.players.items()
+                    if (
+                        player.name.lower().startswith(self.referenced_name.lower())
+                        if (self.referenced_name is not None)
+                        else (
+                            self.referenced_id is not None
+                            and player.id == self.referenced_id
+                        )
+                    )
+                ),
+                None,
+            )
 
     def is_author(self, guess: bool = True):
         """Check if this target is the author of the command. If `guess` is `True` (default), it will also check against the closest matched server player (`guessed_player`)."""
@@ -88,7 +107,14 @@ class CommandTarget:
 class Command:
     """Represents a server staff-only command."""
 
-    def __init__(self, server: "Server", data: str, author: "Player"):
+    def __init__(
+        self,
+        data: str,
+        author: "Player",
+        client: Optional["PRC"] = None,
+        server: Optional["Server"] = None,
+    ):
+        self._client = client
         self._server = server
 
         self.full_content: str = data
@@ -149,6 +175,7 @@ class Command:
 
     def __repr__(self) -> str:
         return f"<:{self.name} {self.__class__.__name__}>"
+
 
 CommandArg = Union[CommandTarget, Weather, FireType, str, int]
 
