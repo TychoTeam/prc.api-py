@@ -59,7 +59,9 @@ class ServerPlayer(Player):
         self.team = PlayerTeam.parse(data.get("Team"))  # type: ignore
 
         super().__init__(server._client, data=data.get("Player"))  # type: ignore
-        server._server_cache.players.set(self.id, self)
+
+        if not self.is_remote():
+            server._server_cache.players.set(self.id, self)
 
     @property
     def joined_at(self):

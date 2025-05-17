@@ -24,7 +24,8 @@ class Player:
         self.id = int(id)
         self.name = str(name)
 
-        client._global_cache.players.set(self.id, self)
+        if not self.is_remote():
+            client._global_cache.players.set(self.id, self)
 
     def is_remote(self) -> bool:
         """Whether this is the remote player (aka. virtual server management)."""
