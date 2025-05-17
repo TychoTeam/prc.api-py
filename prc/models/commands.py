@@ -4,7 +4,7 @@ from prc.utility import InsensitiveEnum
 if TYPE_CHECKING:
     from prc.server import Server
     from prc.client import PRC
-    from ..player import Player
+    from .player import Player
 
 
 class Weather(InsensitiveEnum):

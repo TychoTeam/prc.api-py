@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Callable, TypeVar, Any
 from enum import Enum
 from datetime import datetime
 from ..player import Player
-from .commands import Command
+from ..commands import Command
 
 if TYPE_CHECKING:
     from prc.server import Server
