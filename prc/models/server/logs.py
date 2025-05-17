@@ -18,18 +18,13 @@ class LogEntry:
         self,
         data: Dict,
         cache: Optional["KeylessCache[E]"] = None,
-        dedupe: Optional[Callable[[E], Any]] = None,
     ):
         self.created_at = datetime.fromtimestamp(data.get("Timestamp", 0))
 
         if cache is not None:
             for entry in cache.items():
                 if entry.created_at == self.created_at:
-                    if dedupe is not None:
-                        if dedupe(entry):
-                            break
-                    else:
-                        break
+                    break
             else:
                 cache.add(self)  # type: ignore
 
@@ -82,11 +77,7 @@ class AccessEntry(LogEntry):
         self.type = AccessType.parse(bool(data.get("Join", False)))
         self.subject = LogPlayer(server, data=data.get("Player"))  # type: ignore
 
-        super().__init__(
-            data,
-            cache=server._server_cache.access_logs,
-            dedupe=lambda e: e.subject.id == self.subject.id,
-        )
+        super().__init__(data, cache=server._server_cache.access_logs)
 
     def is_join(self) -> bool:
         return self.type == AccessType.JOIN
