@@ -78,7 +78,7 @@ class ServerPlayer(Player):
         return self.permission != PlayerPermission.NORMAL
 
     def is_leo(self) -> bool:
-        """Check if this player is on a law enforcement team."""
+        """Whether this player is on a law enforcement team."""
         return self.team in (PlayerTeam.SHERIFF, PlayerTeam.POLICE)
 
     def __repr__(self) -> str:

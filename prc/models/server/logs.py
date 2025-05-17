@@ -141,7 +141,7 @@ class ModCallEntry(LogEntry):
         super().__init__(data)
 
     def is_acknowledged(self) -> bool:
-        """Check if this mod call has been responded to."""
+        """Whether this mod call has been responded to."""
         return bool(self.responder)
 
     def __repr__(self) -> str:

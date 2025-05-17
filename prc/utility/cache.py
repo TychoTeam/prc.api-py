@@ -12,7 +12,7 @@ class Cache(Generic[K, V]):
         self,
         max_size: int = 100,
         ttl: Optional[int] = None,
-        unique: bool = False,
+        unique: bool = True,
     ):
         """A custom cache class with size limitation, TTL, and value uniqueness (toggleable)."""
         self.max_size: int = max_size
