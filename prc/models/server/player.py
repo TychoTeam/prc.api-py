@@ -73,8 +73,20 @@ class ServerPlayer(Player):
             None,
         )
 
-    def is_staff(self):
-        """Check if this player is a server staff member based on their permission level."""
+    @property
+    def vehicle(self):
+        """The player's currently spawned **primary** vehicle. Server vehicles must be fetched separately."""
+        return next(
+            (
+                vehicle
+                for vehicle in self._server._server_cache.vehicles.items()
+                if vehicle.owner.name == self.name and not vehicle.is_secondary()
+            ),
+            None,
+        )
+
+    def is_staff(self) -> bool:
+        """Whether this player is a server staff member based on their permission level."""
         return self.permission != PlayerPermission.NORMAL
 
     def is_leo(self) -> bool:

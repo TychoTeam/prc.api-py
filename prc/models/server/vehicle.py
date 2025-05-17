@@ -1,4 +1,4 @@
-from typing import Optional, Literal, TYPE_CHECKING, Dict, cast
+from typing import Optional, Literal, TYPE_CHECKING, Dict, cast, List
 
 if TYPE_CHECKING:
     from prc.server import Server
@@ -29,12 +29,35 @@ class VehicleOwner:
         return f"<{self.__class__.__name__} name={self.name}>"
 
 
+class VehicleTexture:
+    """Represents a server vehicle texture or livery."""
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def is_default(self) -> bool:
+        """Whether this texture is likely a default game texture."""
+        return self.name in _default_textures
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, VehicleTexture):
+            return self.name == other.name
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} name={self.name}>"
+
+
 class Vehicle:
     """Represents a currently spawned server vehicle."""
 
     def __init__(self, server: "Server", data: Dict):
         self.owner = VehicleOwner(server, data.get("Owner"))  # type: ignore
-        self.texture: Optional[str] = data.get("Texture")
+        texture = data.get("Texture")
+        self.texture = VehicleTexture(name=texture) if texture else None
 
         self.model: VehicleModel = cast(VehicleModel, data.get("Name"))
         self.year: Optional[int] = None
@@ -47,12 +70,16 @@ class Vehicle:
 
     @property
     def full_name(self) -> "VehicleName":
-        """The vehicle model name suffixed by the model year, if found. Unique for each game vehicle. A server may have multiple spawned vehicles with the same full name."""
+        """The vehicle model name suffixed by the model year (if applicable). Unique for each *game* vehicle, while a *server* may have multiple spawned vehicles with the same full name."""
         return cast(VehicleName, f"{self.year or ''} {self.model}".strip())
+
+    def is_secondary(self) -> bool:
+        """Whether this is the vehicle owner's secondary vehicle. Secondary vehicles include ATVs, UTVs, the lawn mower and such."""
+        return self.full_name in _secondary_vehicles
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Vehicle):
-            return self.full_name == other.full_name
+            return self.full_name == other.full_name and self.owner == other.owner
         return False
 
     def __ne__(self, other: object) -> bool:
@@ -389,3 +416,11 @@ VehicleModel = Literal[
     "Salt Truck",
     "Chevlon Platoro Utility",
 ]
+
+_secondary_vehicles: List[VehicleName] = [
+    "Lawn Mower",
+    "4-Wheeler",
+    "Canyon Descender",
+]
+
+_default_textures = ["Standard", "Ghost", "Undercover", "SWAT"]

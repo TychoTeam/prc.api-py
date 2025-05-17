@@ -201,7 +201,7 @@ class Server:
     @_refresh_server
     @_ephemeral
     async def get_vehicles(self):
-        """Get all spawned vehicles in the server."""
+        """Get all spawned vehicles in the server. A server player may have 2 spawned vehicles (1 primary + 1 secondary)."""
         return [
             self._server_cache.vehicles.add(Vehicle(self, data=v))
             for v in self._handle(await self._requests.get("/vehicles"), List[Dict])
