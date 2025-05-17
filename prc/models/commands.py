@@ -105,7 +105,7 @@ class CommandTarget:
 
 
 class Command:
-    """Represents a server staff-only command."""
+    """Represents a staff-only command."""
 
     def __init__(
         self,
