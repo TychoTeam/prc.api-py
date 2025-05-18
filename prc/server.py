@@ -109,6 +109,15 @@ class Server:
     account_requirement: Optional[AccountRequirement] = None
     team_balance: Optional[bool] = None
 
+    @property
+    def join_link(self):
+        """Web URL that allows users to join the game and queue automatically for the server. Hosted by PRC. Server status must be fetched separately. ⚠️ *(May not function properly on mobile devices -- May not function at random times)*"""
+        return (
+            ("https://policeroleplay.community/join/" + self.join_code)
+            if self.join_code
+            else None
+        )
+
     def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):
         for _, player in self._server_cache.players.items():
             if id and player.id == id:

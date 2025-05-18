@@ -72,6 +72,11 @@ class ServerStatus:
         self.team_balance = bool(data.get("TeamBalance"))
         server.team_balance = self.team_balance
 
+    @property
+    def join_link(self):
+        """Web URL that allows users to join the game and queue automatically for the server. Hosted by PRC. ⚠️ *(May not function properly on mobile devices -- May not function at random times)*"""
+        return "https://policeroleplay.community/join/" + self.join_code
+
     def __repr__(self) -> str:
         return (
             f"<{self.__class__.__name__} name={self.name}, join_code={self.join_code}>"
