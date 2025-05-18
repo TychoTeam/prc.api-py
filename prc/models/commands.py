@@ -1,9 +1,10 @@
-from typing import Literal, Optional, List, Dict, Union, TYPE_CHECKING
+from typing import Literal, Optional, List, Dict, Union, TYPE_CHECKING, cast
 from prc.utility import InsensitiveEnum
 
 if TYPE_CHECKING:
     from prc.server import Server
-    from .logs import LogPlayer
+    from prc.client import PRC
+    from .player import Player
 
 
 class Weather(InsensitiveEnum):
@@ -27,9 +28,8 @@ class FireType(InsensitiveEnum):
 class CommandTarget:
     """Represents a player referenced in a command."""
 
-    def __init__(
-        self, command: "Command", data: str, author: Optional["LogPlayer"] = None
-    ):
+    def __init__(self, command: "Command", data: str, author: "Player"):
+        self._client = command._client
         self._server = command._server
         self._author = author
 
@@ -50,53 +50,82 @@ class CommandTarget:
 
     @property
     def guessed_player(self):
-        """The closest matched server player based on the referenced name or ID."""
-        return next(
-            (
-                player
-                for _, player in self._server._server_cache.players.items()
-                if (
-                    player.name.lower().startswith(self.referenced_name.lower())
-                    if (self.referenced_name is not None)
-                    else (
-                        self.referenced_id is not None
-                        and player.id == self.referenced_id
+        """The closest matched player (in webhooks) or server player (in command logs) based on the referenced name or ID. Server players must be fetched separately."""
+        if self._server:
+            return next(
+                (
+                    player
+                    for _, player in self._server._server_cache.players.items()
+                    if (
+                        player.name.lower().startswith(self.referenced_name.lower())
+                        if (self.referenced_name is not None)
+                        else (
+                            self.referenced_id is not None
+                            and player.id == self.referenced_id
+                        )
                     )
-                )
-            ),
-            None,
-        )
+                ),
+                None,
+            )
+        elif self._client:
+            return next(
+                (
+                    player
+                    for _, player in self._client._global_cache.players.items()
+                    if (
+                        player.name.lower().startswith(self.referenced_name.lower())
+                        if (self.referenced_name is not None)
+                        else (
+                            self.referenced_id is not None
+                            and player.id == self.referenced_id
+                        )
+                    )
+                ),
+                None,
+            )
 
-    def is_author(self):
-        """Check if this target is the author of the command."""
-        if self._author is not None and self.referenced_id is not None:
+    def is_author(self, guess: bool = True) -> bool:
+        """Whether this target is the author of the command. If `guess` is `True` (default), it will also check against the closest matched server player (`guessed_player`)."""
+        if self.referenced_id is not None:
             return self._author.id == self.referenced_id
+        if guess and self.guessed_player is not None:
+            return self._author.id == self.guessed_player.id
         return False
 
-    def is_all(self):
-        """Check if this target references `all`; i.e. affects all players in the server."""
+    def is_all(self) -> bool:
+        """Whether this target references `all`; i.e. affects all players in the server."""
         return self.original.lower() in ["all"]
 
-    def is_others(self):
-        """Check if this target references `others`; i.e. affects all players in the server except the command author."""
+    def is_others(self) -> bool:
+        """Whether this target references `others`; i.e. affects all players in the server except the command author."""
         return self.original.lower() in ["others"]
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} name={self.referenced_name}, id={self.referenced_id}>"
 
 
 class Command:
-    """Represents a server staff-only command."""
+    """Represents a staff-only command."""
 
     def __init__(
-        self, server: "Server", data: str, author: Optional["LogPlayer"] = None
+        self,
+        data: str,
+        author: "Player",
+        client: Optional["PRC"] = None,
+        server: Optional["Server"] = None,
     ):
+        self._client = client
         self._server = server
 
-        self.full_content = data
+        self.full_content: str = data
 
         parsed_command = self.full_content.split(" ")
         if not parsed_command[0].startswith(":"):
             raise ValueError(f"Malformed command received: {self.full_content}")
 
-        self.name: CommandName = parsed_command.pop(0).replace(":", "").lower()
+        self.name: CommandName = cast(
+            CommandName, parsed_command.pop(0).replace(":", "").lower()
+        )
 
         self.targets: Optional[List[CommandTarget]] = None
         if parsed_command and self.name in _supports_targets:
@@ -118,11 +147,10 @@ class Command:
 
         self.args: Optional[List[CommandArg]] = None
         if parsed_command and self.name in _supports_args:
-            args_count = _supports_args.get(self.name)
             self.args = []
-            for _ in range(args_count):
-                if not parsed_command:
-                    break
+            args_count: int = _supports_args.get(self.name)  # type: ignore
+
+            while parsed_command and (args_count == 0 or len(self.args) < args_count):
                 arg = parsed_command.pop(0)
 
                 if self.name in ["weather"] and Weather.is_member(arg):
@@ -144,6 +172,9 @@ class Command:
         self.text = " ".join(parsed_command).strip()
         if not self.text:
             self.text = None
+
+    def __repr__(self) -> str:
+        return f"<:{self.name} {self.__class__.__name__}>"
 
 
 CommandArg = Union[CommandTarget, Weather, FireType, str, int]
@@ -332,5 +363,6 @@ _supports_args: Dict[CommandName, int] = {
     "startfire": 1,
     "startnearfire": 1,
     "snf": 1,
+    "log": 0,  # infinite possible arguments
     "weather": 1,
 }

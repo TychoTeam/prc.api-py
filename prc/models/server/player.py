@@ -54,38 +54,66 @@ class ServerPlayer(Player):
     def __init__(self, server: "Server", data: Dict):
         self._server = server
 
-        self.permission = PlayerPermission.parse(data.get("Permission"))
+        self.permission = PlayerPermission.parse(data.get("Permission"))  # type: ignore
         self.callsign: Optional[str] = data.get("Callsign")
-        self.team = PlayerTeam.parse(data.get("Team"))
+        self.team = PlayerTeam.parse(data.get("Team"))  # type: ignore
 
-        super().__init__(server._client, data=data.get("Player"))
-        server._server_cache.players.set(self.id, self)
+        super().__init__(server._client, data=data.get("Player"))  # type: ignore
+
+        if not self.is_remote():
+            server._server_cache.players.set(self.id, self)
 
     @property
     def joined_at(self):
-        """When this player last joined the server. Server join logs must be fetched separately."""
+        """When this player last joined the server. Server access (join/leave) logs must be fetched separately."""
         return next(
             (
                 entry.created_at
-                for entry in self._server._server_cache.join_logs.items()
-                if entry.player.id == self.id and entry.is_join
+                for entry in self._server._server_cache.access_logs.items()
+                if entry.subject.id == self.id and entry.is_join()
             ),
             None,
         )
 
-    def is_staff(self):
-        """Check if this player is a server staff member based on their permission level."""
+    @property
+    def vehicle(self):
+        """The player's currently spawned **primary** vehicle. Server vehicles must be fetched separately."""
+        return next(
+            (
+                vehicle
+                for vehicle in self._server._server_cache.vehicles.items()
+                if vehicle.owner.name == self.name and not vehicle.is_secondary()
+            ),
+            None,
+        )
+
+    def is_staff(self) -> bool:
+        """Whether this player is a server staff member based on their permission level."""
         return self.permission != PlayerPermission.NORMAL
 
-    def is_leo(self):
-        """Check if this player is on a law enforcement team."""
+    def is_leo(self) -> bool:
+        """Whether this player is on a law enforcement team."""
         return self.team in (PlayerTeam.SHERIFF, PlayerTeam.POLICE)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} name={self.name}, id={self.id}, permission={self.permission.name}, team={self.team.name}>"
 
 
 class QueuedPlayer:
-    """Represents a server player in the server join queue."""
+    """Represents a partial player in the server join queue."""
 
     def __init__(self, server: "Server", id: int):
         self._server = server
 
         self.id = int(id)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, QueuedPlayer):
+            return self.id == other.id
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} id={self.id}>"

@@ -8,6 +8,7 @@ from typing import (
     Dict,
     Union,
     Literal,
+    Sequence,
 )
 from .utility import KeylessCache, Cache, CacheConfig, Requests, InsensitiveEnum
 from .utility.exceptions import *
@@ -28,12 +29,12 @@ class ServerCache:
         self,
         players: CacheConfig = (50, 0),
         vehicles: CacheConfig = (50, 1 * 60 * 60),
-        join_logs: CacheConfig = (150, 6 * 60 * 60),
+        access_logs: CacheConfig = (150, 6 * 60 * 60),
     ):
         self.players = Cache[int, ServerPlayer](*players)
         self.vehicles = KeylessCache[Vehicle](*vehicles)
-        self.join_logs = KeylessCache[JoinEntry](
-            *join_logs, sort=(lambda e: e.created_at, True)
+        self.access_logs = KeylessCache[AccessEntry](
+            *access_logs, sort=(lambda e: e.created_at, True)
         )
 
 
@@ -102,10 +103,20 @@ class Server:
     co_owners: List[ServerOwner] = []
     player_count: Optional[int] = None
     staff_count: Optional[int] = None
+    queue_count: Optional[int] = None
     max_players: Optional[int] = None
-    join_key: Optional[str] = None
-    account_requirement = None
+    join_code: Optional[str] = None
+    account_requirement: Optional[AccountRequirement] = None
     team_balance: Optional[bool] = None
+
+    @property
+    def join_link(self):
+        """Web URL that allows users to join the game and queue automatically for the server. Hosted by PRC. Server status must be fetched separately. ⚠️ *(May not function properly on mobile devices -- May not function at random times)*"""
+        return (
+            ("https://policeroleplay.community/join/" + self.join_code)
+            if self.join_code
+            else None
+        )
 
     def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):
         for _, player in self._server_cache.players.items():
@@ -173,21 +184,24 @@ class Server:
             ServerPlayer(self, data=p)
             for p in self._handle(await self._requests.get("/players"), List[Dict])
         ]
+        self.player_count = len(players)
         self.staff_count = len([p for p in players if p.is_staff()])
         return players
 
     @_ephemeral
     async def get_queue(self):
         """Get all players in the server join queue."""
-        return [
+        players = [
             QueuedPlayer(self, id=p)
             for p in self._handle(await self._requests.get("/queue"), List[int])
         ]
+        self.queue_count = len(players)
+        return players
 
     @_refresh_server
     @_ephemeral
     async def get_bans(self):
-        """Get all server bans."""
+        """Get all banned players."""
         return [
             Player(self._client, data=p)
             for p in (self._handle(await self._requests.get("/bans"), Dict)).items()
@@ -196,7 +210,7 @@ class Server:
     @_refresh_server
     @_ephemeral
     async def get_vehicles(self):
-        """Get all spawned vehicles in the server."""
+        """Get all spawned vehicles in the server. A server player may have 2 spawned vehicles (1 primary + 1 secondary)."""
         return [
             self._server_cache.vehicles.add(Vehicle(self, data=v))
             for v in self._handle(await self._requests.get("/vehicles"), List[Dict])
@@ -225,13 +239,13 @@ class ServerLogs(ServerModule):
 
     @_refresh_server
     @_ephemeral
-    async def get_joins(self):
-        """Get server join logs."""
+    async def get_access(self):
+        """Get server access (join/leave) logs."""
         [
-            JoinEntry(self._server, data=e)
+            AccessEntry(self._server, data=e)
             for e in self._handle(await self._requests.get("/joinlogs"), List[Dict])
         ]
-        return self._server_cache.join_logs.items()
+        return self._server_cache.access_logs.items()
 
     @_refresh_server
     @_ephemeral
@@ -275,14 +289,22 @@ class ServerCommands(ServerModule):
     async def _raw(self, command: str):
         """Run a raw string command as the remote player in the server."""
         self._handle(
-            await self._requests.post("/command", json={"command": command.strip()}),
+            await self._requests.post("/command", json={"command": command}),
             Dict,
         )
 
     async def run(
         self,
         name: CommandName,
-        targets: Optional[List[CommandTargetPlayer]] = None,
+        targets: Optional[
+            Sequence[
+                Union[
+                    CommandTargetPlayerNameWithAll,
+                    CommandTargetPlayerWithAll,
+                    CommandTargetPlayer,
+                ]
+            ]
+        ] = None,
         args: Optional[List[CommandArg]] = None,
         text: Optional[str] = None,
     ):
@@ -306,7 +328,7 @@ class ServerCommands(ServerModule):
         if text:
             command += text
 
-        await self._raw(command)
+        await self._raw(command.strip())
 
     async def kill(self, targets: List[CommandTargetPlayerNameWithAll]):
         """Kill players in the server."""
@@ -329,15 +351,15 @@ class ServerCommands(ServerModule):
         await self.run("jail", targets=targets)
 
     async def unjail(self, targets: List[CommandTargetPlayerNameWithAll]):
-        """Unjail players in the server."""
+        """Remove jailed status from players in the server."""
         await self.run("unjail", targets=targets)
 
     async def refresh(self, targets: List[CommandTargetPlayerNameWithAll]):
-        """Refresh players in the server."""
+        """Respawn players in the server and return them to their last positions."""
         await self.run("refresh", targets=targets)
 
     async def respawn(self, targets: List[CommandTargetPlayerNameWithAll]):
-        """Respawn players in the server."""
+        """Respawn players in the server and return them to their set spawn location."""
         await self.run("load", targets=targets)
 
     async def teleport(self, targets: List[CommandTargetPlayerNameWithAll], to: str):
@@ -381,15 +403,15 @@ class ServerCommands(ServerModule):
         await self.run("unadmin", targets=targets)
 
     async def hint(self, text: str):
-        """Send a temporary hint (banner) undismissable message to the server."""
+        """Send a temporary message to the server (undismissable banner)."""
         await self.run("h", text=text)
 
     async def announce(self, text: str):
-        """Send an announcement (popup) dismissable message to the server."""
+        """Send an announcement message to the server (dismissable popup)."""
         await self.run("m", text=text)
 
     async def pm(self, targets: List[CommandTargetPlayerNameWithAll], text: str):
-        """Send a private (popup) dismissable message to players in the server."""
+        """Send a private message to players in the server (dismissable popup)."""
         await self.run("pm", targets=targets, text=text)
 
     async def set_priority(self, seconds: int = 0):
@@ -401,11 +423,11 @@ class ServerCommands(ServerModule):
         await self.run("pt", args=[seconds])
 
     async def set_time(self, hour: int):
-        """Set the server current time of day as the given hour. Uses 24-hour formatting (`12` = noon, `0`/`24` = midnight)."""
+        """Set the current server time of day as the given hour. Uses 24-hour formatting (`12` = noon, `0`/`24` = midnight)."""
         await self.run("time", args=[hour])
 
     async def set_weather(self, type: Weather):
-        """Set the weather in the server. `Weather.SNOW` can only be set during winter."""
+        """Set the current server weather. `Weather.SNOW` can only be set during winter."""
         await self.run("weather", args=[type])
 
     async def start_fire(self, type: FireType):

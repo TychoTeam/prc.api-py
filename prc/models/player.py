@@ -24,8 +24,20 @@ class Player:
         self.id = int(id)
         self.name = str(name)
 
-        client._global_cache.players.set(self.id, self)
+        if not self.is_remote():
+            client._global_cache.players.set(self.id, self)
 
-    def is_remote(self):
-        """Check if this is the remote player (aka. virtual server management)."""
+    def is_remote(self) -> bool:
+        """Whether this is the remote player (aka. virtual server management)."""
         return self.id == 0
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Player):
+            return self.id == other.id
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} name={self.name}, id={self.id}>"
