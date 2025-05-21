@@ -55,6 +55,8 @@ class Vehicle:
     """Represents a currently spawned server vehicle."""
 
     def __init__(self, server: "Server", data: Dict):
+        self._server = server
+
         self.owner = VehicleOwner(server, data.get("Owner"))  # type: ignore
         texture = data.get("Texture")
         self.texture = VehicleTexture(name=texture) if texture else None
@@ -67,6 +69,11 @@ class Vehicle:
             if parsed_name[i].isdigit() and len(parsed_name[i]) == 4:
                 self.year = int(parsed_name.pop(i))
                 self.model = cast(VehicleModel, " ".join(parsed_name))
+
+        for i, v in enumerate(server._server_cache.vehicles.items()):
+            if v.owner == self.owner and v.is_secondary() == self.is_secondary():
+                server._server_cache.vehicles.remove(i)
+        server._server_cache.vehicles.add(self)
 
     @property
     def full_name(self) -> "VehicleName":
