@@ -1,3 +1,6 @@
+> [!WARNING]
+> **This package is in BETA!** Release is expected within the following weeks to months after testing on live applications. All BETA releases are tested up to spec; please report any unexpected behavior.
+
 `prc.api` is an asynchronous Python wrapper for the Police Roleplay Community (PRC) API.  
 It provides a convenient way to interact with PRC APIs, including the [private server APIs](https://apidocs.policeroleplay.community) for ER:LC.
 
