@@ -28,7 +28,7 @@ class ServerCache:
     def __init__(
         self,
         players: CacheConfig = (50, 0),
-        vehicles: CacheConfig = (50, 1 * 60 * 60),
+        vehicles: CacheConfig = (100, 1 * 60 * 60),
         access_logs: CacheConfig = (150, 6 * 60 * 60),
     ):
         self.players = Cache[int, ServerPlayer](*players)
