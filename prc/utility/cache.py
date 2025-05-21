@@ -105,7 +105,7 @@ class KeylessCache(Generic[V]):
             self._timestamps.pop(0)
 
     def _sort_cache(self) -> None:
-        if self._sort:
+        if self._sort is not None:
             key_func, reverse = self._sort
             combined = list(zip(self._cache, self._timestamps))
             combined.sort(key=lambda x: key_func(x[0]), reverse=(reverse or False))
@@ -132,6 +132,11 @@ class KeylessCache(Generic[V]):
                 self._cache.pop(index)
                 self._timestamps.pop(index)
         return None
+
+    def remove(self, index: int = 0) -> None:
+        if -len(self._cache) <= index < len(self._cache):
+            self._cache.pop(index)
+            self._timestamps.pop(index)
 
     def clear(self) -> None:
         self._cache = []
