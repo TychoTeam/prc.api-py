@@ -28,7 +28,7 @@ class ServerCache:
     def __init__(
         self,
         players: CacheConfig = (50, 0),
-        vehicles: CacheConfig = (50, 1 * 60 * 60),
+        vehicles: CacheConfig = (100, 1 * 60 * 60),
         access_logs: CacheConfig = (150, 6 * 60 * 60),
     ):
         self.players = Cache[int, ServerPlayer](*players)
@@ -212,7 +212,7 @@ class Server:
     async def get_vehicles(self):
         """Get all spawned vehicles in the server. A server player may have 2 spawned vehicles (1 primary + 1 secondary)."""
         return [
-            self._server_cache.vehicles.add(Vehicle(self, data=v))
+            Vehicle(self, data=v)
             for v in self._handle(await self._requests.get("/vehicles"), List[Dict])
         ]
 
