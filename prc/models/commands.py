@@ -148,7 +148,7 @@ class Command:
         self.args: Optional[List[CommandArg]] = None
         if parsed_command and self.name in _supports_args:
             self.args = []
-            args_count: int = _supports_args.get(self.name)  # type: ignore
+            args_count: int = _supports_args.get(self.name, 0)
 
             while parsed_command and (args_count == 0 or len(self.args) < args_count):
                 arg = parsed_command.pop(0)

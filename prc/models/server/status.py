@@ -1,8 +1,9 @@
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 from enum import Enum
 
 if TYPE_CHECKING:
     from prc.server import Server
+    from prc.api_types.v1 import ServerStatusResponse
 
 
 class ServerOwner:
@@ -50,24 +51,24 @@ class AccountRequirement(Enum):
 class ServerStatus:
     """Represents a server status with information about the server."""
 
-    def __init__(self, server: "Server", data: Dict):
+    def __init__(self, server: "Server", data: ServerStatusResponse):
         self.name = str(data.get("Name"))
         server.name = self.name
-        self.owner = ServerOwner(server, id=data.get("OwnerId"))  # type: ignore
+        self.owner = ServerOwner(server, id=data.get("OwnerId"))
         server.owner = self.owner
         self.co_owners = [
             ServerOwner(server, id=co_owner_id)
-            for co_owner_id in data.get("CoOwnerIds")  # type: ignore
+            for co_owner_id in data.get("CoOwnerIds")
         ]
         server.co_owners = self.co_owners
-        self.player_count = int(data.get("CurrentPlayers"))  # type: ignore
+        self.player_count = int(data.get("CurrentPlayers"))
         server.player_count = self.player_count
-        self.max_players = int(data.get("MaxPlayers"))  # type: ignore
+        self.max_players = int(data.get("MaxPlayers"))
         server.max_players = self.max_players
         self.join_code = str(data.get("JoinKey"))
         server.join_code = self.join_code
         server._client._global_cache.join_codes.set(self.join_code, server._id)
-        self.account_requirement = AccountRequirement.parse(data.get("AccVerifiedReq"))  # type: ignore
+        self.account_requirement = AccountRequirement.parse(data.get("AccVerifiedReq"))
         server.account_requirement = self.account_requirement
         self.team_balance = bool(data.get("TeamBalance"))
         server.team_balance = self.team_balance

@@ -1,7 +1,8 @@
-from typing import Optional, Literal, TYPE_CHECKING, Dict, cast, List
+from typing import Optional, Literal, TYPE_CHECKING, cast, List
 
 if TYPE_CHECKING:
     from prc.server import Server
+    from prc.api_types.v1 import ServerVehicleResponse
 
 
 class VehicleOwner:
@@ -54,10 +55,10 @@ class VehicleTexture:
 class Vehicle:
     """Represents a currently spawned server vehicle."""
 
-    def __init__(self, server: "Server", data: Dict):
+    def __init__(self, server: "Server", data: ServerVehicleResponse):
         self._server = server
 
-        self.owner = VehicleOwner(server, data.get("Owner"))  # type: ignore
+        self.owner = VehicleOwner(server, data.get("Owner"))
         texture = data.get("Texture")
         self.texture = VehicleTexture(name=texture) if texture else None
 
