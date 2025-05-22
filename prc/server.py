@@ -275,9 +275,9 @@ class ServerLogs(ServerModule):
         ]
 
 
-CommandTargetPlayerNameWithAll = Literal["all"]
-CommandTargetPlayerWithAll = Union[CommandTargetPlayerNameWithAll, int]
-CommandTargetPlayer = Union[str, int]
+CommandTargetPlayerName = str
+CommandTargetPlayerID = int
+CommandTargetPlayerNameOrID = Union[CommandTargetPlayerName, CommandTargetPlayerID]
 
 
 class ServerCommands(ServerModule):
@@ -288,7 +288,7 @@ class ServerCommands(ServerModule):
 
     async def _raw(self, command: str):
         """Run a raw string command as the remote player in the server."""
-        self._handle(
+        return self._handle(
             await self._requests.post("/command", json={"command": command}),
             Dict,
         )
@@ -296,15 +296,7 @@ class ServerCommands(ServerModule):
     async def run(
         self,
         name: CommandName,
-        targets: Optional[
-            Sequence[
-                Union[
-                    CommandTargetPlayerNameWithAll,
-                    CommandTargetPlayerWithAll,
-                    CommandTargetPlayer,
-                ]
-            ]
-        ] = None,
+        targets: Optional[Sequence[CommandTargetPlayerNameOrID]] = None,
         args: Optional[List[CommandArg]] = None,
         text: Optional[str] = None,
     ):
@@ -330,75 +322,79 @@ class ServerCommands(ServerModule):
 
         await self._raw(command.strip())
 
-    async def kill(self, targets: List[CommandTargetPlayerNameWithAll]):
+    async def kill(self, targets: List[CommandTargetPlayerName]):
         """Kill players in the server."""
         await self.run("kill", targets=targets)
 
-    async def heal(self, targets: List[CommandTargetPlayerNameWithAll]):
+    async def heal(self, targets: List[CommandTargetPlayerName]):
         """Heal players in the server."""
         await self.run("heal", targets=targets)
 
-    async def wanted(self, targets: List[CommandTargetPlayerNameWithAll]):
+    async def wanted(self, targets: List[CommandTargetPlayerName]):
         """Make players wanted in the server."""
         await self.run("wanted", targets=targets)
 
-    async def unwanted(self, targets: List[CommandTargetPlayerNameWithAll]):
+    async def unwanted(self, targets: List[CommandTargetPlayerName]):
         """Remove wanted status from players in the server."""
         await self.run("unwanted", targets=targets)
 
-    async def jail(self, targets: List[CommandTargetPlayerNameWithAll]):
+    async def jail(self, targets: List[CommandTargetPlayerName]):
         """Jail players in the server."""
         await self.run("jail", targets=targets)
 
-    async def unjail(self, targets: List[CommandTargetPlayerNameWithAll]):
+    async def unjail(self, targets: List[CommandTargetPlayerName]):
         """Remove jailed status from players in the server."""
         await self.run("unjail", targets=targets)
 
-    async def refresh(self, targets: List[CommandTargetPlayerNameWithAll]):
+    async def refresh(self, targets: List[CommandTargetPlayerName]):
         """Respawn players in the server and return them to their last positions."""
         await self.run("refresh", targets=targets)
 
-    async def respawn(self, targets: List[CommandTargetPlayerNameWithAll]):
+    async def respawn(self, targets: List[CommandTargetPlayerName]):
         """Respawn players in the server and return them to their set spawn location."""
         await self.run("load", targets=targets)
 
-    async def teleport(self, targets: List[CommandTargetPlayerNameWithAll], to: str):
+    async def teleport(self, targets: List[CommandTargetPlayerName], to: str):
         """Teleport players to another player in the server."""
         await self.run("tp", targets=targets, args=[to])
 
-    async def kick(self, targets: List[CommandTargetPlayerNameWithAll]):
+    async def kick(
+        self,
+        targets: List[CommandTargetPlayerName],
+        reason: Optional[str] = None,
+    ):
         """Kick players from the server."""
-        await self.run("kick", targets=targets)
+        await self.run("kick", targets=targets, text=reason)
 
-    async def ban(self, targets: List[CommandTargetPlayerWithAll]):
+    async def ban(self, targets: List[CommandTargetPlayerNameOrID]):
         """Ban players from the server."""
         await self.run("ban", targets=targets)
 
-    async def unban(self, targets: List[CommandTargetPlayer]):
+    async def unban(self, targets: List[CommandTargetPlayerNameOrID]):
         """Unban players from the server."""
         await self.run("unban", targets=targets)
 
-    async def helper(self, targets: List[CommandTargetPlayerWithAll]):
+    async def helper(self, targets: List[CommandTargetPlayerNameOrID]):
         """Grant helper permissions to players in the server."""
         await self.run("helper", targets=targets)
 
-    async def unhelper(self, targets: List[CommandTargetPlayerWithAll]):
+    async def unhelper(self, targets: List[CommandTargetPlayerNameOrID]):
         """Revoke helper permissions to players in the server."""
         await self.run("unhelper", targets=targets)
 
-    async def mod(self, targets: List[CommandTargetPlayerWithAll]):
+    async def mod(self, targets: List[CommandTargetPlayerNameOrID]):
         """Grant moderator permissions to players in the server."""
         await self.run("mod", targets=targets)
 
-    async def unmod(self, targets: List[CommandTargetPlayerWithAll]):
+    async def unmod(self, targets: List[CommandTargetPlayerNameOrID]):
         """Revoke moderator permissions from players in the server."""
         await self.run("unmod", targets=targets)
 
-    async def admin(self, targets: List[CommandTargetPlayerWithAll]):
+    async def admin(self, targets: List[CommandTargetPlayerNameOrID]):
         """Grant admin permissions to players in the server."""
         await self.run("admin", targets=targets)
 
-    async def unadmin(self, targets: List[CommandTargetPlayerWithAll]):
+    async def unadmin(self, targets: List[CommandTargetPlayerNameOrID]):
         """Revoke admin permissions from players in the server."""
         await self.run("unadmin", targets=targets)
 
@@ -410,7 +406,7 @@ class ServerCommands(ServerModule):
         """Send an announcement message to the server (dismissable popup)."""
         await self.run("m", text=text)
 
-    async def pm(self, targets: List[CommandTargetPlayerNameWithAll], text: str):
+    async def pm(self, targets: List[CommandTargetPlayerName], text: str):
         """Send a private message to players in the server (dismissable popup)."""
         await self.run("pm", targets=targets, text=text)
 
