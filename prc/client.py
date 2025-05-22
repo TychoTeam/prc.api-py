@@ -37,15 +37,24 @@ class PRC:
         global_key: Optional[str] = None,
         default_server_key: Optional[str] = None,
         base_url: str = "https://api.policeroleplay.community/v1",
-        cache=GlobalCache(),
+        cache: Optional[GlobalCache] = None,
     ):
         self._global_key = global_key
         if default_server_key:
             self._validate_server_key(default_server_key)
         self._default_server_key = default_server_key
         self._base_url = base_url
-        self._global_cache = cache
+        self._global_cache = cache if cache is not None else GlobalCache()
         self._session = CleanAsyncClient()
+        self._key_requests = (
+            Requests(
+                base_url=self._base_url + "/api-key",
+                headers={"Authorization": self._global_key},
+                session=self._session,
+            )
+            if self._global_key is not None
+            else None
+        )
 
     def get_server(
         self, server_key: Optional[str] = None, ignore_global_key: bool = False
@@ -70,21 +79,12 @@ class PRC:
             ),
         )
 
-    async def reset_key(self, global_key: Optional[str] = None):
+    async def reset_key(self):
         """Reset the global key and generate a new one. The new key will be used automatically and will **not** be returned. This will reset all cache."""
-        if not global_key:
-            global_key = self._global_key
+        if not self._key_requests or self._global_key is None:
+            raise ValueError("No global key is set but is required")
 
-        if not global_key:
-            raise ValueError("No [default] global key provided but is required")
-
-        requests = Requests(
-            base_url=self._base_url + "/api-key",
-            headers={"Authorization": global_key},
-            session=self._session,
-        )
-
-        response = await requests.post("/reset")
+        response = await self._key_requests.post("/reset")
 
         if response.is_success:
             new_key: str = response.json()["new"]
@@ -95,6 +95,7 @@ class PRC:
             self._global_key = new_key
         else:
             if response.status_code == 403:
+                self._key_requests._invalid_keys.add(self._global_key)
                 raise PRCException(
                     f"The global key provided is invalid and cannot be reset."
                 )
