@@ -1,9 +1,10 @@
-from typing import Optional, TYPE_CHECKING, Dict
+from typing import Optional, TYPE_CHECKING
 from ..player import Player
 from enum import Enum
 
 if TYPE_CHECKING:
     from prc.server import Server
+    from prc.api_types.v1 import ServerPlayerResponse
 
 
 class PlayerPermission(Enum):
@@ -51,14 +52,14 @@ class PlayerTeam(Enum):
 class ServerPlayer(Player):
     """Represents a full player in a server."""
 
-    def __init__(self, server: "Server", data: Dict):
+    def __init__(self, server: "Server", data: ServerPlayerResponse):
         self._server = server
 
-        self.permission = PlayerPermission.parse(data.get("Permission"))  # type: ignore
+        self.permission = PlayerPermission.parse(data.get("Permission"))
         self.callsign: Optional[str] = data.get("Callsign")
-        self.team = PlayerTeam.parse(data.get("Team"))  # type: ignore
+        self.team = PlayerTeam.parse(data.get("Team"))
 
-        super().__init__(server._client, data=data.get("Player"))  # type: ignore
+        super().__init__(server._client, data=data.get("Player"))
 
         if not self.is_remote():
             server._server_cache.players.set(self.id, self)

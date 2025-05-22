@@ -16,6 +16,8 @@ from .models import *
 import asyncio
 import httpx
 
+from .api_types.v1 import *
+
 if TYPE_CHECKING:
     from .client import PRC
 
@@ -173,7 +175,7 @@ class Server:
     async def get_status(self):
         """Get the current server status."""
         return ServerStatus(
-            self, data=self._handle(await self._requests.get("/"), Dict)
+            self, data=self._handle(await self._requests.get("/"), ServerStatusResponse)
         )
 
     @_refresh_server
@@ -182,7 +184,9 @@ class Server:
         """Get all online server players."""
         players = [
             ServerPlayer(self, data=p)
-            for p in self._handle(await self._requests.get("/players"), List[Dict])
+            for p in self._handle(
+                await self._requests.get("/players"), List[ServerPlayerResponse]
+            )
         ]
         self.player_count = len(players)
         self.staff_count = len([p for p in players if p.is_staff()])
@@ -204,7 +208,9 @@ class Server:
         """Get all banned players."""
         return [
             Player(self._client, data=p)
-            for p in (self._handle(await self._requests.get("/bans"), Dict)).items()
+            for p in (
+                self._handle(await self._requests.get("/bans"), ServerBanResponse)
+            ).items()
         ]
 
     @_refresh_server
@@ -213,7 +219,9 @@ class Server:
         """Get all spawned vehicles in the server. A server player may have 2 spawned vehicles (1 primary + 1 secondary)."""
         return [
             Vehicle(self, data=v)
-            for v in self._handle(await self._requests.get("/vehicles"), List[Dict])
+            for v in self._handle(
+                await self._requests.get("/vehicles"), List[ServerVehicleResponse]
+            )
         ]
 
 
@@ -243,7 +251,9 @@ class ServerLogs(ServerModule):
         """Get server access (join/leave) logs."""
         [
             AccessEntry(self._server, data=e)
-            for e in self._handle(await self._requests.get("/joinlogs"), List[Dict])
+            for e in self._handle(
+                await self._requests.get("/joinlogs"), List[ServerJoinLogResponse]
+            )
         ]
         return self._server_cache.access_logs.items()
 
@@ -253,7 +263,9 @@ class ServerLogs(ServerModule):
         """Get server kill logs."""
         return [
             KillEntry(self._server, data=e)
-            for e in self._handle(await self._requests.get("/killlogs"), List[Dict])
+            for e in self._handle(
+                await self._requests.get("/killlogs"), List[ServerKillLogResponse]
+            )
         ]
 
     @_refresh_server
@@ -262,7 +274,9 @@ class ServerLogs(ServerModule):
         """Get server command logs."""
         return [
             CommandEntry(self._server, data=e)
-            for e in self._handle(await self._requests.get("/commandlogs"), List[Dict])
+            for e in self._handle(
+                await self._requests.get("/commandlogs"), List[ServerCommandLogResponse]
+            )
         ]
 
     @_refresh_server
@@ -271,7 +285,9 @@ class ServerLogs(ServerModule):
         """Get server mod call logs."""
         return [
             ModCallEntry(self._server, data=e)
-            for e in self._handle(await self._requests.get("/modcalls"), List[Dict])
+            for e in self._handle(
+                await self._requests.get("/modcalls"), List[ServerModCallResponse]
+            )
         ]
 
 
