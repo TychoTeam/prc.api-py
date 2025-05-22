@@ -23,10 +23,10 @@ class LogEntry:
     def __init__(
         self,
         data: Union[
-            ServerJoinLogResponse,
-            ServerKillLogResponse,
-            ServerCommandLogResponse,
-            ServerModCallResponse,
+            "ServerJoinLogResponse",
+            "ServerKillLogResponse",
+            "ServerCommandLogResponse",
+            "ServerModCallResponse",
         ],
         cache: Optional["KeylessCache[E]"] = None,
     ):
@@ -82,7 +82,7 @@ class AccessType(Enum):
 class AccessEntry(LogEntry):
     """Represents a server access (join/leave) log entry."""
 
-    def __init__(self, server: "Server", data: ServerJoinLogResponse):
+    def __init__(self, server: "Server", data: "ServerJoinLogResponse"):
         self._server = server
 
         self.type = AccessType.parse(bool(data.get("Join", False)))
@@ -103,7 +103,7 @@ class AccessEntry(LogEntry):
 class KillEntry(LogEntry):
     """Represents a server player kill log entry."""
 
-    def __init__(self, server: "Server", data: ServerKillLogResponse):
+    def __init__(self, server: "Server", data: "ServerKillLogResponse"):
         self._server = server
 
         self.killed = LogPlayer(server, data=data.get("Killed"))
@@ -118,7 +118,7 @@ class KillEntry(LogEntry):
 class CommandEntry(LogEntry):
     """Represents a server command execution log entry."""
 
-    def __init__(self, server: "Server", data: ServerCommandLogResponse):
+    def __init__(self, server: "Server", data: "ServerCommandLogResponse"):
         self._server = server
 
         self.author = LogPlayer(server, data=data.get("Player"))
@@ -135,7 +135,7 @@ class CommandEntry(LogEntry):
 class ModCallEntry(LogEntry):
     """Represents a server mod call log entry."""
 
-    def __init__(self, server: "Server", data: ServerModCallResponse):
+    def __init__(self, server: "Server", data: "ServerModCallResponse"):
         self._server = server
 
         self.caller = LogPlayer(server, data=data.get("Caller"))

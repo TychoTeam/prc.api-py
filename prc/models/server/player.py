@@ -52,7 +52,7 @@ class PlayerTeam(Enum):
 class ServerPlayer(Player):
     """Represents a full player in a server."""
 
-    def __init__(self, server: "Server", data: ServerPlayerResponse):
+    def __init__(self, server: "Server", data: "ServerPlayerResponse"):
         self._server = server
 
         self.permission = PlayerPermission.parse(data.get("Permission"))

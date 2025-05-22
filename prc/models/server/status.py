@@ -51,7 +51,7 @@ class AccountRequirement(Enum):
 class ServerStatus:
     """Represents a server status with information about the server."""
 
-    def __init__(self, server: "Server", data: ServerStatusResponse):
+    def __init__(self, server: "Server", data: "ServerStatusResponse"):
         self.name = str(data.get("Name"))
         server.name = self.name
         self.owner = ServerOwner(server, id=data.get("OwnerId"))

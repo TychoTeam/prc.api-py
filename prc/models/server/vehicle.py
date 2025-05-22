@@ -55,7 +55,7 @@ class VehicleTexture:
 class Vehicle:
     """Represents a currently spawned server vehicle."""
 
-    def __init__(self, server: "Server", data: ServerVehicleResponse):
+    def __init__(self, server: "Server", data: "ServerVehicleResponse"):
         self._server = server
 
         self.owner = VehicleOwner(server, data.get("Owner"))
