@@ -196,8 +196,10 @@ class Server:
     async def get_queue(self):
         """Get all players in the server join queue."""
         players = [
-            QueuedPlayer(self, id=p)
-            for p in self._handle(await self._requests.get("/queue"), List[int])
+            QueuedPlayer(self, id=p, index=i)
+            for i, p in enumerate(
+                self._handle(await self._requests.get("/queue"), List[int])
+            )
         ]
         self.queue_count = len(players)
         return players
@@ -209,7 +211,7 @@ class Server:
         return [
             Player(self._client, data=p)
             for p in (
-                self._handle(await self._requests.get("/bans"), ServerBanResponse)
+                self._handle(await self._requests.get("/bans"), ServerBanResponse) or {}
             ).items()
         ]
 
@@ -425,6 +427,10 @@ class ServerCommands(ServerModule):
     async def pm(self, targets: List[CommandTargetPlayerName], text: str):
         """Send a private message to players in the server (dismissable popup)."""
         await self.run("pm", targets=targets, text=text)
+
+    async def log(self, text: str):
+        """Send a customizable string that will be saved in command logs and sent to configured command usage webhooks (if any). Uses the `:log` command."""
+        await self.run("log", text=text)
 
     async def set_priority(self, seconds: int = 0):
         """Set the server priority timer. Shows an undismissable countdown notification to all players until it reaches `0`. Leave empty or set to `0` to disable."""

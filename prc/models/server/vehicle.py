@@ -59,8 +59,7 @@ class Vehicle:
         self._server = server
 
         self.owner = VehicleOwner(server, data.get("Owner"))
-        texture = data.get("Texture")
-        self.texture = VehicleTexture(name=texture) if texture else None
+        self.texture = VehicleTexture(name=data.get("Texture") or "Standard")
 
         self.model: VehicleModel = cast(VehicleModel, data.get("Name"))
         self.year: Optional[int] = None
