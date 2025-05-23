@@ -8,7 +8,8 @@ from .server import Server
 from .utility import Cache, CacheConfig, Requests
 from .utility.requests import CleanAsyncClient
 from .utility.exceptions import PRCException
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Dict
+from datetime import datetime
 import re
 
 if TYPE_CHECKING:
@@ -78,6 +79,28 @@ class PRC:
                 client=self, server_key=server_key, ignore_global_key=ignore_global_key
             ),
         )
+
+    async def get_stats(self):
+        """Get game statistics (ER:LC) using the PRC public statistics API."""
+        response = await self._session.get("https://policeroleplay.community/api/stats")
+
+        if response.is_success:
+
+            class GameStatistics:
+                def __init__(self, data: Dict) -> None:
+                    self.name = str(data.get("name", "Unknown"))
+                    self.playing = int(data.get("playing", 0))
+                    self.visits = int(data.get("visits", 0))
+                    self.favorites = int(data.get("favorites", 0))
+                    self.likes = int(data.get("likes", 0))
+                    fetched_at = data.get("fetchedAt")
+                    self.last_updated = (
+                        datetime.fromtimestamp(fetched_at)
+                        if fetched_at
+                        else datetime.now()
+                    )
+
+            return GameStatistics(response.json())
 
     async def reset_key(self):
         """Reset the global key and generate a new one. The new key will be used automatically and will **not** be returned. This will reset all cache."""
