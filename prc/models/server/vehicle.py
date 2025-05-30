@@ -400,4 +400,4 @@ _secondary_vehicles: List[VehicleName] = [
     "Lawn Mower",
 ]
 
-_default_textures = ["Standard", "Ghost", "Undercover", "SWAT"]
+_default_textures = ["Standard", "Ghost", "Undercover", "SWAT", "Supervisor"]
