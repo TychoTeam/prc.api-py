@@ -3,7 +3,7 @@
 prc.api
 ~~~~~~~~~~~~~~~~~~~
 
-An asynchronous Python wrapper for the PRC API.
+An asynchronous Python wrapper for the PRC/ERLC API.
 
 Copyright 2025-present Tycho
 License: MIT, see LICENSE
