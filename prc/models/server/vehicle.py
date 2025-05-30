@@ -93,7 +93,7 @@ class Vehicle:
         return not self.__eq__(other)
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} name={self.full_name}>"
+        return f"<{self.__class__.__name__} name={self.full_name}, owner={self.owner.name}>"
 
 
 # All vehicle names
@@ -366,7 +366,7 @@ VehicleModel = Literal[
     "Falcon Interceptor Utility",
     "Falcon Rampage PPV",
     "Mobile Command",
-    "Prisoner Transport Bus",
+    "Prisoner Transport Bus",  # SHERIFF ONLY
     "Stuttgart Runner",
     "SWAT Truck",
     # FD only
