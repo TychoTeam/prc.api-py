@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
     name="prc.api",
-    version="0.5.1",
+    version="0.6.0",
     author="tycho",
     url="https://github.com/TychoTeam/prc.api-py",
     license="MIT",
