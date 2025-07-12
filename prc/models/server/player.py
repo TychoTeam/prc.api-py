@@ -112,7 +112,7 @@ class QueuedPlayer:
         self.spot = index + 1
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, QueuedPlayer):
+        if isinstance(other, QueuedPlayer) or isinstance(other, Player):
             return self.id == other.id
         return False
 
@@ -137,7 +137,7 @@ class ServerOwner:
         return self._server._get_player(id=self.id)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, ServerOwner):
+        if isinstance(other, ServerOwner) or isinstance(other, Player):
             return self.id == other.id
         return False
 

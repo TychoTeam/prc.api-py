@@ -1,4 +1,5 @@
 from typing import Optional, Literal, TYPE_CHECKING, cast, List
+from ..player import Player
 
 if TYPE_CHECKING:
     from prc.server import Server
@@ -19,7 +20,7 @@ class VehicleOwner:
         return self._server._get_player(name=self.name)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, VehicleOwner):
+        if isinstance(other, VehicleOwner) or isinstance(other, Player):
             return self.name == other.name
         return False
 
