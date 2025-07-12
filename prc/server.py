@@ -7,7 +7,6 @@ from typing import (
     TypeVar,
     Dict,
     Union,
-    Literal,
     Sequence,
 )
 from .utility import KeylessCache, Cache, CacheConfig, Requests, InsensitiveEnum
@@ -348,19 +347,19 @@ class ServerCommands(ServerModule):
         """Heal players in the server."""
         await self.run("heal", targets=targets)
 
-    async def wanted(self, targets: List[CommandTargetPlayerName]):
+    async def make_wanted(self, targets: List[CommandTargetPlayerName]):
         """Make players wanted in the server."""
         await self.run("wanted", targets=targets)
 
-    async def unwanted(self, targets: List[CommandTargetPlayerName]):
+    async def remove_wanted(self, targets: List[CommandTargetPlayerName]):
         """Remove wanted status from players in the server."""
         await self.run("unwanted", targets=targets)
 
-    async def jail(self, targets: List[CommandTargetPlayerName]):
-        """Jail players in the server."""
+    async def make_jailed(self, targets: List[CommandTargetPlayerName]):
+        """Make players jailed in the server. Teleports them to a prison cell and changes the server player's tema."""
         await self.run("jail", targets=targets)
 
-    async def unjail(self, targets: List[CommandTargetPlayerName]):
+    async def remove_jailed(self, targets: List[CommandTargetPlayerName]):
         """Remove jailed status from players in the server."""
         await self.run("unjail", targets=targets)
 
@@ -392,44 +391,44 @@ class ServerCommands(ServerModule):
         """Unban players from the server."""
         await self.run("unban", targets=targets)
 
-    async def helper(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def grant_helper(self, targets: List[CommandTargetPlayerNameOrID]):
         """Grant helper permissions to players in the server."""
         await self.run("helper", targets=targets)
 
-    async def unhelper(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def revoke_helper(self, targets: List[CommandTargetPlayerNameOrID]):
         """Revoke helper permissions to players in the server."""
         await self.run("unhelper", targets=targets)
 
-    async def mod(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def grant_mod(self, targets: List[CommandTargetPlayerNameOrID]):
         """Grant moderator permissions to players in the server."""
         await self.run("mod", targets=targets)
 
-    async def unmod(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def revoke_mod(self, targets: List[CommandTargetPlayerNameOrID]):
         """Revoke moderator permissions from players in the server."""
         await self.run("unmod", targets=targets)
 
-    async def admin(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def grant_admin(self, targets: List[CommandTargetPlayerNameOrID]):
         """Grant admin permissions to players in the server."""
         await self.run("admin", targets=targets)
 
-    async def unadmin(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def revoke_admin(self, targets: List[CommandTargetPlayerNameOrID]):
         """Revoke admin permissions from players in the server."""
         await self.run("unadmin", targets=targets)
 
-    async def hint(self, text: str):
+    async def send_hint(self, text: str):
         """Send a temporary message to the server (undismissable banner)."""
         await self.run("h", text=text)
 
-    async def announce(self, text: str):
+    async def send_message(self, text: str):
         """Send an announcement message to the server (dismissable popup)."""
         await self.run("m", text=text)
 
-    async def pm(self, targets: List[CommandTargetPlayerName], text: str):
+    async def send_pm(self, targets: List[CommandTargetPlayerName], text: str):
         """Send a private message to players in the server (dismissable popup)."""
         await self.run("pm", targets=targets, text=text)
 
     async def log(self, text: str):
-        """Send a customizable string that will be saved in command logs and sent to configured command usage webhooks (if any). Uses the `:log` command."""
+        """Emit a custom string that will be saved in command logs and sent to configured command usage webhooks (if any), mostly for integrating with other applications. Uses the `:log` command."""
         await self.run("log", text=text)
 
     async def set_priority(self, seconds: int = 0):
