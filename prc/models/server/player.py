@@ -39,6 +39,7 @@ class PlayerTeam(Enum):
             "Police": PlayerTeam.POLICE,
             "Fire": PlayerTeam.FIRE,
             "DOT": PlayerTeam.DOT,
+            "Jail": PlayerTeam.JAIL,
         }
         return mapping.get(team, PlayerTeam.CIVILIAN)
 
@@ -47,6 +48,7 @@ class PlayerTeam(Enum):
     POLICE = 2
     FIRE = 3
     DOT = 4
+    JAIL = 5
 
 
 class ServerPlayer(Player):
