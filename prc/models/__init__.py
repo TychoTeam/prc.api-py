@@ -7,8 +7,9 @@ Classes to parse and transform PRC API data.
 from .server.status import ServerStatus, AccountRequirement
 from .server.player import (
     ServerPlayer,
-    ServerOwner,
     QueuedPlayer,
+    ServerOwner,
+    StaffMember,
     PlayerPermission,
     PlayerTeam,
 )
@@ -22,6 +23,7 @@ from .server.logs import (
     CommandEntry,
     ModCallEntry,
 )
+from .server.staff import ServerStaff
 
 from .player import Player
 from .commands import (

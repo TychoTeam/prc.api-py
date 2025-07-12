@@ -1,4 +1,4 @@
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, Tuple, TYPE_CHECKING
 from ..player import Player
 from enum import Enum
 
@@ -146,3 +146,24 @@ class ServerOwner:
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id}>"
+
+
+class StaffMember(Player):
+    """Represents a server staff member player."""
+
+    def __init__(
+        self, server: "Server", data: Tuple[str, str], permission: PlayerPermission
+    ):
+        self._server = server
+
+        self.permission = permission
+
+        super().__init__(server._client, data=data)
+
+    @property
+    def player(self):
+        """The full server player, if found."""
+        return self._server._get_player(id=self.id)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} name={self.name}, id={self.id}>, permission={self.permission}"
