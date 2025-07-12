@@ -22,7 +22,7 @@ class ServerPlayerResponse(TypedDict):
         "Server Owner",
     ]
     Callsign: Optional[str]
-    Team: Literal["Civilian", "Sheriff", "Police", "Fire", "DOT"]
+    Team: Literal["Civilian", "Sheriff", "Police", "Fire", "DOT", "Jail"]
 
 
 class ServerJoinLogResponse(TypedDict):
