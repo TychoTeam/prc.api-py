@@ -121,3 +121,28 @@ class QueuedPlayer:
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id}, spot={self.spot}>"
+
+
+class ServerOwner:
+    """Represents a server [co-]owner partial player."""
+
+    def __init__(self, server: "Server", id: int):
+        self._server = server
+
+        self.id = int(id)
+
+    @property
+    def player(self):
+        """The full server player, if found."""
+        return self._server._get_player(id=self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ServerOwner):
+            return self.id == other.id
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} id={self.id}>"
