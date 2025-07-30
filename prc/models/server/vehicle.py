@@ -1,4 +1,4 @@
-from typing import Optional, Literal, TYPE_CHECKING, cast, List
+from typing import Optional, Literal, TYPE_CHECKING, cast, List, Union
 from ..player import Player
 
 if TYPE_CHECKING:
@@ -98,10 +98,13 @@ class Vehicle:
 
 
 # All vehicle names
-VehicleName = Literal[
+VehicleName = Union[
+
+Literal[
     # CIV
     "1977 Arrow Phoenix Nationals",
     "2024 Averon Anodic",
+    "2023 Averon Bremen VS Garde",
     "2022 Averon Q8",
     "2017 Averon R8",
     "2020 Averon RS3",
@@ -128,11 +131,15 @@ VehicleName = Literal[
     "2008 Chevlon Camion",
     "2018 Chevlon Camion",
     "2021 Chevlon Camion",
+    "1992 Chevlon Captain",
     "2009 Chevlon Captain",
+    "1994 Chevlon Captain LTZ",
     "2006 Chevlon Commuter Van",
+    "2014 Chevlon Corbeta 1M Edition",
     "2023 Chevlon Corbeta 8",
     "1967 Chevlon Corbeta C2",
-    "2014 Chevlon Corbeta TZ",
+    "2014 Chevlon Corbeta RZR",
+    "2014 Chevlon Corbeta X08",
     "1981 Chevlon Inferno",
     "2007 Chevlon Landslide",
     "1981 Chevlon L/15",
@@ -144,7 +151,7 @@ VehicleName = Literal[
     "1956 Falcon Advance 100 Holiday Edition",
     "1934 Falcon Coupe Hotrod",
     "2024 Falcon eStallion",
-    "2024 Falcon eStallion",
+    "2022 Falcon Heritage Track",
     "2021 Falcon Rampage Beast",
     "2021 Falcon Rampage Bigfoot 2-Door",
     "2016 Falcon Scavenger",
@@ -214,11 +221,11 @@ VehicleName = Literal[
     "2018 Bullhorn Pueblo Pursuit",
     "2024 Celestial Truckatron",
     "2011 Chevlon Amigo LZR",
-    "2000 Chevlon Camion PPV",
+    "2002 Chevlon Camion PPV",
     "2008 Chevlon Camion PPV",
     "2018 Chevlon Camion PPV",
     "2021 Chevlon Camion PPV",
-    "1994 Chevlon Captain Antelope",
+    "1994 Chevlon Captain Antelope SS",
     "2006 Chevlon Captain PPV",
     "2006 Chevlon Commuter Van",
     "2014 Chevlon Corbeta TZ",
@@ -258,6 +265,7 @@ VehicleName = Literal[
     "Salt Truck",
     "1995 Vellfire Evertt Crew Cab",
 ]
+]
 
 # Unique vehicle models
 VehicleModel = Literal[
@@ -265,6 +273,7 @@ VehicleModel = Literal[
     "4-Wheeler",
     "Arrow Phoenix Nationals",
     "Averon Anodic",
+    "Averon Bremen VS Garde",
     "Averon Q8",
     "Averon R8",
     "Averon RS3",
@@ -278,6 +287,8 @@ VehicleModel = Literal[
     "Bullhorn Determinator SFP Fury",
     "Bullhorn Foreman",
     "Bullhorn Prancer",
+    "Bullhorn Prancer Colonel Fields",
+    "Bullhorn Prancer Talladega",
     "Bullhorn Prancer Widebody",
     "Bullhorn Pueblo",
     "Canyon Descender",
@@ -289,10 +300,13 @@ VehicleModel = Literal[
     "Chevlon Antelope",
     "Chevlon Camion",
     "Chevlon Captain",
+    "Chevlon Captain LTZ",
     "Chevlon Commuter Van",
+    "Chevlon Corbeta 1M Edition",
     "Chevlon Corbeta 8",
     "Chevlon Corbeta C2",
-    "Chevlon Corbeta TZ",
+    "Chevlon Corbeta RZR",
+    "Chevlon Corbeta X08",
     "Chevlon Inferno",
     "Chevlon Landslide",
     "Chevlon L/15",
@@ -303,8 +317,11 @@ VehicleModel = Literal[
     "Dump Truck",
     "Elysion Slick",
     "Falcon Advance 100 Holiday Edition",
+    "Falcon Advance 450 Royal Ranch",
+    "Falcon Advance 450",
     "Falcon Coupe Hotrod",
     "Falcon eStallion",
+    "Falcon Heritage Track",
     "Falcon Rampage Beast",
     "Falcon Rampage Bigfoot 2-Door",
     "Falcon Scavenger",
@@ -319,6 +336,7 @@ VehicleModel = Literal[
     "Front Loader Tractor",
     "Fuel Tanker",
     "Garbage Truck",
+    "Kovac Heladera",
     "La Mesa Food Truck",
     "Lawn Mower",
     "Leland Birchwood Hearse",
@@ -343,6 +361,7 @@ VehicleModel = Literal[
     "Stuttgart Executive",
     "Stuttgart Landschaft",
     "Stuttgart Vierturig",
+    "Sumo Reflexion",
     "Surrey 650S",
     "Takeo Experience",
     "Terrain Traveller",
@@ -360,7 +379,7 @@ VehicleModel = Literal[
     "Bullhorn Prancer Pursuit Widebody",
     "Bullhorn Pueblo Pursuit",
     "Chevlon Camion PPV",
-    "Chevlon Captain Antelope",
+    "Chevlon Captain Antelope SS",
     "Chevlon Captain PPV",
     "Chevlon Platoro PPV",
     "Emergency Services Falcon Advance+",
