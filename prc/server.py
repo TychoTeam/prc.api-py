@@ -102,6 +102,9 @@ class Server:
     name: Optional[str] = None
     owner: Optional[ServerOwner] = None
     co_owners: List[ServerOwner] = []
+    admins: List[StaffMember] = []
+    mods: List[StaffMember] = []
+    total_staff_count: Optional[int] = None
     player_count: Optional[int] = None
     staff_count: Optional[int] = None
     queue_count: Optional[int] = None
@@ -224,6 +227,17 @@ class Server:
                 await self._requests.get("/vehicles"), List[ServerVehicleResponse]
             )
         ]
+
+    @_refresh_server
+    @_ephemeral
+    async def get_staff(self):
+        """Get all server staff members excluding server owner. ⚠️ *(This endpoint is deprecated, use at your own risk)*"""
+        staff = ServerStaff(
+            self,
+            data=self._handle(await self._requests.get("/staff"), ServerStaffResponse),
+        )
+        self.total_staff_count = staff.count()
+        return staff
 
 
 class ServerModule:
