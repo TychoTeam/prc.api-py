@@ -21,12 +21,6 @@ setuptools.setup(
     # requirements and search
     python_requires=">=3.8",
     install_requires=["httpx", "asyncio"],
-    classifiers=[
-        "Operating System :: OS Independent",
-        "Framework :: AsyncIO",
-    ],
-    keywords=[
-        "erlc",
-        "prc",
-    ],
+    classifiers=["Framework :: AsyncIO"],
+    keywords=["erlc", "ER:LC", "prc", "PRC API"],
 )
