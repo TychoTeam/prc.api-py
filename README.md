@@ -8,7 +8,7 @@ It provides a convenient way to interact with PRC APIs, including the [private s
 
 ## Features
 
-- 🧩 **Developer Friendly**
+- 🧩 **Developer Friendly**  
   Functions and responses are wrapped and categorized for ease of use.
 - 💫 **Full Coverage**  
   Supports all features from the API as of _July 2025_.
@@ -23,7 +23,7 @@ It provides a convenient way to interact with PRC APIs, including the [private s
   By default, the package handles and queues requests to ensure **near-zero** chances of rate limits. It also caches frequent requests and reusable data.
 - **Better Types**  
   The package is strictly typed and all API data is transformed for ease of use. 🎊 **Vehicles and command names are included!**
-- **Utilities**
+- **Utilities**  
   Extremely useful utilities and helpers spread across the package to make your life easier.
 - **Prevents Bans**  
   Along with rate limit parsing and handling, you never have to worry about invalid secrets resulting in IP bans!
@@ -33,3 +33,5 @@ It provides a convenient way to interact with PRC APIs, including the [private s
 ```sh
 pip install prc.api
 ```
+
+The package has been tested on Python `v3.8` or greater. It may not work on older versions.
