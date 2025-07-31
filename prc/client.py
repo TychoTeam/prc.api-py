@@ -72,13 +72,26 @@ class PRC:
 
         existing_server = self._global_cache.servers.get(server_id)
         if existing_server and existing_server._ignore_global_key == ignore_global_key:
-            return existing_server
-        return self._global_cache.servers.set(
-            server_id,
-            Server(
-                client=self, server_key=server_key, ignore_global_key=ignore_global_key
-            ),
-        )
+            if (
+                existing_server._global_key != self._global_key
+                or existing_server._server_key != server_key
+            ):
+                existing_server._global_key = self._global_key
+                existing_server._server_key = server_key
+                existing_server._refresh_requests()
+
+                return self._global_cache.servers.set(server_id, existing_server)
+            else:
+                return existing_server
+        else:
+            return self._global_cache.servers.set(
+                server_id,
+                Server(
+                    client=self,
+                    server_key=server_key,
+                    ignore_global_key=ignore_global_key,
+                ),
+            )
 
     async def get_stats(self):
         """Get game statistics (ER:LC) using the PRC public statistics API."""

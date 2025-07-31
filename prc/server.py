@@ -85,15 +85,9 @@ class Server:
         self._server_cache = cache
         self._ephemeral_ttl = ephemeral_ttl
 
-        global_key = client._global_key
-        headers = {"Server-Key": server_key}
-        if global_key and not ignore_global_key:
-            headers["Authorization"] = global_key
-        self._requests = requests or Requests(
-            base_url=client._base_url + "/server",
-            headers=headers,
-            session=client._session,
-        )
+        self._global_key = client._global_key
+        self._server_key = server_key
+        self._requests = requests or self._refresh_requests()
         self._ignore_global_key = ignore_global_key
 
         self.logs = ServerLogs(self)
@@ -121,6 +115,18 @@ class Server:
             if self.join_code
             else None
         )
+
+    def _refresh_requests(self):
+        global_key = self._global_key
+        headers = {"Server-Key": self._server_key}
+        if global_key and not self._ignore_global_key:
+            headers["Authorization"] = global_key
+        self._requests = Requests(
+            base_url=self._client._base_url + "/server",
+            headers=headers,
+            session=self._client._session,
+        )
+        return self._requests
 
     def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):
         for _, player in self._server_cache.players.items():
@@ -307,8 +313,8 @@ class ServerLogs(ServerModule):
 
 
 CommandTargetPlayerName = str
-CommandTargetPlayerID = int
-CommandTargetPlayerNameOrID = Union[CommandTargetPlayerName, CommandTargetPlayerID]
+CommandTargetPlayerId = int
+CommandTargetPlayerNameOrId = Union[CommandTargetPlayerName, CommandTargetPlayerId]
 
 
 class ServerCommands(ServerModule):
@@ -327,7 +333,7 @@ class ServerCommands(ServerModule):
     async def run(
         self,
         name: CommandName,
-        targets: Optional[Sequence[CommandTargetPlayerNameOrID]] = None,
+        targets: Optional[Sequence[CommandTargetPlayerNameOrId]] = None,
         args: Optional[List[CommandArg]] = None,
         text: Optional[str] = None,
     ):
@@ -397,35 +403,35 @@ class ServerCommands(ServerModule):
         """Kick players from the server."""
         await self.run("kick", targets=targets, text=reason)
 
-    async def ban(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def ban(self, targets: List[CommandTargetPlayerNameOrId]):
         """Ban players from the server."""
         await self.run("ban", targets=targets)
 
-    async def unban(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def unban(self, targets: List[CommandTargetPlayerNameOrId]):
         """Unban players from the server."""
         await self.run("unban", targets=targets)
 
-    async def grant_helper(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def grant_helper(self, targets: List[CommandTargetPlayerNameOrId]):
         """Grant helper permissions to players in the server."""
         await self.run("helper", targets=targets)
 
-    async def revoke_helper(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def revoke_helper(self, targets: List[CommandTargetPlayerNameOrId]):
         """Revoke helper permissions to players in the server."""
         await self.run("unhelper", targets=targets)
 
-    async def grant_mod(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def grant_mod(self, targets: List[CommandTargetPlayerNameOrId]):
         """Grant moderator permissions to players in the server."""
         await self.run("mod", targets=targets)
 
-    async def revoke_mod(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def revoke_mod(self, targets: List[CommandTargetPlayerNameOrId]):
         """Revoke moderator permissions from players in the server."""
         await self.run("unmod", targets=targets)
 
-    async def grant_admin(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def grant_admin(self, targets: List[CommandTargetPlayerNameOrId]):
         """Grant admin permissions to players in the server."""
         await self.run("admin", targets=targets)
 
-    async def revoke_admin(self, targets: List[CommandTargetPlayerNameOrID]):
+    async def revoke_admin(self, targets: List[CommandTargetPlayerNameOrId]):
         """Revoke admin permissions from players in the server."""
         await self.run("unadmin", targets=targets)
 
