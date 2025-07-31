@@ -13,7 +13,7 @@ setuptools.setup(
     use_scm_version=True,
     setup_requires=["setuptools_scm"],
     # author
-    author="tycho",
+    author="Tycho",
     author_email="mail@tycho.team",
     # find and add packages
     packages=setuptools.find_packages(),
