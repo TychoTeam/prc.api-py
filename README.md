@@ -28,6 +28,8 @@ It provides a convenient way to interact with PRC APIs, including the [private s
 - **Prevents Bans**  
   Along with rate limit parsing and handling, you never have to worry about invalid secrets resulting in IP bans!
 
+#### Check out the documentation for all details.
+
 ## Install Latest Release (`pip`)
 
 ```sh
