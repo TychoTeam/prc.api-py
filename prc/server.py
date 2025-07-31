@@ -85,6 +85,7 @@ class Server:
         self._server_cache = cache
         self._ephemeral_ttl = ephemeral_ttl
 
+        self._global_key = client._global_key
         self._server_key = server_key
         self._requests = requests or self._refresh_requests()
         self._ignore_global_key = ignore_global_key
@@ -116,7 +117,7 @@ class Server:
         )
 
     def _refresh_requests(self):
-        global_key = self._client._global_key
+        global_key = self._global_key
         headers = {"Server-Key": self._server_key}
         if global_key and not self._ignore_global_key:
             headers["Authorization"] = global_key
