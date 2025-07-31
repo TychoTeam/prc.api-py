@@ -200,6 +200,7 @@ class Server:
         self.staff_count = len([p for p in players if p.is_staff()])
         return players
 
+    @_refresh_server
     @_ephemeral
     async def get_queue(self):
         """Get all players in the server join queue."""
