@@ -20,4 +20,8 @@ setuptools.setup(
         "Operating System :: OS Independent",
         "Framework :: AsyncIO",
     ],
+    keywords=[
+        "erlc",
+        "prc",
+    ],
 )
