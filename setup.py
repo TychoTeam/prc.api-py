@@ -4,7 +4,7 @@ import setuptools
 setuptools.setup(
     # info
     name="prc.api",
-    description="prc.api is an asynchronous Python wrapper for the PRC/ERLC API.",
+    description="prc.api is an asynchronous Python wrapper for the PRC/ERLC API",
     license="MIT",
     # README
     long_description=open("README.md").read(),
