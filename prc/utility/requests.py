@@ -76,7 +76,7 @@ class Requests:
         headers: Dict[str, str] = {},
         session: CleanAsyncClient = CleanAsyncClient(),
         max_retries: int = 3,
-        timeout: float = 7.0,
+        timeout: float = 5.0,
     ):
         self._rate_limiter = RateLimiter()
         self._session = session
