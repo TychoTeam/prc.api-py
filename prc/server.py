@@ -8,6 +8,7 @@ from typing import (
     Dict,
     Union,
     Sequence,
+    Any,
 )
 from .utility import KeylessCache, Cache, CacheConfig, Requests, InsensitiveEnum
 from .utility.exceptions import *
@@ -135,22 +136,24 @@ class Server:
             if name and player.name == name:
                 return player
 
-    def _handle_error_code(self, error_code: Optional[int] = None):
+    def _handle_error_code(self, response: Any):
+        if not isinstance(response, Dict):
+            raise PRCException("An unknown response was received.")
+
+        error_code = response.get("code")
         if error_code is None:
-            raise PRCException("An unknown error has occured.")
+            raise PRCException("An unknown error was received.")
 
         errors: List[Callable[..., APIException]] = [
             UnknownError,
             CommunicationError,
             InternalError,
-            MissingServerKey,
-            InvalidServerKeyFormat,
             InvalidServerKey,
             InvalidGlobalKey,
             BannedServerKey,
             InvalidCommand,
             ServerOffline,
-            RateLimit,
+            RateLimited,
             RestrictedCommand,
             ProhibitedMessage,
             RestrictedResource,
@@ -159,23 +162,31 @@ class Server:
 
         for error in errors:
             error = error()
-            if error_code == error.error_code:
+            if error_code == error.code:
                 invalid_key = None
                 if isinstance(error, InvalidGlobalKey):
-                    invalid_key = self._requests._default_headers.get("Authorization")
+                    invalid_key = self._global_key
                 elif isinstance(error, (InvalidServerKey, BannedServerKey)):
-                    invalid_key = self._requests._default_headers.get("Server-Key")
+                    invalid_key = self._server_key
 
                 if invalid_key:
                     self._requests._invalid_keys.add(invalid_key)
 
+                if isinstance(error, RateLimited):
+                    error = RateLimited(
+                        response.get("bucket"), response.get("retry_after")
+                    )
+
                 raise error
 
-        raise APIException(error_code, "An unknown API error has occured.")
+        raise APIException(
+            error_code,
+            f"An unknown API error has occured: ({response.get('message') or '...'})",
+        )
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
         if not response.is_success:
-            self._handle_error_code((response.json() or {}).get("code"))
+            self._handle_error_code(response.json())
         return response.json()
 
     @_refresh_server
