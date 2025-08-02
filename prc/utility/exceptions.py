@@ -17,7 +17,7 @@ class PRCException(Exception):
 
 
 class APIException(PRCException):
-    """Base exception to catch all unsuccessful/errored PRC API requests"""
+    """Base exception to catch all PRC API error responses"""
 
     def __init__(self, code: int, message: str):
         self.code = code
@@ -83,12 +83,10 @@ class BannedServerKey(APIException):
 
 
 class InvalidCommand(APIException):
-    """Exception raised when a valid command is not provided in the request body."""
+    """Exception raised when an invalid command is sent."""
 
     def __init__(self):
-        super().__init__(
-            3001, "You did not provide a valid command in the request body."
-        )
+        super().__init__(3001, "The command you sent is invalid.")
 
 
 class ServerOffline(APIException):

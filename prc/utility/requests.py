@@ -32,7 +32,7 @@ class RateLimiter:
         )
         self.buckets = Cache[str, Bucket](max_size=10)
 
-    def parse_headers(self, route: str, headers: Dict[str, str]) -> None:
+    def save_bucket(self, route: str, headers: Dict[str, str]) -> None:
         bucket_name: str = headers.get("X-RateLimit-Bucket", "Unknown")
         limit = int(headers.get("X-RateLimit-Limit", 0))
         remaining = int(headers.get("X-RateLimit-Remaining", 0))
@@ -44,7 +44,7 @@ class RateLimiter:
                 bucket_name, Bucket(bucket_name, limit, remaining, reset_at)
             )
 
-    def check_limit(self, route: str) -> Optional[Bucket]:
+    def check_bucket(self, route: str) -> Optional[Bucket]:
         bucket_name = self.route_buckets.get(route)
         if bucket_name:
             bucket = self.buckets.get(bucket_name)
@@ -53,7 +53,7 @@ class RateLimiter:
                     return bucket
 
     async def avoid_limit(self, route: str) -> None:
-        bucket = self.check_limit(route)
+        bucket = self.check_bucket(route)
         if bucket:
             resets_in = bucket.reset_at - time()
             if resets_in > 0:
@@ -61,10 +61,16 @@ class RateLimiter:
             else:
                 self.buckets.delete(bucket.name)
 
-    async def wait_to_retry(self, headers: httpx.Headers) -> None:
+    async def wait_to_retry(
+        self, headers: httpx.Headers, max_retry_after: float
+    ) -> bool:
         retry_after = float(headers.get("Retry-After", 0))
         if retry_after > 0:
-            await asyncio.sleep(retry_after)
+            if retry_after > max_retry_after:
+                return False
+            else:
+                await asyncio.sleep(retry_after)
+        return True
 
 
 class Requests:
@@ -76,6 +82,7 @@ class Requests:
         headers: Dict[str, str] = {},
         session: CleanAsyncClient = CleanAsyncClient(),
         max_retries: int = 3,
+        max_retry_after: float = 15.0,
         timeout: float = 5.0,
     ):
         self._rate_limiter = RateLimiter()
@@ -84,12 +91,13 @@ class Requests:
         self._base_url = base_url
         self._default_headers = headers
         self._max_retries = max_retries
+        self._max_retry_after = max_retry_after
         self._timeout = timeout
 
         self._invalid_keys = KeylessCache[str](max_size=20)
 
-    def _should_retry(self, status_code: int):
-        return status_code == 429 or status_code >= 500
+    def _can_retry(self, status_code: int = 500, retry: int = 0):
+        return (status_code == 429 or status_code >= 500) and retry < self._max_retries
 
     def _check_default_headers(self):
         for header, value in self._default_headers.items():
@@ -118,19 +126,23 @@ class Requests:
                 **kwargs,
             )
         except httpx.ReadTimeout:
-            if retry < self._max_retries:
+            if self._can_retry(retry=retry):
+                await asyncio.sleep(retry * 1.5)
                 return await self._make_request(method, route, retry + 1, **kwargs)
             else:
                 raise PRCException(
                     f"PRC API took too long to respond. ({retry}/{self._max_retries} retries) ({self._timeout}s timeout)"
                 )
 
-        self._rate_limiter.parse_headers(route, dict(response.headers))
-        if self._should_retry(response.status_code) and retry < self._max_retries:
-            await self._rate_limiter.wait_to_retry(response.headers)
-            return await self._make_request(method, route, retry + 1, **kwargs)
-        else:
-            return response
+        self._rate_limiter.save_bucket(route, dict(response.headers))
+
+        if self._can_retry(response.status_code, retry):
+            if await self._rate_limiter.wait_to_retry(
+                response.headers, self._max_retry_after
+            ):
+                return await self._make_request(method, route, retry + 1, **kwargs)
+
+        return response
 
     async def get(self, route: str, **kwargs):
         return await self._make_request("GET", route, **kwargs)
