@@ -150,7 +150,7 @@ class Command:
             self.args = []
             args_count: int = _supports_args.get(self.name, 0)
 
-            while parsed_command and (args_count == 0 or len(self.args) < args_count):
+            while parsed_command and len(self.args) < args_count:
                 arg = parsed_command.pop(0)
 
                 if self.name in ["weather"] and Weather.is_member(arg):
@@ -363,6 +363,5 @@ _supports_args: Dict[CommandName, int] = {
     "startfire": 1,
     "startnearfire": 1,
     "snf": 1,
-    "log": 0,  # infinite possible arguments
     "weather": 1,
 }
