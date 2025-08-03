@@ -136,13 +136,13 @@ class Server:
             if name and player.name == name:
                 return player
 
-    def _handle_error_code(self, response: Any):
+    def _raise_error_code(self, response: Any):
         if not isinstance(response, Dict):
-            raise PRCException("An unknown response was received.")
+            raise PRCException("A malformed response was received.")
 
         error_code = response.get("code")
         if error_code is None:
-            raise PRCException("An unknown error was received.")
+            raise PRCException("No error was received.")
 
         errors: List[Callable[..., APIException]] = [
             UnknownError,
@@ -186,7 +186,7 @@ class Server:
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
         if not response.is_success:
-            self._handle_error_code(response.json())
+            self._raise_error_code(response.json())
         return response.json()
 
     @_refresh_server
