@@ -178,9 +178,7 @@ class Server:
                     )
 
                 if isinstance(exception, CommunicationError):
-                    exception = CommunicationError(
-                        response.get("commandId")
-                    )
+                    exception = CommunicationError(response.get("commandId"))
 
                 raise exception
 
@@ -344,7 +342,7 @@ class ServerCommands(ServerModule):
         """Run a raw string command as the remote player in the server."""
         return self._handle(
             await self._requests.post("/command", json={"command": command}),
-            Dict,
+            ServerCommandExecutionResponse,
         )
 
     async def run(

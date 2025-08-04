@@ -62,3 +62,7 @@ class ServerStaffResponse(TypedDict):
     CoOwners: List[int]
     Admins: Dict[str, str]
     Mods: Dict[str, str]
+
+
+class ServerCommandExecutionResponse(TypedDict):
+    message: str
