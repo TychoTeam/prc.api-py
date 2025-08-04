@@ -351,6 +351,7 @@ class ServerCommands(ServerModule):
         targets: Optional[Sequence[CommandTargetPlayerNameOrId]] = None,
         args: Optional[List[CommandArg]] = None,
         text: Optional[str] = None,
+        _max_retries: int = 3,
     ):
         """Run any command as the remote player in the server."""
         command = f":{name} "
@@ -372,7 +373,11 @@ class ServerCommands(ServerModule):
         if text:
             command += text
 
-        await self._raw(command.strip())
+        success = False
+        retry = 0
+        while success == False and retry < _max_retries:
+            success = (await self._raw(command.strip())).get("message") == "Success"
+            retry += 1
 
     async def kill(self, targets: List[CommandTargetPlayerName]):
         """Kill players in the server."""
