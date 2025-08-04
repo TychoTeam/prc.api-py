@@ -42,7 +42,9 @@ class UnknownError(APIException):
 class CommunicationError(APIException):
     """Exception raised when an error occurs while communicating with Roblox and/or the in-game private server."""
 
-    def __init__(self):
+    def __init__(self, command_id: Optional[str] = None):
+        self.command_id = command_id or "unknown"
+
         super().__init__(
             1001,
             "An error occurred while communicating with Roblox and/or the in-game private server.",
@@ -108,7 +110,9 @@ class RateLimited(APIException):
         self.bucket = bucket or "unknown"
         self.retry_after = retry_after or 0.0
 
-        super().__init__(4001, "You are being rate limited.")
+        super().__init__(
+            4001, f"You are being rate limited. Retry after {self.retry_after:.3f}s."
+        )
 
 
 class RestrictedCommand(APIException):
