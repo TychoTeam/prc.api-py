@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Optional, Union
 from enum import Enum
 from datetime import datetime
 from ..player import Player
@@ -8,13 +8,11 @@ if TYPE_CHECKING:
     from prc.server import Server
     from prc.utility import KeylessCache
     from prc.api_types.v1 import (
-        ServerJoinLogResponse,
-        ServerKillLogResponse,
-        ServerCommandLogResponse,
-        ServerModCallResponse,
+        v1_ServerJoinLog,
+        v1_ServerKillLog,
+        v1_ServerCommandLog,
+        v1_ServerModCall,
     )
-
-E = TypeVar("E", bound="LogEntry")
 
 
 class LogEntry:
@@ -23,12 +21,12 @@ class LogEntry:
     def __init__(
         self,
         data: Union[
-            "ServerJoinLogResponse",
-            "ServerKillLogResponse",
-            "ServerCommandLogResponse",
-            "ServerModCallResponse",
+            "v1_ServerJoinLog",
+            "v1_ServerKillLog",
+            "v1_ServerCommandLog",
+            "v1_ServerModCall",
         ],
-        cache: Optional["KeylessCache[E]"] = None,
+        cache: Optional["KeylessCache"] = None,
     ):
         self.created_at = datetime.fromtimestamp(data.get("Timestamp", 0))
 
@@ -37,7 +35,7 @@ class LogEntry:
                 if entry.created_at == self.created_at:
                     break
             else:
-                cache.add(self)  # type: ignore
+                cache.add(self)
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, LogEntry):
@@ -82,7 +80,7 @@ class AccessType(Enum):
 class AccessEntry(LogEntry):
     """Represents a server access (join/leave) log entry."""
 
-    def __init__(self, server: "Server", data: "ServerJoinLogResponse"):
+    def __init__(self, server: "Server", data: "v1_ServerJoinLog"):
         self._server = server
 
         self.type = AccessType.parse(bool(data.get("Join", False)))
@@ -103,7 +101,7 @@ class AccessEntry(LogEntry):
 class KillEntry(LogEntry):
     """Represents a server player kill log entry."""
 
-    def __init__(self, server: "Server", data: "ServerKillLogResponse"):
+    def __init__(self, server: "Server", data: "v1_ServerKillLog"):
         self._server = server
 
         self.killed = LogPlayer(server, data=data.get("Killed"))
@@ -118,7 +116,7 @@ class KillEntry(LogEntry):
 class CommandEntry(LogEntry):
     """Represents a server command execution log entry."""
 
-    def __init__(self, server: "Server", data: "ServerCommandLogResponse"):
+    def __init__(self, server: "Server", data: "v1_ServerCommandLog"):
         self._server = server
 
         self.author = LogPlayer(server, data=data.get("Player"))
@@ -135,7 +133,7 @@ class CommandEntry(LogEntry):
 class ModCallEntry(LogEntry):
     """Represents a server mod call log entry."""
 
-    def __init__(self, server: "Server", data: "ServerModCallResponse"):
+    def __init__(self, server: "Server", data: "v1_ServerModCall"):
         self._server = server
 
         self.caller = LogPlayer(server, data=data.get("Caller"))
