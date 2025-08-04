@@ -184,7 +184,7 @@ class Server:
 
         raise APIException(
             error_code,
-            f"An unknown API error has occured: ({response.get('message') or '...'})",
+            f"An unknown API error has occured: {response.get('message') or '...'}",
         )
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
@@ -373,11 +373,18 @@ class ServerCommands(ServerModule):
         if text:
             command += text
 
+        message: str = "..."
         success = False
         retry = 0
         while success == False and retry < _max_retries:
-            success = (await self._raw(command.strip())).get("message") == "Success"
+            message = (await self._raw(command.strip())).get("message")
+            success = message == "Success"
             retry += 1
+
+        if not success:
+            raise PRCException(
+                f"An unknown command execution error has occured: {message}"
+            )
 
     async def kill(self, targets: List[CommandTargetPlayerName]):
         """Kill players in the server."""
