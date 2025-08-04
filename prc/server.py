@@ -144,7 +144,7 @@ class Server:
         if error_code is None:
             raise PRCException("No error was received.")
 
-        errors: List[Callable[..., APIException]] = [
+        exceptions: List[Callable[..., APIException]] = [
             UnknownError,
             CommunicationError,
             InternalError,
@@ -160,24 +160,29 @@ class Server:
             OutOfDateModule,
         ]
 
-        for error in errors:
-            error = error()
-            if error_code == error.code:
+        for _exception in exceptions:
+            exception = _exception()
+            if error_code == exception.code:
                 invalid_key = None
-                if isinstance(error, InvalidGlobalKey):
+                if isinstance(exception, InvalidGlobalKey):
                     invalid_key = self._global_key
-                elif isinstance(error, (InvalidServerKey, BannedServerKey)):
+                elif isinstance(exception, (InvalidServerKey, BannedServerKey)):
                     invalid_key = self._server_key
 
                 if invalid_key:
                     self._requests._invalid_keys.add(invalid_key)
 
-                if isinstance(error, RateLimited):
-                    error = RateLimited(
+                if isinstance(exception, RateLimited):
+                    exception = RateLimited(
                         response.get("bucket"), response.get("retry_after")
                     )
 
-                raise error
+                if isinstance(exception, CommunicationError):
+                    exception = CommunicationError(
+                        response.get("commandId")
+                    )
+
+                raise exception
 
         raise APIException(
             error_code,
