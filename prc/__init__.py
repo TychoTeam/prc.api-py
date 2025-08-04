@@ -10,7 +10,7 @@ License: MIT, see LICENSE
 
 """
 
-from prc.utility.exceptions import *
+from prc.utility import exceptions
 from prc.models import *
 
 from prc.client import PRC

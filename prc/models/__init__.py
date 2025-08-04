@@ -13,7 +13,13 @@ from .server.player import (
     PlayerPermission,
     PlayerTeam,
 )
-from .server.vehicle import Vehicle, VehicleName, VehicleModel, VehicleOwner
+from .server.vehicle import (
+    Vehicle,
+    VehicleName,
+    VehicleModel,
+    VehicleOwner,
+    VehicleTexture,
+)
 from .server.logs import (
     LogEntry,
     LogPlayer,

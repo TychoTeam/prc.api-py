@@ -1,6 +1,6 @@
 """
 
-Exceptions used for PRC API errors and other package functionality
+All exceptions in use by the prc.api package.
 
 """
 
