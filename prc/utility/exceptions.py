@@ -94,7 +94,9 @@ class InvalidCommand(APIException):
 class ServerOffline(APIException):
     """Exception raised when the server being reached is currently offline (has no players)."""
 
-    def __init__(self):
+    def __init__(self, command_id: Optional[str] = None):
+        self.command_id = command_id or "unknown"
+
         super().__init__(
             3002,
             "The server you are attempting to reach is currently offline (has no players).",

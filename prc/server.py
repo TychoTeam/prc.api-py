@@ -177,8 +177,8 @@ class Server:
                         response.get("bucket"), response.get("retry_after")
                     )
 
-                if isinstance(exception, CommunicationError):
-                    exception = CommunicationError(response.get("commandId"))
+                if isinstance(exception, (CommunicationError, ServerOffline)):
+                    exception = _exception(command_id=response.get("commandId"))
 
                 raise exception
 
