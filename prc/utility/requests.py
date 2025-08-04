@@ -136,12 +136,15 @@ class Requests:
                     f"PRC API took too long to respond. ({retry}/{self._max_retries} retries) ({self._timeout}s timeout)"
                 )
 
-        self._rate_limiter.parse_headers(route, dict(response.headers))
-        if self._should_retry(response.status_code) and retry < self._max_retries:
-            await self._rate_limiter.wait_to_retry(response.headers)
-            return await self._make_request(method, route, retry + 1, **kwargs)
-        else:
-            return response
+        self._rate_limiter.save_bucket(route, response.headers)
+
+        if self._can_retry(response.status_code, retry):
+            if await self._rate_limiter.wait_to_retry(
+                response.headers, self._max_retry_after
+            ):
+                return await self._make_request(method, route, retry + 1, **kwargs)
+
+        return response
 
     async def get(self, route: str, **kwargs):
         return await self._make_request("GET", route, **kwargs)
