@@ -3,25 +3,25 @@ from .player import ServerOwner, StaffMember, PlayerPermission
 
 if TYPE_CHECKING:
     from prc.server import Server
-    from prc.api_types.v1 import ServerStaffResponse
+    from prc.api_types.v1 import v1_ServerStaffResponse
 
 
 class ServerStaff:
     """Represents a server staff list for players with elevated permissions."""
 
-    def __init__(self, server: "Server", data: "ServerStaffResponse"):
+    def __init__(self, server: "Server", data: "v1_ServerStaffResponse"):
         self.co_owners = [
             ServerOwner(server, id=co_owner_id) for co_owner_id in data.get("CoOwners")
         ]
         server.co_owners = self.co_owners
         self.admins = [
             StaffMember(server, data=player, permission=PlayerPermission.ADMIN)
-            for player in (data.get("Admins") or {}).items()
+            for player in server._parse_api_map(data.get("Admins")).items()
         ]
         server.admins = self.admins
         self.mods = [
             StaffMember(server, data=player, permission=PlayerPermission.MOD)
-            for player in (data.get("Mods") or {}).items()
+            for player in server._parse_api_map(data.get("Mods")).items()
         ]
         server.mods = self.mods
 

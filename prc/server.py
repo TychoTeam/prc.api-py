@@ -16,6 +16,7 @@ import asyncio
 import httpx
 
 from .api_types.v1 import *
+from .api_types.v1 import _APIMap
 
 if TYPE_CHECKING:
     from .client import PRC
@@ -128,6 +129,11 @@ class Server:
         )
         return self._requests
 
+    def _parse_api_map(self, map: _APIMap) -> Dict[str, str]:
+        if not isinstance(map, Dict):
+            return {}
+        return map
+
     def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):
         for _, player in self._server_cache.players.items():
             if id and player.id == id:
@@ -183,7 +189,8 @@ class Server:
     async def get_status(self):
         """Get the current server status."""
         return ServerStatus(
-            self, data=self._handle(await self._requests.get("/"), ServerStatusResponse)
+            self,
+            data=self._handle(await self._requests.get("/"), v1_ServerStatusResponse),
         )
 
     @_refresh_server
@@ -193,7 +200,7 @@ class Server:
         players = [
             ServerPlayer(self, data=p)
             for p in self._handle(
-                await self._requests.get("/players"), List[ServerPlayerResponse]
+                await self._requests.get("/players"), v1_ServerPlayersResponse
             )
         ]
         self.player_count = len(players)
@@ -207,7 +214,7 @@ class Server:
         players = [
             QueuedPlayer(self, id=p, index=i)
             for i, p in enumerate(
-                self._handle(await self._requests.get("/queue"), List[int])
+                self._handle(await self._requests.get("/queue"), v1_ServerQueueResponse)
             )
         ]
         self.queue_count = len(players)
@@ -219,8 +226,8 @@ class Server:
         """Get all banned players."""
         return [
             Player(self._client, data=p, _skip_cache=True)
-            for p in (
-                self._handle(await self._requests.get("/bans"), ServerBanResponse) or {}
+            for p in self._parse_api_map(
+                self._handle(await self._requests.get("/bans"), v1_ServerBanResponse)
             ).items()
         ]
 
@@ -231,7 +238,7 @@ class Server:
         return [
             Vehicle(self, data=v)
             for v in self._handle(
-                await self._requests.get("/vehicles"), List[ServerVehicleResponse]
+                await self._requests.get("/vehicles"), v1_ServerVehiclesResponse
             )
         ]
 
@@ -241,7 +248,9 @@ class Server:
         """Get all server staff members excluding server owner. ⚠️ *(This endpoint is deprecated, use at your own risk)*"""
         staff = ServerStaff(
             self,
-            data=self._handle(await self._requests.get("/staff"), ServerStaffResponse),
+            data=self._handle(
+                await self._requests.get("/staff"), v1_ServerStaffResponse
+            ),
         )
         self.total_staff_count = staff.count()
         return staff
@@ -274,7 +283,7 @@ class ServerLogs(ServerModule):
         [
             AccessEntry(self._server, data=e)
             for e in self._handle(
-                await self._requests.get("/joinlogs"), List[ServerJoinLogResponse]
+                await self._requests.get("/joinlogs"), v1_ServerJoinLogsResponse
             )
         ]
         return self._server_cache.access_logs.items()
@@ -286,7 +295,7 @@ class ServerLogs(ServerModule):
         return [
             KillEntry(self._server, data=e)
             for e in self._handle(
-                await self._requests.get("/killlogs"), List[ServerKillLogResponse]
+                await self._requests.get("/killlogs"), v1_ServerKillLogsResponse
             )
         ]
 
@@ -297,7 +306,7 @@ class ServerLogs(ServerModule):
         return [
             CommandEntry(self._server, data=e)
             for e in self._handle(
-                await self._requests.get("/commandlogs"), List[ServerCommandLogResponse]
+                await self._requests.get("/commandlogs"), v1_ServerCommandLogsResponse
             )
         ]
 
@@ -308,7 +317,7 @@ class ServerLogs(ServerModule):
         return [
             ModCallEntry(self._server, data=e)
             for e in self._handle(
-                await self._requests.get("/modcalls"), List[ServerModCallResponse]
+                await self._requests.get("/modcalls"), v1_ServerModCallsResponse
             )
         ]
 

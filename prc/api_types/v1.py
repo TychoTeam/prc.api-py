@@ -1,7 +1,13 @@
-from typing import TypedDict, List, Optional, Literal, Dict
+from typing import TypedDict, List, Optional, Literal, Dict, Union, TypeVar
+
+V = TypeVar("V")
+
+# since the API uses "maps", which are supposed to be dicts
+# but when empty are actually sent as lists
+_APIMap = Union[Dict[str, V], List[None]]
 
 
-class ServerStatusResponse(TypedDict):
+class v1_ServerStatusResponse(TypedDict):
     Name: str
     OwnerId: int
     CoOwnerIds: List[int]
@@ -12,7 +18,7 @@ class ServerStatusResponse(TypedDict):
     TeamBalance: bool
 
 
-class ServerPlayerResponse(TypedDict):
+class v1_ServerPlayer(TypedDict):
     Player: str
     Permission: Literal[
         "Normal",
@@ -25,40 +31,59 @@ class ServerPlayerResponse(TypedDict):
     Team: Literal["Civilian", "Sheriff", "Police", "Fire", "DOT", "Jail"]
 
 
-class ServerJoinLogResponse(TypedDict):
+v1_ServerPlayersResponse = List[v1_ServerPlayer]
+
+
+class v1_ServerJoinLog(TypedDict):
     Join: bool
     Timestamp: int
     Player: str
 
 
-class ServerKillLogResponse(TypedDict):
+v1_ServerJoinLogsResponse = List[v1_ServerJoinLog]
+
+
+class v1_ServerKillLog(TypedDict):
     Killed: str
     Timestamp: int
     Killer: str
 
 
-class ServerCommandLogResponse(TypedDict):
+v1_ServerKillLogsResponse = List[v1_ServerKillLog]
+
+
+class v1_ServerCommandLog(TypedDict):
     Player: str
     Timestamp: int
     Command: str
 
 
-class ServerModCallResponse(TypedDict):
+v1_ServerCommandLogsResponse = List[v1_ServerCommandLog]
+
+
+class v1_ServerModCall(TypedDict):
     Caller: str
     Moderator: Optional[str]
     Timestamp: int
 
 
-ServerBanResponse = Dict[str, str]
+v1_ServerModCallsResponse = List[v1_ServerModCall]
+
+v1_ServerBanResponse = _APIMap[str]
 
 
-class ServerVehicleResponse(TypedDict):
+class v1_ServerVehicle(TypedDict):
     Texture: Optional[str]
     Name: str
     Owner: str
 
 
-class ServerStaffResponse(TypedDict):
+v1_ServerVehiclesResponse = List[v1_ServerVehicle]
+
+v1_ServerQueueResponse = List[int]
+
+
+class v1_ServerStaffResponse(TypedDict):
     CoOwners: List[int]
-    Admins: Dict[str, str]
-    Mods: Dict[str, str]
+    Admins: _APIMap[str]
+    Mods: _APIMap[str]

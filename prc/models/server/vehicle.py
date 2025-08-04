@@ -3,7 +3,7 @@ from ..player import Player
 
 if TYPE_CHECKING:
     from prc.server import Server
-    from prc.api_types.v1 import ServerVehicleResponse
+    from prc.api_types.v1 import v1_ServerVehicle
 
 
 class VehicleOwner:
@@ -56,7 +56,7 @@ class VehicleTexture:
 class Vehicle:
     """Represents a currently spawned server vehicle."""
 
-    def __init__(self, server: "Server", data: "ServerVehicleResponse"):
+    def __init__(self, server: "Server", data: "v1_ServerVehicle"):
         self._server = server
 
         self.owner = VehicleOwner(server, data.get("Owner"))

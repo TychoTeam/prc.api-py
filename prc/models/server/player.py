@@ -4,7 +4,7 @@ from enum import Enum
 
 if TYPE_CHECKING:
     from prc.server import Server
-    from prc.api_types.v1 import ServerPlayerResponse
+    from prc.api_types.v1 import v1_ServerPlayer
 
 
 class PlayerPermission(Enum):
@@ -54,7 +54,7 @@ class PlayerTeam(Enum):
 class ServerPlayer(Player):
     """Represents a full player in a server."""
 
-    def __init__(self, server: "Server", data: "ServerPlayerResponse"):
+    def __init__(self, server: "Server", data: "v1_ServerPlayer"):
         self._server = server
 
         self.permission = PlayerPermission.parse(data.get("Permission"))
