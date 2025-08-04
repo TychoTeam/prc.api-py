@@ -36,4 +36,4 @@ It provides a convenient way to interact with PRC APIs, including the [private s
 pip install prc.api
 ```
 
-The package has been tested on Python `v3.8` or greater. It may not work on older versions.
+The package has been tested on Python `v3.8+`. It may not work on older versions.
