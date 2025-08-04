@@ -218,7 +218,7 @@ class Server:
     async def get_bans(self):
         """Get all banned players."""
         return [
-            Player(self._client, data=p)
+            Player(self._client, data=p, _skip_cache=True)
             for p in (
                 self._handle(await self._requests.get("/bans"), ServerBanResponse) or {}
             ).items()
