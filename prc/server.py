@@ -71,7 +71,7 @@ class Server:
         self,
         client: "PRC",
         server_key: str,
-        ephemeral_ttl: int = 5,
+        ephemeral_ttl: int = 3,
         cache: ServerCache = ServerCache(),
         requests: Optional[Requests] = None,
         ignore_global_key: bool = False,
