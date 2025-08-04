@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Optional, Union
 from enum import Enum
 from datetime import datetime
 from ..player import Player
@@ -14,8 +14,6 @@ if TYPE_CHECKING:
         ServerModCallResponse,
     )
 
-E = TypeVar("E", bound="LogEntry")
-
 
 class LogEntry:
     """Base log entry."""
@@ -28,7 +26,7 @@ class LogEntry:
             "ServerCommandLogResponse",
             "ServerModCallResponse",
         ],
-        cache: Optional["KeylessCache[E]"] = None,
+        cache: Optional["KeylessCache"] = None,
     ):
         self.created_at = datetime.fromtimestamp(data.get("Timestamp", 0))
 
@@ -37,7 +35,7 @@ class LogEntry:
                 if entry.created_at == self.created_at:
                     break
             else:
-                cache.add(self)  # type: ignore
+                cache.add(self)
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, LogEntry):
