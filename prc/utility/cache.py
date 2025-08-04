@@ -1,5 +1,6 @@
 from typing import Dict, Generic, Optional, TypeVar, Tuple, List, Callable, Any
 from time import time
+from collections import OrderedDict, deque
 
 CacheConfig = Tuple[int, int]
 
@@ -18,65 +19,69 @@ class Cache(Generic[K, V]):
         self.max_size: int = max_size
         self.ttl: Optional[int] = ttl or None
         self.unique: bool = unique
-        self._cache: Dict[K, V] = {}
+        self._cache: "OrderedDict[K, V]" = OrderedDict()
         self._timestamps: Dict[K, float] = {}
 
-    def _is_expired(self, key: K) -> bool:
+    def _is_expired(self, key: K, now: Optional[float] = None) -> bool:
         if self.ttl is None:
             return False
-        return time() - self._timestamps.get(key, 0) > self.ttl
+        now = now if now is not None else time()
+        return now - self._timestamps.get(key, 0) > self.ttl
 
     def _delete_oversize(self) -> None:
         while len(self._cache) > self.max_size:
-            oldest_key = min(self._timestamps, key=lambda k: self._timestamps[k])
-            self.delete(oldest_key)
+            oldest_key, _ = self._cache.popitem(last=False)
+            self._timestamps.pop(oldest_key, None)
 
     def set(self, key: K, value: V) -> V:
+        now = time()
         if self.unique:
-            keys_to_remove = [
-                k for k, v in self._cache.items() if v == value and k != key
-            ]
-            for k in keys_to_remove:
-                self.delete(k)
+            to_remove = [k for k, v in self._cache.items() if v == value and k != key]
+            for k in to_remove:
+                self._cache.pop(k, None)
+                self._timestamps.pop(k, None)
         if key in self._cache:
-            self._timestamps[key] = time()
-            self._cache[key] = value
-        else:
-            if len(self._cache) >= self.max_size:
-                self._delete_oversize()
-            self._cache[key] = value
-            self._timestamps[key] = time()
+            self._cache.move_to_end(key)
+        self._cache[key] = value
+        self._timestamps[key] = now
+        if len(self._cache) > self.max_size:
+            self._delete_oversize()
         return value
 
     def get(self, key: K) -> Optional[V]:
+        now = time()
         if key in self._cache:
-            if not self._is_expired(key):
+            if not self._is_expired(key, now):
+                self._cache.move_to_end(key)
+                self._timestamps[key] = now
                 return self._cache[key]
             else:
                 self.delete(key)
         return None
 
     def delete(self, key: K) -> None:
-        if key in self._cache:
-            self._timestamps.pop(key, None)
-            self._cache.pop(key, None)
+        self._cache.pop(key, None)
+        self._timestamps.pop(key, None)
 
     def clear(self) -> None:
-        self._cache = {}
-        self._timestamps = {}
+        self._cache.clear()
+        self._timestamps.clear()
 
     def items(self) -> List[Tuple[K, V]]:
-        return [
-            (key, value)
-            for key, value in self._cache.items()
-            if not self._is_expired(key)
-        ]
+        now = time()
+        expired = [k for k in self._cache if self._is_expired(k, now)]
+        for k in expired:
+            self.delete(k)
+        return list(self._cache.items())
 
     def __len__(self) -> int:
         return len(self._cache)
 
     def __contains__(self, key: K) -> bool:
-        return key in self._cache and not self._is_expired(key)
+        now = time()
+        if key in self._cache and not self._is_expired(key, now):
+            return True
+        return False
 
 
 class KeylessCache(Generic[V]):
@@ -91,66 +96,84 @@ class KeylessCache(Generic[V]):
         self.ttl = ttl or None
         self._sort = sort
 
-        self._cache: List[V] = []
-        self._timestamps: List[float] = []
+        self._cache: deque[V] = deque()
+        self._timestamps: deque[float] = deque()
+        self._set = set()
 
-    def _is_expired(self, index: int) -> bool:
+    def _is_expired(self, index: int, now: Optional[float] = None) -> bool:
         if self.ttl is None:
             return False
-        return time() - self._timestamps[index] > self.ttl
+        now = now if now is not None else time()
+        return now - self._timestamps[index] > self.ttl
 
     def _delete_oversize(self) -> None:
         while len(self._cache) > self.max_size:
-            self._cache.pop(0)
-            self._timestamps.pop(0)
+            value = self._cache.popleft()
+            self._timestamps.popleft()
+            self._set.discard(value)
 
     def _sort_cache(self) -> None:
-        if self._sort is not None:
+        if self._sort is not None and self._cache:
             key_func, reverse = self._sort
             combined = list(zip(self._cache, self._timestamps))
             combined.sort(key=lambda x: key_func(x[0]), reverse=(reverse or False))
-            if combined:
-                self._cache, self._timestamps = map(list, zip(*combined))
+            self._cache = deque([x[0] for x in combined])
+            self._timestamps = deque([x[1] for x in combined])
 
     def add(self, value: V) -> V:
-        if value in self._cache:
-            index = self._cache.index(value)
-            self._timestamps[index] = time()
+        now = time()
+        if value in self._set:
+            idx = next(i for i, v in enumerate(self._cache) if v == value)
+            self._timestamps[idx] = now
         else:
             if len(self._cache) >= self.max_size:
                 self._delete_oversize()
             self._cache.append(value)
-            self._timestamps.append(time())
+            self._timestamps.append(now)
+            self._set.add(value)
         self._sort_cache()
         return value
 
     def get(self, index: int = 0) -> Optional[V]:
+        now = time()
         if -len(self._cache) <= index < len(self._cache):
-            if not self._is_expired(index):
+            if not self._is_expired(index, now):
                 return self._cache[index]
             else:
-                self._cache.pop(index)
-                self._timestamps.pop(index)
+                value = self._cache[index]
+                self.remove(index)
+                self._set.discard(value)
         return None
 
     def remove(self, index: int = 0) -> None:
         if -len(self._cache) <= index < len(self._cache):
-            self._cache.pop(index)
-            self._timestamps.pop(index)
+            value = self._cache[index]
+            del self._cache[index]
+            del self._timestamps[index]
+            self._set.discard(value)
 
     def clear(self) -> None:
-        self._cache = []
-        self._timestamps = []
+        self._cache.clear()
+        self._timestamps.clear()
+        self._set.clear()
 
     def items(self) -> List[V]:
-        return [
-            value
-            for index, value in enumerate(self._cache)
-            if not self._is_expired(index)
+        now = time()
+        indices_to_remove = [
+            i for i in range(len(self._cache)) if self._is_expired(i, now)
         ]
+        for i in reversed(indices_to_remove):
+            value = self._cache[i]
+            self.remove(i)
+            self._set.discard(value)
+        return list(self._cache)
 
     def __len__(self) -> int:
         return len(self._cache)
 
     def __contains__(self, value: V) -> bool:
-        return value in self._cache and not self._is_expired(self._cache.index(value))
+        if value in self._set:
+            idx = next((i for i, v in enumerate(self._cache) if v == value), None)
+            if idx is not None and not self._is_expired(idx):
+                return True
+        return False
