@@ -32,7 +32,7 @@ class RateLimiter:
         )
         self.buckets = Cache[str, Bucket](max_size=10)
 
-    def save_bucket(self, route: str, headers: Dict[str, str]) -> None:
+    def save_bucket(self, route: str, headers: httpx.Headers) -> None:
         bucket_name: str = headers.get("X-RateLimit-Bucket", "Unknown")
         limit = int(headers.get("X-RateLimit-Limit", 0))
         remaining = int(headers.get("X-RateLimit-Remaining", 0))
@@ -81,17 +81,17 @@ class Requests:
     def __init__(
         self,
         base_url: str,
-        headers: Dict[str, str] = {},
-        session: CleanAsyncClient = CleanAsyncClient(),
+        headers: Optional[Dict[str, str]] = None,
+        session: Optional[CleanAsyncClient] = None,
         max_retries: int = 3,
         max_retry_after: float = 15.0,
         timeout: float = 5.0,
     ):
         self._rate_limiter = RateLimiter()
-        self._session = session
+        self._session = session if session is not None else CleanAsyncClient()
 
         self._base_url = base_url
-        self._default_headers = headers
+        self._default_headers = headers if headers is not None else {}
         self._max_retries = max_retries
         self._max_retry_after = max_retry_after
         self._timeout = timeout
@@ -136,15 +136,12 @@ class Requests:
                     f"PRC API took too long to respond. ({retry}/{self._max_retries} retries) ({self._timeout}s timeout)"
                 )
 
-        self._rate_limiter.save_bucket(route, dict(response.headers))
-
-        if self._can_retry(response.status_code, retry):
-            if await self._rate_limiter.wait_to_retry(
-                response.headers, self._max_retry_after
-            ):
-                return await self._make_request(method, route, retry + 1, **kwargs)
-
-        return response
+        self._rate_limiter.parse_headers(route, dict(response.headers))
+        if self._should_retry(response.status_code) and retry < self._max_retries:
+            await self._rate_limiter.wait_to_retry(response.headers)
+            return await self._make_request(method, route, retry + 1, **kwargs)
+        else:
+            return response
 
     async def get(self, route: str, **kwargs):
         return await self._make_request("GET", route, **kwargs)

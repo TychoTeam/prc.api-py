@@ -72,7 +72,7 @@ class Server:
         self,
         client: "PRC",
         server_key: str,
-        ephemeral_ttl: int = 5,
+        ephemeral_ttl: int = 3,
         cache: ServerCache = ServerCache(),
         requests: Optional[Requests] = None,
         ignore_global_key: bool = False,
@@ -232,7 +232,7 @@ class Server:
     async def get_bans(self):
         """Get all banned players."""
         return [
-            Player(self._client, data=p)
+            Player(self._client, data=p, _skip_cache=True)
             for p in (
                 self._handle(await self._requests.get("/bans"), ServerBanResponse) or {}
             ).items()
@@ -459,7 +459,7 @@ class ServerCommands(ServerModule):
         """Send a temporary message to the server (undismissable banner)."""
         await self.run("h", text=text)
 
-    async def send_message(self, text: str):
+    async def send_announcement(self, text: str):
         """Send an announcement message to the server (dismissable popup)."""
         await self.run("m", text=text)
 
@@ -467,7 +467,7 @@ class ServerCommands(ServerModule):
         """Send a private message to players in the server (dismissable popup)."""
         await self.run("pm", targets=targets, text=text)
 
-    async def log(self, text: str):
+    async def send_log(self, text: str):
         """Emit a custom string that will be saved in command logs and sent to configured command usage webhooks (if any), mostly for integrating with other applications. Uses the `:log` command."""
         await self.run("log", text=text)
 

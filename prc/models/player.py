@@ -1,4 +1,4 @@
-from typing import Tuple, Union, TYPE_CHECKING
+from typing import Tuple, Union, TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from prc.client import PRC
@@ -7,7 +7,12 @@ if TYPE_CHECKING:
 class Player:
     """Represents a base player."""
 
-    def __init__(self, client: "PRC", data: Union[str, Tuple[str, str]]):
+    def __init__(
+        self,
+        client: "PRC",
+        data: Union[str, Tuple[str, str]],
+        _skip_cache: Optional[bool] = False,
+    ):
         self._client = client
 
         if isinstance(data, str):
@@ -24,7 +29,7 @@ class Player:
         self.id = int(id)
         self.name = str(name)
 
-        if not self.is_remote():
+        if not self.is_remote() and not _skip_cache:
             client._global_cache.players.set(self.id, self)
 
     def is_remote(self) -> bool:
