@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from .client import PRC
 
 R = TypeVar("R")
+M = TypeVar("M")
 
 
 class ServerCache:
@@ -130,7 +131,7 @@ class Server:
         )
         return self._requests
 
-    def _parse_api_map(self, map: _APIMap) -> Dict[str, str]:
+    def _parse_api_map(self, map: _APIMap[M]) -> Dict[str, M]:
         if not isinstance(map, Dict):
             return {}
         return map
@@ -351,7 +352,7 @@ class ServerCommands(ServerModule):
         """Send a raw command string to the remote command execution API."""
         return self._handle(
             await self._requests.post("/command", json={"command": command}),
-            ServerCommandExecutionResponse,
+            v1_ServerCommandExecutionResponse,
         )
 
     async def run(

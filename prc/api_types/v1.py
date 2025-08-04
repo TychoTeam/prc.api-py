@@ -89,5 +89,5 @@ class v1_ServerStaffResponse(TypedDict):
     Mods: _APIMap[str]
 
 
-class ServerCommandExecutionResponse(TypedDict):
+class v1_ServerCommandExecutionResponse(TypedDict):
     message: str
