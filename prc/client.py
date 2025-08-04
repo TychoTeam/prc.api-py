@@ -1,6 +1,6 @@
 """
 
-The main prc.api client
+The main prc.api client.
 
 """
 

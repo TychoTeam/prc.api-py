@@ -1,6 +1,6 @@
 """
 
-Exceptions raised due to PRC API errors and some general exceptions
+All exceptions in use by the prc.api package.
 
 """
 
