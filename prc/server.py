@@ -373,7 +373,7 @@ class ServerCommands(ServerModule):
         if text:
             command += text
 
-        message: str = "..."
+        message = "..."
         success = False
         retry = 0
         while success == False and retry < _max_retries:
