@@ -339,7 +339,7 @@ class ServerCommands(ServerModule):
         super().__init__(server)
 
     async def _raw(self, command: str):
-        """Send a raw string command to the remote command execution API."""
+        """Send a raw command string to the remote command execution API."""
         return self._handle(
             await self._requests.post("/command", json={"command": command}),
             ServerCommandExecutionResponse,
