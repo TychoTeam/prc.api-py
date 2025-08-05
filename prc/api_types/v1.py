@@ -87,3 +87,7 @@ class v1_ServerStaffResponse(TypedDict):
     CoOwners: List[int]
     Admins: _APIMap[str]
     Mods: _APIMap[str]
+
+
+class v1_ServerCommandExecutionResponse(TypedDict):
+    message: str
