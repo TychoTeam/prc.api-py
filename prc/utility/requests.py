@@ -1,9 +1,11 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, TypeVar, Generic, Literal
 from time import time
 from .cache import Cache, KeylessCache
 from .exceptions import PRCException
 import asyncio
 import httpx
+
+R = TypeVar("R", bound=str)
 
 
 class CleanAsyncClient(httpx.AsyncClient):
@@ -75,7 +77,7 @@ class RateLimiter:
         return True
 
 
-class Requests:
+class Requests(Generic[R]):
     """Handles outgoing API requests while respecting rate limits."""
 
     def __init__(
@@ -109,7 +111,7 @@ class Requests:
                 )
 
     async def _make_request(
-        self, method: str, route: str, retry: int = 0, **kwargs
+        self, method: str, route: R, retry: int = 0, **kwargs
     ) -> httpx.Response:
         self._check_default_headers()
         await self._rate_limiter.avoid_limit(route, self._max_retry_after)
@@ -146,10 +148,10 @@ class Requests:
 
         return response
 
-    async def get(self, route: str, **kwargs):
+    async def get(self, route: R, **kwargs):
         return await self._make_request("GET", route, **kwargs)
 
-    async def post(self, route: str, **kwargs):
+    async def post(self, route: R, **kwargs):
         return await self._make_request("POST", route, **kwargs)
 
     async def _close(self):

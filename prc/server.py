@@ -90,7 +90,23 @@ class Server:
 
         self._global_key = client._global_key
         self._server_key = server_key
-        self._requests = requests or self._refresh_requests()
+        self._requests: Requests[
+            Literal[
+                "/",
+                "/players",
+                "/queue",
+                "/bans",
+                "/vehicles",
+                "/staff",
+                "/joinlogs",
+                "/killlogs",
+                "/commandlogs",
+                "/modcalls",
+                "/command",
+            ]
+        ] = (
+            requests or self._refresh_requests()
+        )
         self._ignore_global_key = ignore_global_key
 
         self.logs = ServerLogs(self)
