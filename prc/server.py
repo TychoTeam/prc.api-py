@@ -8,6 +8,7 @@ from typing import (
     Dict,
     Union,
     Sequence,
+    Any,
 )
 from .utility import KeylessCache, Cache, CacheConfig, Requests, InsensitiveEnum
 from .utility.exceptions import *
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
     from .client import PRC
 
 R = TypeVar("R")
+M = TypeVar("M")
 
 
 class ServerCache:
@@ -89,7 +91,23 @@ class Server:
         self._global_key = client._global_key
         self._server_key = server_key
         self._ignore_global_key = ignore_global_key
-        self._requests = requests or self._refresh_requests()
+        self._requests: Requests[
+            Literal[
+                "/",
+                "/players",
+                "/queue",
+                "/bans",
+                "/vehicles",
+                "/staff",
+                "/joinlogs",
+                "/killlogs",
+                "/commandlogs",
+                "/modcalls",
+                "/command",
+            ]
+        ] = (
+            requests or self._refresh_requests()
+        )
 
         self.logs = ServerLogs(self)
         self.commands = ServerCommands(self)
@@ -129,7 +147,7 @@ class Server:
         )
         return self._requests
 
-    def _parse_api_map(self, map: _APIMap) -> Dict[str, str]:
+    def _parse_api_map(self, map: _APIMap[M]) -> Dict[str, M]:
         if not isinstance(map, Dict):
             return {}
         return map
@@ -141,47 +159,60 @@ class Server:
             if name and player.name == name:
                 return player
 
-    def _handle_error_code(self, error_code: Optional[int] = None):
-        if error_code is None:
-            raise PRCException("An unknown error has occured.")
+    def _raise_error_code(self, response: Any):
+        if not isinstance(response, Dict):
+            raise PRCException("A malformed response was received.")
 
-        errors: List[Callable[..., APIException]] = [
+        error_code = response.get("code")
+        if error_code is None:
+            raise PRCException("No error was received.")
+
+        exceptions: List[Callable[..., APIException]] = [
             UnknownError,
             CommunicationError,
             InternalError,
-            MissingServerKey,
-            InvalidServerKeyFormat,
             InvalidServerKey,
             InvalidGlobalKey,
             BannedServerKey,
             InvalidCommand,
             ServerOffline,
-            RateLimit,
+            RateLimited,
             RestrictedCommand,
             ProhibitedMessage,
             RestrictedResource,
             OutOfDateModule,
         ]
 
-        for error in errors:
-            error = error()
-            if error_code == error.error_code:
+        for _exception in exceptions:
+            exception = _exception()
+            if error_code == exception.code:
                 invalid_key = None
-                if isinstance(error, InvalidGlobalKey):
-                    invalid_key = self._requests._default_headers.get("Authorization")
-                elif isinstance(error, (InvalidServerKey, BannedServerKey)):
-                    invalid_key = self._requests._default_headers.get("Server-Key")
+                if isinstance(exception, InvalidGlobalKey):
+                    invalid_key = self._global_key
+                elif isinstance(exception, (InvalidServerKey, BannedServerKey)):
+                    invalid_key = self._server_key
 
                 if invalid_key:
                     self._requests._invalid_keys.add(invalid_key)
 
-                raise error
+                if isinstance(exception, RateLimited):
+                    exception = RateLimited(
+                        response.get("bucket"), response.get("retry_after")
+                    )
 
-        raise APIException(error_code, "An unknown API error has occured.")
+                if isinstance(exception, (CommunicationError, ServerOffline)):
+                    exception = _exception(command_id=response.get("commandId"))
+
+                raise exception
+
+        raise APIException(
+            error_code,
+            f"An unknown API error has occured: {response.get('message') or '...'}",
+        )
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
         if not response.is_success:
-            self._handle_error_code((response.json() or {}).get("code"))
+            self._raise_error_code(response.json())
         return response.json()
 
     @_refresh_server
@@ -334,10 +365,10 @@ class ServerCommands(ServerModule):
         super().__init__(server)
 
     async def _raw(self, command: str):
-        """Run a raw string command as the remote player in the server."""
+        """Send a raw command string to the remote command execution API."""
         return self._handle(
             await self._requests.post("/command", json={"command": command}),
-            Dict,
+            v1_ServerCommandExecutionResponse,
         )
 
     async def run(
@@ -346,6 +377,7 @@ class ServerCommands(ServerModule):
         targets: Optional[Sequence[CommandTargetPlayerNameOrId]] = None,
         args: Optional[List[CommandArg]] = None,
         text: Optional[str] = None,
+        _max_retries: int = 3,
     ):
         """Run any command as the remote player in the server."""
         command = f":{name} "
@@ -367,7 +399,18 @@ class ServerCommands(ServerModule):
         if text:
             command += text
 
-        await self._raw(command.strip())
+        message = "..."
+        success = False
+        retry = 0
+        while success == False and retry < _max_retries:
+            message = (await self._raw(command.strip())).get("message")
+            success = message == "Success"
+            retry += 1
+
+        if not success:
+            raise PRCException(
+                f"An unknown command execution error has occured: {message}"
+            )
 
     async def kill(self, targets: List[CommandTargetPlayerName]):
         """Kill players in the server."""

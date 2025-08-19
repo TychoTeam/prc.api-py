@@ -8,7 +8,7 @@ from .server import Server
 from .utility import Cache, CacheConfig, Requests
 from .utility.requests import CleanAsyncClient
 from .utility.exceptions import PRCException
-from typing import Optional, TYPE_CHECKING, Dict
+from typing import Optional, TYPE_CHECKING, Dict, Literal
 from datetime import datetime
 import re
 
@@ -48,7 +48,7 @@ class PRC:
         self._global_cache = cache if cache is not None else GlobalCache()
         self._session = CleanAsyncClient()
         self._key_requests = (
-            Requests(
+            Requests[Literal["/reset"]](
                 base_url=self._base_url + "/api-key",
                 headers={"Authorization": self._global_key},
                 session=self._session,
