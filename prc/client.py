@@ -7,7 +7,7 @@ The main prc.api client.
 from .server import Server
 from .utility import Cache, CacheConfig, Requests
 from .utility.requests import CleanAsyncClient
-from .utility.exceptions import PRCException
+from .exceptions import PRCException
 from typing import Optional, TYPE_CHECKING, Dict, Literal
 from datetime import datetime
 import re

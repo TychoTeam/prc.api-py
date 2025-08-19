@@ -1,7 +1,7 @@
 from typing import Dict, Optional, TypeVar, Generic, Literal
 from time import time
 from .cache import Cache, KeylessCache
-from .exceptions import PRCException
+from ..exceptions import PRCException
 import asyncio
 import httpx
 

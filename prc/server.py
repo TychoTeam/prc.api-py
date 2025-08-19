@@ -11,7 +11,7 @@ from typing import (
     Any,
 )
 from .utility import KeylessCache, Cache, CacheConfig, Requests, InsensitiveEnum
-from .utility.exceptions import *
+from .exceptions import *
 from .models import *
 import asyncio
 import httpx
