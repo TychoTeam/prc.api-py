@@ -1,54 +1,31 @@
 from typing import Optional, Tuple, TYPE_CHECKING
+from prc.utility import DisplayNameEnum
 from ..player import Player
-from enum import Enum
 
 if TYPE_CHECKING:
     from prc.server import Server
     from prc.api_types.v1 import v1_ServerPlayer
 
 
-class PlayerPermission(Enum):
+class PlayerPermission(DisplayNameEnum):
     """Enum that represents a server player permission level."""
 
-    @staticmethod
-    def parse(permissions: str):
-        mapping = {
-            "Normal": PlayerPermission.NORMAL,
-            "Server Moderator": PlayerPermission.MOD,
-            "Server Administrator": PlayerPermission.ADMIN,
-            "Server Co-Owner": PlayerPermission.CO_OWNER,
-            "Server Owner": PlayerPermission.OWNER,
-        }
-        return mapping.get(permissions, PlayerPermission.NORMAL)
-
-    NORMAL = 0
-    MOD = 1
-    ADMIN = 2
-    CO_OWNER = 3
-    OWNER = 4
+    NORMAL = (0, "Normal")
+    MOD = (1, "Server Moderator")
+    ADMIN = (2, "Server Administrator")
+    CO_OWNER = (3, "Server Co-Owner")
+    OWNER = (4, "Server Owner")
 
 
-class PlayerTeam(Enum):
+class PlayerTeam(DisplayNameEnum):
     """Enum that represents a server player team."""
 
-    @staticmethod
-    def parse(team: str):
-        mapping = {
-            "Civilian": PlayerTeam.CIVILIAN,
-            "Sheriff": PlayerTeam.SHERIFF,
-            "Police": PlayerTeam.POLICE,
-            "Fire": PlayerTeam.FIRE,
-            "DOT": PlayerTeam.DOT,
-            "Jail": PlayerTeam.JAIL,
-        }
-        return mapping.get(team, PlayerTeam.CIVILIAN)
-
-    CIVILIAN = 0
-    SHERIFF = 1
-    POLICE = 2
-    FIRE = 3
-    DOT = 4
-    JAIL = 5
+    CIVILIAN = (0, "Civilian")
+    SHERIFF = (1, "Sheriff")
+    POLICE = (2, "Police")
+    FIRE = (3, "Fire")
+    DOT = (4, "DOT")
+    JAIL = (5, "Jail")
 
 
 class ServerPlayer(Player):

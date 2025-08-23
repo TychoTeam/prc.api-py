@@ -1,5 +1,5 @@
+from prc.utility import DisplayNameEnum
 from typing import TYPE_CHECKING
-from enum import Enum
 from .player import ServerOwner
 
 if TYPE_CHECKING:
@@ -7,21 +7,12 @@ if TYPE_CHECKING:
     from prc.api_types.v1 import v1_ServerStatusResponse
 
 
-class AccountRequirement(Enum):
+class AccountRequirement(DisplayNameEnum):
     """Enum that represents a server account verification requirements that players must fulfill in order to join."""
 
-    @staticmethod
-    def parse(requirement: str):
-        mapping = {
-            "Disabled": AccountRequirement.DISABLED,
-            "Email": AccountRequirement.EMAIL,
-            "Phone/ID": AccountRequirement.PHONE_OR_ID,
-        }
-        return mapping.get(requirement, AccountRequirement.DISABLED)
-
-    DISABLED = 0
-    EMAIL = 1
-    PHONE_OR_ID = 2
+    DISABLED = (0, "Disabled")
+    EMAIL = (1, "Email")
+    PHONE_OR_ID = (2, "Phone/ID")
 
 
 class ServerStatus:
