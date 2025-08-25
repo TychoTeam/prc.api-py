@@ -22,6 +22,7 @@ class v1_ServerPlayer(TypedDict):
     Player: str
     Permission: Literal[
         "Normal",
+        "Server Helper",
         "Server Moderator",
         "Server Administrator",
         "Server Co-Owner",

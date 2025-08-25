@@ -11,6 +11,7 @@ class PlayerPermission(DisplayNameEnum):
     """Enum that represents a server player permission level."""
 
     NORMAL = (0, "Normal")
+    HELPER = (5, "Server Helper")
     MOD = (1, "Server Moderator")
     ADMIN = (2, "Server Administrator")
     CO_OWNER = (3, "Server Co-Owner")
@@ -67,9 +68,11 @@ class ServerPlayer(Player):
             None,
         )
 
-    def is_staff(self) -> bool:
-        """Whether this player is a server staff member based on their permission level."""
-        return self.permission != PlayerPermission.NORMAL
+    def is_staff(self, include_helpers: bool = True) -> bool:
+        """Whether this player is a server staff member based on their permission level. Includes helpers by default, set `include_helpers=False` to exclude."""
+        return self.permission != PlayerPermission.NORMAL and (
+            include_helpers or self.permission != PlayerPermission.HELPER
+        )
 
     def is_leo(self) -> bool:
         """Whether this player is on a law enforcement team."""

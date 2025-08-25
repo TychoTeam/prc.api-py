@@ -46,5 +46,13 @@ class DisplayNameEnum(IntEnum):
                 return member
         raise ValueError(f"Unknown {cls.__name__} display_name: '{display_name}'")
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Enum):
+            return self.value == other.value
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
     def __str__(self) -> str:
         return self.display_name
