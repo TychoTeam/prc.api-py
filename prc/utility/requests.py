@@ -116,15 +116,13 @@ class Requests(Generic[R]):
         self._check_default_headers()
         await self._rate_limiter.avoid_limit(route, self._max_retry_after)
 
-        headers = kwargs.pop("headers", {})
-        headers.update(self._default_headers)
-
-        full_url = self._base_url + route
+        url = f"{self._base_url}{route}"
+        headers = {**self._default_headers, **kwargs.pop("headers", {})}
 
         try:
             response = await self._session.request(
                 method,
-                full_url,
+                url,
                 headers=headers,
                 timeout=httpx.Timeout(self._timeout),
                 **kwargs,
