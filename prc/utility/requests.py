@@ -1,4 +1,4 @@
-from typing import Dict, Optional, TypeVar, Generic, Literal
+from typing import Dict, Optional, TypeVar, Generic
 from time import time
 from .cache import Cache, KeylessCache
 from ..exceptions import PRCException
