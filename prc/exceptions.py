@@ -10,14 +10,14 @@ from typing import Optional
 
 
 class PRCException(Exception):
-    """Base exception, can be used to catch all package exception"""
+    """Base exception, can be used to catch all package exception."""
 
     def __init__(self, message: str):
         super().__init__(message)
 
 
 class APIException(PRCException):
-    """Base exception to catch all PRC API error responses"""
+    """Base exception to catch all PRC API error responses."""
 
     def __init__(self, code: int, message: str):
         self.code = code

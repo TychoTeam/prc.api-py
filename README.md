@@ -8,7 +8,7 @@ It provides a convenient way to interact with PRC APIs, including the [private s
 - 🧩 **Developer Friendly**  
   Functions and responses are wrapped and categorized for ease of use.
 - 💫 **Full Coverage**  
-  Supports all features from the API as of _July 2025_.
+  Supports all features from the API as of _September 2025_.
 - 🛡️ **Maintained**  
   Actively maintained and fully open source for any contributions.
 - 💪 **Robust**  
