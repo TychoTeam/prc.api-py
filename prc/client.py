@@ -37,15 +37,15 @@ class PRC:
         self,
         global_key: Optional[str] = None,
         default_server_key: Optional[str] = None,
-        base_url: str = "https://api.policeroleplay.community/v1",
-        cache: Optional[GlobalCache] = None,
+        _base_url: str = "https://api.policeroleplay.community/v1",
+        _cache: Optional[GlobalCache] = None,
     ):
         self._global_key = global_key
         if default_server_key:
             self._validate_server_key(default_server_key)
         self._default_server_key = default_server_key
-        self._base_url = base_url
-        self._global_cache = cache if cache is not None else GlobalCache()
+        self._base_url = _base_url
+        self._global_cache = _cache if _cache is not None else GlobalCache()
         self._session = CleanAsyncClient()
         self._key_requests = (
             Requests[Literal["/reset"]](
