@@ -113,6 +113,7 @@ class Command:
         author: "Player",
         client: Optional["PRC"] = None,
         server: Optional["Server"] = None,
+        is_webhook: Optional[bool] = False,
     ):
         self._client = client
         self._server = server
