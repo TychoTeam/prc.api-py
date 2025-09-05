@@ -365,8 +365,8 @@ class ServerLogs(ServerModule):
         ]
 
 
-CommandTargetPlayerName = str
-CommandTargetPlayerId = int
+CommandTargetPlayerName = Union[str, Player]
+CommandTargetPlayerId = Union[int, Player]
 CommandTargetPlayerNameOrId = Union[CommandTargetPlayerName, CommandTargetPlayerId]
 
 
@@ -390,12 +390,20 @@ class ServerCommands(ServerModule):
         args: Optional[List[CommandArg]] = None,
         text: Optional[str] = None,
         _max_retries: int = 3,
+        _prefer_player_id: bool = False,
     ):
         """Run any command as the remote player in the server."""
         command = f":{name} "
 
+        def parse_target(target: CommandTargetPlayerNameOrId):
+            if isinstance(target, Player):
+                if _prefer_player_id:
+                    return str(target.id)
+                return str(target.name)
+            return str(target)
+
         if targets:
-            command += ",".join([str(t) for t in targets]) + " "
+            command += ",".join([parse_target(t) for t in targets]) + " "
 
         if args:
             command += (
@@ -414,6 +422,7 @@ class ServerCommands(ServerModule):
         message = "..."
         success = False
         retry = 0
+
         while success == False and retry < _max_retries:
             message = (await self._raw(command.strip())).get("message")
             success = message == "Success"
@@ -470,35 +479,35 @@ class ServerCommands(ServerModule):
 
     async def ban(self, targets: List[CommandTargetPlayerNameOrId]):
         """Ban players from the server."""
-        await self.run("ban", targets=targets)
+        await self.run("ban", targets=targets, _prefer_player_id=True)
 
     async def unban(self, targets: List[CommandTargetPlayerNameOrId]):
         """Unban players from the server."""
-        await self.run("unban", targets=targets)
+        await self.run("unban", targets=targets, _prefer_player_id=True)
 
     async def grant_helper(self, targets: List[CommandTargetPlayerNameOrId]):
         """Grant helper permissions to players in the server."""
-        await self.run("helper", targets=targets)
+        await self.run("helper", targets=targets, _prefer_player_id=True)
 
     async def revoke_helper(self, targets: List[CommandTargetPlayerNameOrId]):
         """Revoke helper permissions to players in the server."""
-        await self.run("unhelper", targets=targets)
+        await self.run("unhelper", targets=targets, _prefer_player_id=True)
 
     async def grant_mod(self, targets: List[CommandTargetPlayerNameOrId]):
         """Grant moderator permissions to players in the server."""
-        await self.run("mod", targets=targets)
+        await self.run("mod", targets=targets, _prefer_player_id=True)
 
     async def revoke_mod(self, targets: List[CommandTargetPlayerNameOrId]):
         """Revoke moderator permissions from players in the server."""
-        await self.run("unmod", targets=targets)
+        await self.run("unmod", targets=targets, _prefer_player_id=True)
 
     async def grant_admin(self, targets: List[CommandTargetPlayerNameOrId]):
         """Grant admin permissions to players in the server."""
-        await self.run("admin", targets=targets)
+        await self.run("admin", targets=targets, _prefer_player_id=True)
 
     async def revoke_admin(self, targets: List[CommandTargetPlayerNameOrId]):
         """Revoke admin permissions from players in the server."""
-        await self.run("unadmin", targets=targets)
+        await self.run("unadmin", targets=targets, _prefer_player_id=True)
 
     async def send_hint(self, text: str):
         """Send a temporary message to the server (undismissable banner)."""
