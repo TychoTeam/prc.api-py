@@ -135,6 +135,18 @@ class Server:
             else None
         )
 
+    def is_online(self):
+        """Whether the server is online (i.e. has online players). Server status or players must be fetched separately."""
+        return self.player_count > 0 if self.player_count else None
+
+    def is_full(self, include_reserved: bool = False):
+        """Whether the server player count has reached the max player limit. Excludes owner-reserved spot by default (`max_players - 1`), set `include_reserved=True` to include. Server status must be fetched separately."""
+        return (
+            (self.player_count >= self.max_players - (0 if include_reserved else 1))
+            if self.player_count and self.max_players
+            else None
+        )
+
     def _refresh_requests(self):
         global_key = self._global_key
         headers = {"Server-Key": self._server_key}
