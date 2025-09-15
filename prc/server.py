@@ -156,6 +156,7 @@ class Server:
             base_url=self._client._base_url + "/server",
             headers=headers,
             session=self._client._session,
+            invalid_keys=self._global_cache.invalid_keys,
         )
         return self._requests
 
@@ -205,7 +206,7 @@ class Server:
                     invalid_key = self._server_key
 
                 if invalid_key:
-                    self._requests._invalid_keys.add(invalid_key)
+                    self._global_cache.invalid_keys.add(invalid_key)
 
                 if isinstance(exception, RateLimited):
                     exception = RateLimited(

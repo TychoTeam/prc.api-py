@@ -5,7 +5,7 @@ The main prc.api client.
 """
 
 from .server import Server
-from .utility import Cache, CacheConfig, Requests
+from .utility import Cache, KeylessCache, CacheConfig, Requests
 from .utility.requests import CleanAsyncClient
 from .exceptions import PRCException
 from typing import Optional, TYPE_CHECKING, Dict, Literal
@@ -24,10 +24,12 @@ class GlobalCache:
         servers: CacheConfig = (3, 0),
         join_codes: CacheConfig = (3, 0),
         players: CacheConfig = (100, 0),
+        invalid_keys: CacheConfig = (25, 0),
     ):
         self.servers = Cache[str, Server](*servers)
         self.join_codes = Cache[str, str](*join_codes)
         self.players = Cache[int, "Player"](*players)
+        self.invalid_keys = KeylessCache[str](*invalid_keys)
 
 
 class PRC:
@@ -52,6 +54,7 @@ class PRC:
                 base_url=self._base_url + "/api-key",
                 headers={"Authorization": self._global_key},
                 session=self._session,
+                invalid_keys=self._global_cache.invalid_keys,
             )
             if self._global_key is not None
             else None
@@ -130,7 +133,7 @@ class PRC:
 
             self._global_key = new_key
         elif response.status_code == 403:
-            self._key_requests._invalid_keys.add(self._global_key)
+            self._global_cache.invalid_keys.add(self._global_key)
             raise PRCException(
                 f"The global key provided is invalid and cannot be reset."
             )

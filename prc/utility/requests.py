@@ -85,6 +85,7 @@ class Requests(Generic[R]):
     def __init__(
         self,
         base_url: str,
+        invalid_keys: KeylessCache[str],
         headers: Optional[Dict[str, str]] = None,
         session: Optional[CleanAsyncClient] = None,
         max_retries: int = 3,
@@ -100,7 +101,7 @@ class Requests(Generic[R]):
         self._max_retry_after = max_retry_after
         self._timeout = timeout
 
-        self._invalid_keys = KeylessCache[str](max_size=20)
+        self._invalid_keys = invalid_keys
 
     def _can_retry(self, status_code: int = 500, retry: int = 0):
         return (status_code == 429 or status_code >= 500) and retry < self._max_retries
