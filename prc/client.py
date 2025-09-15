@@ -129,14 +129,15 @@ class PRC:
             self._global_cache.players.clear()
 
             self._global_key = new_key
+        elif response.status_code == 403:
+            self._key_requests._invalid_keys.add(self._global_key)
+            raise PRCException(
+                f"The global key provided is invalid and cannot be reset."
+            )
         else:
-            if response.status_code == 403:
-                self._key_requests._invalid_keys.add(self._global_key)
-                raise PRCException(
-                    f"The global key provided is invalid and cannot be reset."
-                )
-            else:
-                raise PRCException("An unknown error has occured.")
+            raise PRCException(
+                f"An unknown error has occured while resetting the global key. ({response.status_code})"
+            )
 
     def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):
         for _, player in self._global_cache.players.items():

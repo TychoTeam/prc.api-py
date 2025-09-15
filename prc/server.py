@@ -177,7 +177,7 @@ class Server:
 
         error_code = response.get("code")
         if error_code is None:
-            raise PRCException("No error was received.")
+            raise PRCException("No error code was received.")
 
         exceptions: List[Callable[..., APIException]] = [
             UnknownError,
@@ -223,6 +223,10 @@ class Server:
         )
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
+        content_type: Optional[str] = response.headers.get("Content-Type", None)
+        if not content_type or not content_type.startswith("application/json"):
+            raise PRCException(f"Received a non-json content type: '{content_type}'")
+
         if not response.is_success:
             self._raise_error_code(response.json())
         return response.json()
@@ -322,7 +326,7 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_access(self):
-        """Get server access (join/leave) logs."""
+        """Get server access (join/leave) logs. Newer logs come first."""
         [
             AccessEntry(self._server, data=e)
             for e in self._handle(
@@ -430,7 +434,7 @@ class ServerCommands(ServerModule):
 
         if not success:
             raise PRCException(
-                f"An unknown command execution error has occured: {message}"
+                f"Command execution has unexpectedly failed: '{message}'"
             )
 
     async def kill(self, targets: List[CommandTargetPlayerName]):

@@ -60,7 +60,9 @@ class RateLimiter:
             resets_in = bucket.reset_at - time()
             if resets_in > 0:
                 if resets_in > max_retry_after:
-                    raise PRCException("An IP ban has likely occured.")
+                    raise PRCException(
+                        f"Rate limit exceeded max threshold ({max_retry_after}s). An IP ban or limit has likely occured."
+                    )
                 await asyncio.sleep(resets_in)
             else:
                 self.buckets.delete(bucket.name)
@@ -107,7 +109,7 @@ class Requests(Generic[R]):
         for header, value in self._default_headers.items():
             if value in self._invalid_keys:
                 raise PRCException(
-                    f"Cannot reuse an invalid API key from default header: {header}"
+                    f"Cannot reuse an invalid API key from default header: '{header}'"
                 )
 
     async def _make_request(
