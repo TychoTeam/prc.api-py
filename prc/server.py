@@ -15,6 +15,7 @@ from .exceptions import *
 from .models import *
 import asyncio
 import httpx
+import copy
 
 from .api_types.v1 import *
 from .api_types.v1 import _APIMap
@@ -58,11 +59,11 @@ def _ephemeral(func):
         if hasattr(self, cache_key):
             cached_result, timestamp = getattr(self, cache_key)
             if (asyncio.get_event_loop().time() - timestamp) < self._ephemeral_ttl:
-                return cached_result
+                return copy.copy(cached_result)
 
         result = await func(self, *args, **kwargs)
         setattr(self, cache_key, (result, asyncio.get_event_loop().time()))
-        return result
+        return copy.copy(result)
 
     return wrapper
 
@@ -339,7 +340,7 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_kills(self):
-        """Get server kill logs."""
+        """Get server kill logs. Older logs come first."""
         return [
             KillEntry(self._server, data=e)
             for e in self._handle(
@@ -350,7 +351,7 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_commands(self):
-        """Get server command logs."""
+        """Get server command logs. Older logs come first."""
         return [
             CommandEntry(self._server, data=e)
             for e in self._handle(
@@ -361,7 +362,7 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_mod_calls(self):
-        """Get server mod call logs."""
+        """Get server mod call logs. Older logs come first."""
         return [
             ModCallEntry(self._server, data=e)
             for e in self._handle(
