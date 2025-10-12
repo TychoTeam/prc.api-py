@@ -17,6 +17,7 @@ from .models import *
 import hashlib
 import asyncio
 import httpx
+import copy
 import json
 
 from .api_types.v1 import *
@@ -71,11 +72,11 @@ def _ephemeral(func):
         if hasattr(self, cache_key):
             cached_result, timestamp = getattr(self, cache_key)
             if (asyncio.get_event_loop().time() - timestamp) < self._ephemeral_ttl:
-                return cached_result
+                return copy.copy(cached_result)
 
         result = await func(self, *args, **kwargs)
         setattr(self, cache_key, (result, asyncio.get_event_loop().time()))
-        return result
+        return copy.copy(result)
 
     return wrapper
 
@@ -148,6 +149,18 @@ class Server:
             else None
         )
 
+    def is_online(self):
+        """Whether the server is online (i.e. has online players). Server status or players must be fetched separately."""
+        return self.player_count > 0 if self.player_count else None
+
+    def is_full(self, include_reserved: bool = False):
+        """Whether the server player count has reached the max player limit. Excludes owner-reserved spot by default (`max_players - 1`), set `include_reserved=True` to include. Server status must be fetched separately."""
+        return (
+            (self.player_count >= self.max_players - (0 if include_reserved else 1))
+            if self.player_count and self.max_players
+            else None
+        )
+
     def _refresh_requests(self):
         global_key = self._global_key
         headers = {"Server-Key": self._server_key}
@@ -157,6 +170,7 @@ class Server:
             base_url=self._client._base_url + "/server",
             headers=headers,
             session=self._client._session,
+            invalid_keys=self._global_cache.invalid_keys,
         )
         return self._requests
 
@@ -178,7 +192,7 @@ class Server:
 
         error_code = response.get("code")
         if error_code is None:
-            raise PRCException("No error was received.")
+            raise PRCException("No error code was received.")
 
         exceptions: List[Callable[..., APIException]] = [
             UnknownError,
@@ -206,7 +220,7 @@ class Server:
                     invalid_key = self._server_key
 
                 if invalid_key:
-                    self._requests._invalid_keys.add(invalid_key)
+                    self._global_cache.invalid_keys.add(invalid_key)
 
                 if isinstance(exception, RateLimited):
                     exception = RateLimited(
@@ -224,6 +238,10 @@ class Server:
         )
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
+        content_type: Optional[str] = response.headers.get("Content-Type", None)
+        if not content_type or not content_type.startswith("application/json"):
+            raise PRCException(f"Received a non-json content type: '{content_type}'")
+
         if not response.is_success:
             self._raise_error_code(response.json())
         return response.json()
@@ -323,7 +341,7 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_access(self):
-        """Get server access (join/leave) logs."""
+        """Get server access (join/leave) logs. Newer logs come first."""
         [
             AccessEntry(self._server, data=e)
             for e in self._handle(
@@ -335,7 +353,7 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_kills(self):
-        """Get server kill logs."""
+        """Get server kill logs. Older logs come first."""
         return [
             KillEntry(self._server, data=e)
             for e in self._handle(
@@ -346,7 +364,7 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_commands(self):
-        """Get server command logs."""
+        """Get server command logs. Older logs come first."""
         return [
             CommandEntry(self._server, data=e)
             for e in self._handle(
@@ -357,7 +375,7 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_mod_calls(self):
-        """Get server mod call logs."""
+        """Get server mod call logs. Older logs come first."""
         return [
             ModCallEntry(self._server, data=e)
             for e in self._handle(
@@ -366,8 +384,8 @@ class ServerLogs(ServerModule):
         ]
 
 
-CommandTargetPlayerName = str
-CommandTargetPlayerId = int
+CommandTargetPlayerName = Union[str, Player]
+CommandTargetPlayerId = Union[int, Player]
 CommandTargetPlayerNameOrId = Union[CommandTargetPlayerName, CommandTargetPlayerId]
 
 
@@ -391,12 +409,20 @@ class ServerCommands(ServerModule):
         args: Optional[List[CommandArg]] = None,
         text: Optional[str] = None,
         _max_retries: int = 3,
+        _prefer_player_id: bool = False,
     ):
         """Run any command as the remote player in the server."""
         command = f":{name} "
 
+        def parse_target(target: CommandTargetPlayerNameOrId):
+            if isinstance(target, Player):
+                if _prefer_player_id:
+                    return str(target.id)
+                return str(target.name)
+            return str(target)
+
         if targets:
-            command += ",".join([str(t) for t in targets]) + " "
+            command += ",".join([parse_target(t) for t in targets]) + " "
 
         if args:
             command += (
@@ -415,6 +441,7 @@ class ServerCommands(ServerModule):
         message = "..."
         success = False
         retry = 0
+
         while success == False and retry < _max_retries:
             message = (await self._raw(command.strip())).get("message")
             success = message == "Success"
@@ -422,7 +449,7 @@ class ServerCommands(ServerModule):
 
         if not success:
             raise PRCException(
-                f"An unknown command execution error has occured: {message}"
+                f"Command execution has unexpectedly failed: '{message}'"
             )
 
     async def kill(self, targets: List[CommandTargetPlayerName]):
@@ -471,35 +498,35 @@ class ServerCommands(ServerModule):
 
     async def ban(self, targets: List[CommandTargetPlayerNameOrId]):
         """Ban players from the server."""
-        await self.run("ban", targets=targets)
+        await self.run("ban", targets=targets, _prefer_player_id=True)
 
     async def unban(self, targets: List[CommandTargetPlayerNameOrId]):
         """Unban players from the server."""
-        await self.run("unban", targets=targets)
+        await self.run("unban", targets=targets, _prefer_player_id=True)
 
     async def grant_helper(self, targets: List[CommandTargetPlayerNameOrId]):
         """Grant helper permissions to players in the server."""
-        await self.run("helper", targets=targets)
+        await self.run("helper", targets=targets, _prefer_player_id=True)
 
     async def revoke_helper(self, targets: List[CommandTargetPlayerNameOrId]):
         """Revoke helper permissions to players in the server."""
-        await self.run("unhelper", targets=targets)
+        await self.run("unhelper", targets=targets, _prefer_player_id=True)
 
     async def grant_mod(self, targets: List[CommandTargetPlayerNameOrId]):
         """Grant moderator permissions to players in the server."""
-        await self.run("mod", targets=targets)
+        await self.run("mod", targets=targets, _prefer_player_id=True)
 
     async def revoke_mod(self, targets: List[CommandTargetPlayerNameOrId]):
         """Revoke moderator permissions from players in the server."""
-        await self.run("unmod", targets=targets)
+        await self.run("unmod", targets=targets, _prefer_player_id=True)
 
     async def grant_admin(self, targets: List[CommandTargetPlayerNameOrId]):
         """Grant admin permissions to players in the server."""
-        await self.run("admin", targets=targets)
+        await self.run("admin", targets=targets, _prefer_player_id=True)
 
     async def revoke_admin(self, targets: List[CommandTargetPlayerNameOrId]):
         """Revoke admin permissions from players in the server."""
-        await self.run("unadmin", targets=targets)
+        await self.run("unadmin", targets=targets, _prefer_player_id=True)
 
     async def send_hint(self, text: str):
         """Send a temporary message to the server (undismissable banner)."""

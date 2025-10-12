@@ -49,9 +49,9 @@ class ServerStatus:
         """Whether the server is online (i.e. has online players)."""
         return self.player_count > 0
 
-    def is_full(self) -> bool:
-        """Whether the server player count has reached the max player limit."""
-        return self.player_count >= self.max_players
+    def is_full(self, include_reserved: bool = False) -> bool:
+        """Whether the server player count has reached the max player limit. Excludes owner-reserved spot by default (`max_players - 1`), set `include_reserved=True` to include."""
+        return self.player_count >= self.max_players - (0 if include_reserved else 1)
 
     def __repr__(self) -> str:
         return (

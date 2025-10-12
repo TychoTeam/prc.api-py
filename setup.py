@@ -6,6 +6,7 @@ setuptools.setup(
     name="prc.api",
     description="prc.api is an asynchronous Python wrapper for the PRC/ERLC API",
     license="MIT",
+    url="https://github.com/TychoTeam/prc.api-py",
     # README
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

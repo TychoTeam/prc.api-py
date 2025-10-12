@@ -60,7 +60,9 @@ class RateLimiter:
             resets_in = bucket.reset_at - time()
             if resets_in > 0:
                 if resets_in > max_retry_after:
-                    raise PRCException("An IP ban has likely occured.")
+                    raise PRCException(
+                        f"Rate limit exceeded max threshold ({max_retry_after}s). An IP ban or limit has likely occured."
+                    )
                 await asyncio.sleep(resets_in)
             else:
                 self.buckets.delete(bucket.name)
@@ -83,6 +85,7 @@ class Requests(Generic[R]):
     def __init__(
         self,
         base_url: str,
+        invalid_keys: KeylessCache[str],
         headers: Optional[Dict[str, str]] = None,
         session: Optional[CleanAsyncClient] = None,
         max_retries: int = 3,
@@ -98,7 +101,7 @@ class Requests(Generic[R]):
         self._max_retry_after = max_retry_after
         self._timeout = timeout
 
-        self._invalid_keys = KeylessCache[str](max_size=20)
+        self._invalid_keys = invalid_keys
 
     def _can_retry(self, status_code: int = 500, retry: int = 0):
         return (status_code == 429 or status_code >= 500) and retry < self._max_retries
@@ -107,7 +110,7 @@ class Requests(Generic[R]):
         for header, value in self._default_headers.items():
             if value in self._invalid_keys:
                 raise PRCException(
-                    f"Cannot reuse an invalid API key from default header: {header}"
+                    f"Cannot reuse an invalid API key from default header: '{header}'"
                 )
 
     async def _make_request(
@@ -130,7 +133,9 @@ class Requests(Generic[R]):
         except httpx.ReadTimeout:
             if self._can_retry(retry=retry):
                 await asyncio.sleep(retry * 1.5)
-                return await self._make_request(method, route, retry + 1, **kwargs)
+                return await self._make_request(
+                    method, route, retry + 1, **kwargs, headers=headers
+                )
             else:
                 raise PRCException(
                     f"PRC API took too long to respond. ({retry}/{self._max_retries} retries) ({self._timeout}s timeout)"
@@ -142,7 +147,9 @@ class Requests(Generic[R]):
             if await self._rate_limiter.wait_to_retry(
                 response.headers, self._max_retry_after
             ):
-                return await self._make_request(method, route, retry + 1, **kwargs)
+                return await self._make_request(
+                    method, route, retry + 1, **kwargs, headers=headers
+                )
 
         return response
 
