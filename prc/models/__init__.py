@@ -41,4 +41,4 @@ from .commands import (
     CommandTarget,
 )
 
-from .webhooks import WebhookPlayer, WebhookType, WebhookMessage
+from .webhooks import WebhookPlayer, WebhookType, WebhookMessage, WebhookVersion

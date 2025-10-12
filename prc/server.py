@@ -11,10 +11,13 @@ from typing import (
     Any,
 )
 from .utility import KeylessCache, Cache, CacheConfig, Requests, InsensitiveEnum
+from functools import wraps
 from .exceptions import *
 from .models import *
+import hashlib
 import asyncio
 import httpx
+import json
 
 from .api_types.v1 import *
 from .api_types.v1 import _APIMap
@@ -53,8 +56,18 @@ def _refresh_server(func):
 
 
 def _ephemeral(func):
+    @wraps(func)
     async def wrapper(self: "Server", *args, **kwargs):
-        cache_key = f"{func.__name__}_cache"
+        try:
+            args_repr = json.dumps(args, sort_keys=True, default=str)
+            kwargs_repr = json.dumps(kwargs, sort_keys=True, default=str)
+        except (TypeError, ValueError):
+            args_repr = str(args)
+            kwargs_repr = str(kwargs)
+
+        hashed_args = hashlib.sha256(f"{args_repr}|{kwargs_repr}".encode()).hexdigest()
+        cache_key = f"{func.__name__}_cache_{hashed_args}"
+
         if hasattr(self, cache_key):
             cached_result, timestamp = getattr(self, cache_key)
             if (asyncio.get_event_loop().time() - timestamp) < self._ephemeral_ttl:
@@ -527,3 +540,11 @@ class ServerCommands(ServerModule):
     async def stop_fires(self):
         """Stop all fires in the server."""
         await self.run("stopfire")
+
+    async def load_layout(self, name_or_code: str):
+        """Load a map editor layout (aka. map template)."""
+        await self.run("loadlayout", text=name_or_code)
+
+    async def unload_layout(self, name_or_code: str):
+        """Unload a map editor layout (aka. map template)."""
+        await self.run("unloadlayout", text=name_or_code)

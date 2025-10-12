@@ -132,12 +132,31 @@ class Command:
         if parsed_command and self.name in _supports_targets:
             if self.name in _supports_multi_targets:
                 self.targets = []
-                parsed_targets = parsed_command.pop(0).split(",")
+
+                if is_webhook:
+                    combined = " ".join(parsed_command)
+                    parsed_command.clear()
+
+                    parsed_targets = []
+                    parts = combined.split(", ")
+                    for part in parts:
+                        if " " in part:
+                            content = part.split(" ")
+                            parsed_targets.append(content.pop(0))
+                            parsed_command = content
+                            break
+
+                        parsed_targets.append(part)
+
+                else:
+                    parsed_targets = parsed_command.pop(0).split(",")
 
                 for parsed_target in parsed_targets:
                     if parsed_target:
                         self.targets.append(
-                            CommandTarget(self, data=parsed_target, author=author)
+                            CommandTarget(
+                                self, data=parsed_target.strip(), author=author
+                            )
                         )
             else:
                 self.targets = [
@@ -238,6 +257,8 @@ CommandName = Literal[
     "commands",
     "cmds",
     "weather",
+    "loadlayout",
+    "unloadlayout",
 ]
 
 _supports_targets: List[CommandName] = [

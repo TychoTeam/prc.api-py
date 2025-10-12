@@ -5,7 +5,7 @@ The main prc.api client.
 """
 
 from .server import Server
-from .webhook import Webhook
+from .webhooks import Webhooks
 from .utility import Cache, CacheConfig, Requests
 from .utility.requests import CleanAsyncClient
 from .exceptions import PRCException
@@ -58,7 +58,7 @@ class PRC:
             else None
         )
 
-        self.webhooks = Webhook(self)
+        self.webhooks = Webhooks(self)
 
     def get_server(
         self, server_key: Optional[str] = None, ignore_global_key: bool = False
