@@ -33,7 +33,9 @@ LOG = TypeVar("LOG")
 
 
 class ServerCache:
-    """Server long-term object caches and config. TTL in seconds, 0 to disable. (max_size, TTL)"""
+    """
+    Server long-term object caches and config. TTL in seconds, 0 to disable. (max_size, TTL)
+    """
 
     def __init__(
         self,

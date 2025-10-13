@@ -3,7 +3,9 @@ from enum import Enum, IntEnum
 
 
 class InsensitiveEnum(Enum):
-    """Str enum that is case insensitive. Values must be lowercase."""
+    """
+    String enum that is case insensitive. Values must be lowercase.
+    """
 
     def __new__(cls, value, *args, **kwargs):
         obj = object.__new__(cls)
@@ -29,7 +31,9 @@ T = TypeVar("T", bound="DisplayNameEnum")
 
 
 class DisplayNameEnum(IntEnum):
-    """Modified int enum that adds display names."""
+    """
+    Modified int enum that adds display names.
+    """
 
     display_name: str
 

@@ -52,7 +52,7 @@ class Webhooks:
         return WebhookType.parse(title.replace("Player ", "Players "))
 
     def get_author(
-        self, *, description: str, server: Optional["Server"]
+        self, *, description: str, server: Optional["Server"] = None
     ) -> WebhookPlayer:
         """
         Get the author of a webhook message.
@@ -62,15 +62,15 @@ class Webhooks:
         description
             The webhook message embed description.
         server
-            The cached server handler, if any.
+            The server handler, if any.
         """
 
         if matched := re.search(
             r"^\[([^\]:]+)(?::(\d+))?]\(.+/users/(\d+)/profile\)", description
         ):
             return WebhookPlayer(
-                (str(matched.group(2) or matched.group(3)), str(matched.group(1))),
                 self._client,
+                (str(matched.group(2) or matched.group(3)), str(matched.group(1))),
                 server,
             )
         raise ValueError(
@@ -90,7 +90,7 @@ class Webhooks:
         author
             The webhook message's author player.
         server
-            The cached server handler, if any.
+            The server handler, if any.
         """
 
         content: str

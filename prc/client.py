@@ -18,7 +18,9 @@ if TYPE_CHECKING:
 
 
 class GlobalCache:
-    """Global object caches and config. TTL in seconds, 0 to disable. (max_size, TTL)"""
+    """
+    Global object caches and config. TTL in seconds, 0 to disable. (max_size, TTL)
+    """
 
     def __init__(
         self,

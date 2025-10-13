@@ -80,7 +80,9 @@ class RateLimiter:
 
 
 class Requests(Generic[R]):
-    """Handles outgoing API requests while respecting rate limits."""
+    """
+    Handles outgoing API requests while respecting rate limits.
+    """
 
     def __init__(
         self,

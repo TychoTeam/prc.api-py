@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from prc.client import PRC
     from prc.server import Server
     from prc.webhooks import Webhooks
+    from prc.models import ServerPlayer
     from .commands import Command
 
 
@@ -13,10 +14,24 @@ WebhookVersion = Literal[1, 2]
 
 
 class WebhookPlayer(Player):
-    """Represents a player referenced in a webhook message."""
+    """
+    Represents a player referenced in a webhook message.
+
+    Parameters
+    ----------
+    client
+        The global/shared PRC client.
+    data
+        The player name and ID.
+    server
+        The server handler, if any.
+    """
 
     def __init__(
-        self, data: Tuple[str, str], client: "PRC", server: Optional["Server"]
+        self,
+        client: "PRC",
+        data: Tuple[str, str],
+        server: Optional["Server"] = None,
     ):
         self._client = client
         self._server = server
@@ -24,15 +39,20 @@ class WebhookPlayer(Player):
         super().__init__(client, data=data)
 
     @property
-    def player(self):
-        """The full server player, if found."""
+    def player(self) -> Optional["ServerPlayer"]:
+        """
+        The full server player, if found.
+        """
+
         if self._server:
             return self._server._get_player(id=self.id)
         return None
 
 
 class WebhookType(DisplayNameEnum):
-    """Enum that represents webhook message type."""
+    """
+    Enum that represents webhook message type.
+    """
 
     COMMAND = (0, "Command Usage")
     KICK = (1, "Players Kicked")
@@ -40,7 +60,24 @@ class WebhookType(DisplayNameEnum):
 
 
 class WebhookMessage:
-    """Represents a webhook message."""
+    """
+    Represents a webhook message.
+
+    Parameters
+    ----------
+    webhooks
+        An initialized webhooks handler.
+    type
+        The type of the webhook message.
+    version
+        The version of the webhook message.
+    command
+        The command referenced in the webhook message.
+    author
+        The author of the webhook message.
+    server
+        The server handler, if any.
+    """
 
     def __init__(
         self,

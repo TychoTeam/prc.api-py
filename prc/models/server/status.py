@@ -8,7 +8,9 @@ if TYPE_CHECKING:
 
 
 class AccountRequirement(DisplayNameEnum):
-    """Enum that represents a server account verification requirements that players must fulfill in order to join."""
+    """
+    Enum that represents a server account verification requirements that players must fulfill in order to join.
+    """
 
     DISABLED = (0, "Disabled")
     EMAIL = (1, "Email")
@@ -16,7 +18,16 @@ class AccountRequirement(DisplayNameEnum):
 
 
 class ServerStatus:
-    """Represents a server status with information about the server."""
+    """
+    Represents a server status with information about the server.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    data
+        The response data.
+    """
 
     def __init__(self, server: "Server", data: "v1_ServerStatusResponse"):
         self.name = str(data.get("Name"))

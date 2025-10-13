@@ -15,7 +15,10 @@ class Cache(Generic[K, V]):
         ttl: Optional[int] = None,
         unique: bool = True,
     ):
-        """A custom cache class with size limitation, TTL, and value uniqueness (toggleable)."""
+        """
+        A custom cache class with size limitation, TTL, and value uniqueness (toggleable).
+        """
+
         self.max_size: int = max_size
         self.ttl: Optional[int] = ttl or None
         self.unique: bool = unique
@@ -91,7 +94,10 @@ class KeylessCache(Generic[V]):
         ttl: Optional[int] = None,
         sort: Optional[Tuple[Callable[[V], Any], Optional[bool]]] = None,
     ):
-        """A custom keyless cache class with size limitation and TTL. Items are unique."""
+        """
+        A custom keyless cache class with size limitation and TTL. Items are unique.
+        """
+
         self.max_size = max_size
         self.ttl = ttl or None
         self._sort = sort
