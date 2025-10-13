@@ -10,15 +10,32 @@ if TYPE_CHECKING:
 
 
 class Webhooks:
-    """The main class to interface with the PRC ER:LC server log webhook message parsers."""
+    """
+    The main class to interface with the PRC ER:LC server log webhook message parsers.
+
+    Parameters
+    ----------
+    client
+        The global/shared PRC client.
+    """
 
     def __init__(self, client: "PRC"):
         self._client = client
 
     def get_type(
-        self, title: str, command_name: Optional["CommandName"] = None
+        self, *, title: str, command_name: Optional["CommandName"] = None
     ) -> WebhookType:
-        """Determine the type of a webhook message."""
+        """
+        Determine the type of a webhook message.
+
+        Parameters
+        ----------
+        title
+            The webhook message embed title.
+        command_name
+            The used command's name.
+        """
+
         if title.title() == "Kick/Ban Command Usage":
             if command_name == "kick":
                 return WebhookType.KICK
@@ -34,8 +51,20 @@ class Webhooks:
                 )
         return WebhookType.parse(title.replace("Player ", "Players "))
 
-    def get_author(self, description: str, server: Optional["Server"]) -> WebhookPlayer:
-        """Get the author of a webhook message."""
+    def get_author(
+        self, *, description: str, server: Optional["Server"]
+    ) -> WebhookPlayer:
+        """
+        Get the author of a webhook message.
+
+        Parameters
+        ----------
+        description
+            The webhook message embed description.
+        server
+            The cached server handler, if any.
+        """
+
         if matched := re.search(
             r"^\[([^\]:]+)(?::(\d+))?]\(.+/users/(\d+)/profile\)", description
         ):
@@ -49,14 +78,23 @@ class Webhooks:
         )
 
     def get_command(
-        self,
-        description: str,
-        author: Player,
-        server: Optional["Server"] = None,
+        self, *, description: str, author: Player, server: Optional["Server"] = None
     ) -> "Command":
-        """Get the command used in a webhook message."""
+        """
+        Get the command used in a webhook message.
+
+        Parameters
+        ----------
+        description
+            The webhook message embed description.
+        author
+            The webhook message's author player.
+        server
+            The cached server handler, if any.
+        """
+
         content: str
-        version = self._get_version(description)
+        version = self._get_version(description=description)
         if version == 1:
             if matched := re.search(r"\"(.+)\"$", description, flags=re.S):
                 content = matched.group(1)
@@ -95,60 +133,81 @@ class Webhooks:
             is_webhook=True,
         )
 
-    def get_join_code(self, footer: str) -> str:
-        """Get the unique server join code of a webhook message."""
+    def get_join_code(self, *, footer: str) -> str:
+        """
+        Get the unique server join code of a webhook message.
+
+        Parameters
+        ----------
+        footer
+            The webhook message embed footer.
+        """
+
         if not footer.startswith("Private Server: "):
             raise ValueError(f"Invalid footer format: {footer}")
         return footer.split(" ")[-1]
 
     @overload
-    def parse(self, embed_or_title: object) -> WebhookMessage: ...
+    def parse(self, *, embed: object) -> WebhookMessage: ...
 
     @overload
-    def parse(
-        self, embed_or_title: str, description: str, footer: str
-    ) -> WebhookMessage: ...
+    def parse(self, *, title: str, description: str, footer: str) -> WebhookMessage: ...
 
     def parse(
         self,
-        embed_or_title: Union[str, object],
+        *,
+        embed: Optional[object] = None,
+        title: Optional[str] = None,
         description: Optional[str] = None,
         footer: Optional[str] = None,
     ) -> WebhookMessage:
-        """Parse a webhook message."""
-        if not isinstance(embed_or_title, str) and hasattr(embed_or_title, "title"):
-            embed = embed_or_title
+        """
+        Parse a webhook message.
+
+        Parameters
+        ----------
+        embed
+            The webhook message embed. This object must have the following attributes: "title", "description", "footer.text" (nested).
+        title
+            The webhook message embed title.
+        description
+            The webhook message embed description.
+        footer
+            The webhook message embed footer.
+        """
+
+        if hasattr(embed, "title"):
             title = getattr(embed, "title", None)
             description = getattr(embed, "description", None)
             footer_obj = getattr(embed, "footer", None)
             footer = getattr(footer_obj, "text", None) if footer_obj else None
-        else:
-            title = embed_or_title
 
         if not isinstance(title, str):
-            raise ValueError(f"Invalid title: {title}")
+            raise ValueError(f"Invalid or missing title: {title}")
 
         if not isinstance(description, str):
-            raise ValueError(f"Invalid title: {description}")
+            raise ValueError(f"Invalid or missing title: {description}")
 
         if not isinstance(footer, str):
-            raise ValueError(f"Invalid title: {footer}")
+            raise ValueError(f"Invalid or missing title: {footer}")
 
-        server = self._get_server(footer)
-        version = self._get_version(description)
-        author = self.get_author(description, server)
-        command = self.get_command(description, author, server)
-        type = self.get_type(title, command.name)
+        server = self._get_server(footer=footer)
+        version = self._get_version(description=description)
+        author = self.get_author(description=description, server=server)
+        command = self.get_command(
+            description=description, author=author, server=server
+        )
+        type = self.get_type(title=title, command_name=command.name)
 
         return WebhookMessage(self, type, version, command, author, server)
 
-    def _get_server(self, footer: str) -> Optional["Server"]:
-        join_code = self.get_join_code(footer)
+    def _get_server(self, *, footer: str) -> Optional["Server"]:
+        join_code = self.get_join_code(footer=footer)
         server_id = self._client._global_cache.join_codes.get(join_code)
         if server_id:
             return self._client._global_cache.servers.get(server_id)
 
-    def _get_version(self, description: str) -> WebhookVersion:
+    def _get_version(self, *, description: str) -> WebhookVersion:
         if description[-1] == '"':
             return 1
         if description[-1] == "`":

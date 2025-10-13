@@ -34,8 +34,6 @@ class GlobalCache:
 
 
 class PRC:
-    """The main PRC API client. Controls servers and global cache."""
-
     """
     The main PRC API client. Controls servers and global cache.
 
