@@ -5,10 +5,13 @@ from ..player import Player
 if TYPE_CHECKING:
     from prc.server import Server
     from prc.api_types.v1 import v1_ServerPlayer
+    from .vehicle import Vehicle
 
 
 class PlayerPermission(DisplayNameEnum):
-    """Enum that represents a server player permission level."""
+    """
+    Enum that represents a server player permission level.
+    """
 
     NORMAL = (0, "Normal")
     HELPER = (5, "Server Helper")
@@ -19,7 +22,9 @@ class PlayerPermission(DisplayNameEnum):
 
 
 class PlayerTeam(DisplayNameEnum):
-    """Enum that represents a server player team."""
+    """
+    Enum that represents a server player team.
+    """
 
     CIVILIAN = (0, "Civilian")
     SHERIFF = (1, "Sheriff")
@@ -30,7 +35,16 @@ class PlayerTeam(DisplayNameEnum):
 
 
 class ServerPlayer(Player):
-    """Represents a full player in a server."""
+    """
+    Represents a full player in a server.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    data
+        The response data.
+    """
 
     def __init__(self, server: "Server", data: "v1_ServerPlayer"):
         self._server = server
@@ -46,7 +60,10 @@ class ServerPlayer(Player):
 
     @property
     def joined_at(self):
-        """When this player last joined the server. Server access (join/leave) logs must be fetched separately."""
+        """
+        When this player last joined the server. Server access (join/leave) logs must be fetched separately.
+        """
+
         return next(
             (
                 entry.created_at
@@ -57,8 +74,11 @@ class ServerPlayer(Player):
         )
 
     @property
-    def vehicle(self):
-        """The player's currently spawned **primary** vehicle. Server vehicles must be fetched separately."""
+    def vehicle(self) -> Optional["Vehicle"]:
+        """
+        The player's currently spawned **primary** vehicle. Server vehicles must be fetched separately.
+        """
+
         return next(
             (
                 vehicle
@@ -69,13 +89,31 @@ class ServerPlayer(Player):
         )
 
     def is_staff(self, include_helpers: bool = True) -> bool:
-        """Whether this player is a server staff member based on their permission level. Includes helpers by default, set `include_helpers=False` to exclude."""
+        """
+        Whether this player is a server staff member based on their permission level.
+
+        Parameters
+        ----------
+        include_helpers
+            Whether to check for helper permissions.
+        """
+
         return self.permission != PlayerPermission.NORMAL and (
             include_helpers or self.permission != PlayerPermission.HELPER
         )
 
+    def is_jailed(self) -> bool:
+        """
+        Whether this player is jailed.
+        """
+
+        return self.team == PlayerTeam.JAIL
+
     def is_leo(self) -> bool:
-        """Whether this player is on a law enforcement team."""
+        """
+        Whether this player is on a law enforcement team.
+        """
+
         return self.team in (PlayerTeam.SHERIFF, PlayerTeam.POLICE)
 
     def __repr__(self) -> str:
@@ -83,7 +121,18 @@ class ServerPlayer(Player):
 
 
 class QueuedPlayer:
-    """Represents a partial player in the server join queue."""
+    """
+    Represents a partial player in the server join queue.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    id
+        The player ID.
+    index
+        The player's queue list index.
+    """
 
     def __init__(self, server: "Server", id: int, index: int):
         self._server = server
@@ -104,7 +153,16 @@ class QueuedPlayer:
 
 
 class ServerOwner:
-    """Represents a server [co-]owner partial player."""
+    """
+    Represents a server [co-]owner partial player.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    id
+        The player ID.
+    """
 
     def __init__(self, server: "Server", id: int):
         self._server = server
@@ -112,8 +170,11 @@ class ServerOwner:
         self.id = int(id)
 
     @property
-    def player(self):
-        """The full server player, if found."""
+    def player(self) -> Optional["ServerPlayer"]:
+        """
+        The full server player, if found.
+        """
+
         return self._server._get_player(id=self.id)
 
     def __eq__(self, other: object) -> bool:
@@ -129,7 +190,18 @@ class ServerOwner:
 
 
 class StaffMember(Player):
-    """Represents a server staff member player."""
+    """
+    Represents a server staff member player.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    data
+        The player name and ID.
+    permission
+        The player permission.
+    """
 
     def __init__(
         self, server: "Server", data: Tuple[str, str], permission: PlayerPermission
@@ -141,8 +213,11 @@ class StaffMember(Player):
         super().__init__(server._client, data=data)
 
     @property
-    def player(self):
-        """The full server player, if found."""
+    def player(self) -> Optional["ServerPlayer"]:
+        """
+        The full server player, if found.
+        """
+
         return self._server._get_player(id=self.id)
 
     def __repr__(self) -> str:

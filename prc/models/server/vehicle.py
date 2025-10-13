@@ -2,12 +2,22 @@ from typing import Optional, Literal, TYPE_CHECKING, cast, List
 from ..player import Player
 
 if TYPE_CHECKING:
-    from prc.server import Server
     from prc.api_types.v1 import v1_ServerVehicle
+    from prc.server import Server
+    from .player import ServerPlayer
 
 
 class VehicleOwner:
-    """Represents a server vehicle owner partial player."""
+    """
+    Represents a server vehicle owner partial player.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    name
+        The player name.
+    """
 
     def __init__(self, server: "Server", name: str):
         self._server = server
@@ -15,8 +25,11 @@ class VehicleOwner:
         self.name = str(name)
 
     @property
-    def player(self):
-        """The full server player, if found."""
+    def player(self) -> Optional["ServerPlayer"]:
+        """
+        The full server player, if found.
+        """
+
         return self._server._get_player(name=self.name)
 
     def __eq__(self, other: object) -> bool:
@@ -32,13 +45,23 @@ class VehicleOwner:
 
 
 class VehicleTexture:
-    """Represents a server vehicle texture or livery."""
+    """
+    Represents a server vehicle texture or livery.
+
+    Parameters
+    ----------
+    name
+        The vehicle texture's name.
+    """
 
     def __init__(self, name: str):
         self.name = name
 
     def is_default(self) -> bool:
-        """Whether this texture is *likely* a default game texture and not a custom texture (aka. custom livery)."""
+        """
+        Whether this texture is **LIKELY** a default game texture and **NOT** a custom texture (aka. custom livery).
+        """
+
         return self.name in _default_textures
 
     def __eq__(self, other: object) -> bool:
@@ -54,7 +77,16 @@ class VehicleTexture:
 
 
 class Vehicle:
-    """Represents a currently spawned server vehicle."""
+    """
+    Represents a currently spawned server vehicle.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    data
+        The response data.
+    """
 
     def __init__(self, server: "Server", data: "v1_ServerVehicle"):
         self._server = server
@@ -78,15 +110,24 @@ class Vehicle:
 
     @property
     def full_name(self) -> "VehicleName":
-        """The vehicle model name suffixed by the model year (if applicable). Unique for each *game* vehicle, while a *server* may have multiple spawned vehicles with the same full name."""
+        """
+        The vehicle model name suffixed by the model year (if applicable). Unique for each *game* vehicle. A *server* may have multiple spawned vehicles with the same full name.
+        """
+
         return cast(VehicleName, f"{self.year or ''} {self.model}".strip())
 
     def is_secondary(self) -> bool:
-        """Whether this is the vehicle owner's secondary vehicle. Secondary vehicles include ATVs, UTVs, the lawn mower and such."""
+        """
+        Whether this is the vehicle owner's secondary vehicle. Secondary vehicles include ATVs, UTVs, the lawn mower and such.
+        """
+
         return self.full_name in _secondary_vehicles
 
     def is_prestige(self) -> bool:
-        """Whether this vehicle model is considered a prestige vehicle (aka. exotic vehicle)."""
+        """
+        Whether this vehicle model is considered a prestige vehicle (aka. exotic vehicle).
+        """
+
         return self.model in _prestige_vehicles
 
     def __eq__(self, other: object) -> bool:
@@ -160,6 +201,7 @@ VehicleName = Literal[
     "1956 Falcon Advance 100",
     "2020 Falcon Advance 450 Royal Ranch",
     "2020 Falcon Advance 450",
+    "1934 Falcon Coupe",
     "1934 Falcon Coupe Hotrod",
     "2024 Falcon eStallion",
     "2021 Falcon Heritage",
@@ -351,6 +393,7 @@ VehicleModel = Literal[
     "Falcon Advance 450",
     "Falcon Advance+ Roadside Assist",
     "Falcon Advance+ Tow Truck",
+    "Falcon Coupe",
     "Falcon Coupe Hotrod",
     "Falcon Heritage Track",
     "Falcon Heritage",

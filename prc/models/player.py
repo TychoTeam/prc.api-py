@@ -5,7 +5,16 @@ if TYPE_CHECKING:
 
 
 class Player:
-    """Represents a base player."""
+    """
+    Represents a base player.
+
+    Parameters
+    ----------
+    client
+        The global/shared PRC client.
+    data
+        The player name and ID. Either a tuple or default response format (`PlayerName:123`).
+    """
 
     def __init__(
         self,
@@ -33,7 +42,10 @@ class Player:
             client._global_cache.players.set(self.id, self)
 
     def is_remote(self) -> bool:
-        """Whether this is the remote player (aka. virtual server management)."""
+        """
+        Whether this is the remote player (aka. virtual server management).
+        """
+
         return self.id == 0
 
     def __eq__(self, other: object) -> bool:

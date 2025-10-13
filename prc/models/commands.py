@@ -2,13 +2,16 @@ from typing import Literal, Optional, List, Dict, Union, TYPE_CHECKING, cast
 from prc.utility import InsensitiveEnum
 
 if TYPE_CHECKING:
+    from .server.player import ServerPlayer
     from prc.server import Server
     from prc.client import PRC
     from .player import Player
 
 
 class Weather(InsensitiveEnum):
-    """Enum that represents server weather."""
+    """
+    Enum that represents server weather.
+    """
 
     RAIN = "rain"
     THUNDERSTORM = "thunderstorm"
@@ -18,7 +21,9 @@ class Weather(InsensitiveEnum):
 
 
 class FireType(InsensitiveEnum):
-    """Enum that represents a server fire type."""
+    """
+    Enum that represents a server fire type.
+    """
 
     HOUSE = "house"
     BRUSH = "brush"
@@ -26,7 +31,18 @@ class FireType(InsensitiveEnum):
 
 
 class CommandTarget:
-    """Represents a player referenced in a command."""
+    """
+    Represents a player referenced in a command.
+
+    Parameters
+    ----------
+    command
+        The command where the target was referenced.
+    data
+        The target's username, partial username or ID.
+    author
+        The author of the command.
+    """
 
     def __init__(self, command: "Command", data: str, author: "Player"):
         self._client = command._client
@@ -49,8 +65,11 @@ class CommandTarget:
             self.referenced_name = self.original
 
     @property
-    def guessed_player(self):
-        """The closest matched player (in webhooks) or server player (in command logs) based on the referenced name or ID. Server players must be fetched separately."""
+    def guessed_player(self) -> Optional[Union["ServerPlayer", "Player"]]:
+        """
+        The closest matched player or server player based on the referenced name or ID. Server players must be fetched separately.
+        """
+
         if self._server:
             return next(
                 (
@@ -85,7 +104,15 @@ class CommandTarget:
             )
 
     def is_author(self, guess: bool = True) -> bool:
-        """Whether this target is the author of the command. If `guess` is `True` (default), it will also check against the closest matched server player (`guessed_player`)."""
+        """
+        Whether this target is the author of the command.
+
+        Parameters
+        ----------
+        guess
+            Whether to check against the closest matched player (`guessed_player`).
+        """
+
         if self.referenced_id is not None:
             return self._author.id == self.referenced_id
         if guess and self.guessed_player is not None:
@@ -93,11 +120,17 @@ class CommandTarget:
         return False
 
     def is_all(self) -> bool:
-        """Whether this target references `all`; i.e. affects all players in the server."""
+        """
+        Whether this target references `all`; i.e. affects all players in the server.
+        """
+
         return self.original.lower() in ["all"]
 
     def is_others(self) -> bool:
-        """Whether this target references `others`; i.e. affects all players in the server except the command author."""
+        """
+        Whether this target references `others`; i.e. affects all players in the server except the command author.
+        """
+
         return self.original.lower() in ["others"]
 
     def __repr__(self) -> str:
@@ -105,7 +138,22 @@ class CommandTarget:
 
 
 class Command:
-    """Represents a staff-only command."""
+    """
+    Represents a staff-only command.
+
+    Parameters
+    ----------
+    data
+        The full command content.
+    author
+        The author of the command.
+    client
+        The global/shared PRC client.
+    server
+        The server handler, if any.
+    is_webhook
+        Whether this command is from a webhook message. This will use a different parser for some attributes.
+    """
 
     def __init__(
         self,
@@ -113,6 +161,7 @@ class Command:
         author: "Player",
         client: Optional["PRC"] = None,
         server: Optional["Server"] = None,
+        is_webhook: Optional[bool] = False,
     ):
         self._client = client
         self._server = server
@@ -131,12 +180,31 @@ class Command:
         if parsed_command and self.name in _supports_targets:
             if self.name in _supports_multi_targets:
                 self.targets = []
-                parsed_targets = parsed_command.pop(0).split(",")
+
+                if is_webhook:
+                    combined = " ".join(parsed_command)
+                    parsed_command.clear()
+
+                    parsed_targets = []
+                    parts = combined.split(", ")
+                    for part in parts:
+                        if " " in part:
+                            content = part.split(" ")
+                            parsed_targets.append(content.pop(0))
+                            parsed_command = content
+                            break
+
+                        parsed_targets.append(part)
+
+                else:
+                    parsed_targets = parsed_command.pop(0).split(",")
 
                 for parsed_target in parsed_targets:
                     if parsed_target:
                         self.targets.append(
-                            CommandTarget(self, data=parsed_target, author=author)
+                            CommandTarget(
+                                self, data=parsed_target.strip(), author=author
+                            )
                         )
             else:
                 self.targets = [
@@ -237,6 +305,8 @@ CommandName = Literal[
     "commands",
     "cmds",
     "weather",
+    "loadlayout",
+    "unloadlayout",
 ]
 
 _supports_targets: List[CommandName] = [

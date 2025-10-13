@@ -7,7 +7,16 @@ if TYPE_CHECKING:
 
 
 class ServerStaff:
-    """Represents a server staff list for players with elevated permissions."""
+    """
+    Represents a server staff list for players with elevated permissions.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    data
+        The response data.
+    """
 
     def __init__(self, server: "Server", data: "v1_ServerStaffResponse"):
         self.co_owners = [
@@ -25,8 +34,18 @@ class ServerStaff:
         ]
         server.mods = self.mods
 
-    def count(self, dedupe: bool = True):
-        """Total number of **unique** server staff excluding server owner. Set `dedupe=False` to include duplicates (players with multiple permissions set)."""
+        server.total_staff_count = self.count()
+
+    def count(self, dedupe: bool = True) -> int:
+        """
+        Total number of server staff (excluding server owner).
+
+        Parameters
+        ----------
+        dedupe
+            Whether to exclude duplicates (players with multiple permissions set).
+        """
+
         all_staff = self.co_owners + self.admins + self.mods
         return len({s.id for s in all_staff}) if dedupe else len(all_staff)
 

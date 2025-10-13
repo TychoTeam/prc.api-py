@@ -13,10 +13,20 @@ if TYPE_CHECKING:
         v1_ServerCommandLog,
         v1_ServerModCall,
     )
+    from .player import ServerPlayer
 
 
 class LogEntry:
-    """Base log entry."""
+    """
+    Base log entry.
+
+    Parameters
+    ----------
+    data
+        The response data.
+    cache
+        The corresponding initialized cache, if any.
+    """
 
     def __init__(
         self,
@@ -53,7 +63,16 @@ class LogEntry:
 
 
 class LogPlayer(Player):
-    """Represents a player referenced in a log entry."""
+    """
+    Represents a player referenced in a log entry.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    data
+        The player name and ID (`PlayerName:123`).
+    """
 
     def __init__(self, server: "Server", data: str):
         self._server = server
@@ -61,13 +80,18 @@ class LogPlayer(Player):
         super().__init__(server._client, data=data)
 
     @property
-    def player(self):
-        """The full server player, if found."""
+    def player(self) -> Optional["ServerPlayer"]:
+        """
+        The full server player, if found.
+        """
+
         return self._server._get_player(id=self.id)
 
 
 class AccessType(Enum):
-    """Enum that represents a server access log entry type."""
+    """
+    Enum that represents a server access log entry type.
+    """
 
     @staticmethod
     def parse(value: bool):
@@ -78,7 +102,16 @@ class AccessType(Enum):
 
 
 class AccessEntry(LogEntry):
-    """Represents a server access (join/leave) log entry."""
+    """
+    Represents a server access (join/leave) log entry.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    data
+        The response data.
+    """
 
     def __init__(self, server: "Server", data: "v1_ServerJoinLog"):
         self._server = server
@@ -89,9 +122,17 @@ class AccessEntry(LogEntry):
         super().__init__(data, cache=server._server_cache.access_logs)
 
     def is_join(self) -> bool:
+        """
+        Whether the log is a player join log.
+        """
+
         return self.type == AccessType.JOIN
 
     def is_leave(self) -> bool:
+        """
+        Whether the log is a player leave log.
+        """
+
         return self.type == AccessType.LEAVE
 
     def __repr__(self) -> str:
@@ -99,7 +140,16 @@ class AccessEntry(LogEntry):
 
 
 class KillEntry(LogEntry):
-    """Represents a server player kill log entry."""
+    """
+    Represents a server player kill log entry.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    data
+        The response data.
+    """
 
     def __init__(self, server: "Server", data: "v1_ServerKillLog"):
         self._server = server
@@ -114,7 +164,16 @@ class KillEntry(LogEntry):
 
 
 class CommandEntry(LogEntry):
-    """Represents a server command execution log entry."""
+    """
+    Represents a server command execution log entry.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    data
+        The response data.
+    """
 
     def __init__(self, server: "Server", data: "v1_ServerCommandLog"):
         self._server = server
@@ -131,7 +190,16 @@ class CommandEntry(LogEntry):
 
 
 class ModCallEntry(LogEntry):
-    """Represents a server mod call log entry."""
+    """
+    Represents a server mod call log entry.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    data
+        The response data.
+    """
 
     def __init__(self, server: "Server", data: "v1_ServerModCall"):
         self._server = server
@@ -143,7 +211,10 @@ class ModCallEntry(LogEntry):
         super().__init__(data)
 
     def is_acknowledged(self) -> bool:
-        """Whether this mod call has been responded to."""
+        """
+        Whether this mod call has been responded to.
+        """
+
         return bool(self.responder)
 
     def __repr__(self) -> str:
