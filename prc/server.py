@@ -1,4 +1,5 @@
 from typing import (
+    NoReturn,
     Optional,
     List,
     TYPE_CHECKING,
@@ -83,7 +84,24 @@ def _ephemeral(func):
 
 
 class Server:
-    """The main class to interface with PRC ER:LC server APIs. `ephemeral_ttl` is how long, in seconds, results are cached for."""
+    """
+    The main class to interface with PRC ER:LC server APIs.
+
+    Parameters
+    ----------
+    client
+        The global/shared PRC client.
+    server_key
+        The unique server key used to authenticate requests.
+    ephemeral_ttl
+        How long, in seconds, ephemeral results (i.e. cached responses) are kept before expiring. Defaults to `3` seconds.
+    cache
+        An initialized server cache to use. By default, a new instance is created.
+    requests
+        An initialized requests class. By default, a new instance is created.
+    ignore_global_key
+        Whether to ignore the client's global authentication key (if set). By default, it is not ignored.
+    """
 
     def __init__(
         self,
@@ -142,20 +160,35 @@ class Server:
     team_balance: Optional[bool] = None
 
     @property
-    def join_link(self):
-        """Web URL that allows users to join the game and queue automatically for the server. Hosted by PRC. Server status must be fetched separately. ⚠️ *(May not function properly on mobile devices -- May not function at random times)*"""
+    def join_link(self) -> Optional[str]:
+        """
+        Web URL that allows users to join the game and queue automatically for the server.
+        Hosted by PRC. Server status must be fetched separately. ⚠️ *(May not function properly on mobile devices -- May not function at random times)*
+        """
+
         return (
             ("https://policeroleplay.community/join/" + self.join_code)
             if self.join_code
             else None
         )
 
-    def is_online(self):
-        """Whether the server is online (i.e. has online players). Server status or players must be fetched separately."""
+    def is_online(self) -> Optional[bool]:
+        """
+        Whether the server is online (i.e. has any online players). Server status or players must be fetched separately.
+        """
+
         return self.player_count > 0 if self.player_count else None
 
-    def is_full(self, include_reserved: bool = False):
-        """Whether the server player count has reached the max player limit. Excludes owner-reserved spot by default (`max_players - 1`), set `include_reserved=True` to include. Server status must be fetched separately."""
+    def is_full(self, include_reserved: bool = False) -> Optional[bool]:
+        """
+        Whether the server player count has reached the max player limit. Server status must be fetched separately.
+
+        Parameters
+        ----------
+        include_reserved
+            Whether to include the owner-reserved spot. By default, it is excluded (`max_players - 1`).
+        """
+
         return (
             (self.player_count >= self.max_players - (0 if include_reserved else 1))
             if self.player_count and self.max_players
@@ -180,14 +213,16 @@ class Server:
             return {}
         return map
 
-    def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):
+    def _get_player(
+        self, *, id: Optional[int] = None, name: Optional[str] = None
+    ) -> Optional[ServerPlayer]:
         for _, player in self._server_cache.players.items():
             if id and player.id == id:
                 return player
             if name and player.name == name:
                 return player
 
-    def _raise_error_code(self, response: Any):
+    def _raise_error_code(self, response: Any) -> NoReturn:
         if not isinstance(response, Dict):
             raise PRCException("A malformed response was received.")
 
@@ -249,8 +284,11 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_status(self):
-        """Get the current server status."""
+    async def get_status(self) -> ServerStatus:
+        """
+        Get the current server status.
+        """
+
         return ServerStatus(
             self,
             data=self._handle(await self._requests.get("/"), v1_ServerStatusResponse),
@@ -258,8 +296,11 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_players(self):
-        """Get all online server players."""
+    async def get_players(self) -> List[ServerPlayer]:
+        """
+        Get all online server players.
+        """
+
         players = [
             ServerPlayer(self, data=p)
             for p in self._handle(
@@ -272,8 +313,11 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_queue(self):
-        """Get all players in the server join queue."""
+    async def get_queue(self) -> List[QueuedPlayer]:
+        """
+        Get all players in the server join queue.
+        """
+
         players = [
             QueuedPlayer(self, id=p, index=i)
             for i, p in enumerate(
@@ -285,8 +329,11 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_bans(self):
-        """Get all banned players."""
+    async def get_bans(self) -> List[Player]:
+        """
+        Get all banned players.
+        """
+
         return [
             Player(self._client, data=p, _skip_cache=True)
             for p in self._parse_api_map(
@@ -296,8 +343,11 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_vehicles(self):
-        """Get all spawned vehicles in the server. A server player may have 2 spawned vehicles (1 primary + 1 secondary)."""
+    async def get_vehicles(self) -> List[Vehicle]:
+        """
+        Get all spawned vehicles in the server. A single server player may have up to 2 spawned vehicles (1 primary + 1 secondary).
+        """
+
         return [
             Vehicle(self, data=v)
             for v in self._handle(
@@ -307,8 +357,11 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_staff(self):
-        """Get all server staff members excluding server owner. ⚠️ *(This endpoint is deprecated, use at your own risk)*"""
+    async def get_staff(self) -> ServerStaff:
+        """
+        Get all server staff members excluding server owner. ⚠️ *(This endpoint is deprecated, use at your own risk)*
+        """
+
         return ServerStaff(
             self,
             data=self._handle(
@@ -318,7 +371,9 @@ class Server:
 
 
 class ServerModule:
-    """A class implemented by modules used by the main `Server` class to interface with specific PRC ER:LC server APIs."""
+    """
+    A class implemented by modules used by the main `Server` class to interface with specific PRC ER:LC server APIs.
+    """
 
     def __init__(self, server: Server):
         self._server = server
@@ -332,7 +387,9 @@ class ServerModule:
 
 
 class ServerLogs(ServerModule):
-    """Interact with PRC ER:LC server logs APIs."""
+    """
+    Interact with PRC ER:LC server logs APIs.
+    """
 
     def __init__(self, server: Server):
         super().__init__(server)
@@ -345,7 +402,15 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_access(self, *, oldest_first: bool = False) -> List[AccessEntry]:
-        """Get server access (join/leave) logs. Newer logs come first by default, set `oldest_first=True` to reverse."""
+        """
+        Get server access (join/leave) logs.
+
+        Parameters
+        ----------
+        oldest_first
+            Whether to return older logs first. By default, newer logs come first.
+        """
+
         for e in self._handle(
             await self._requests.get("/joinlogs"), v1_ServerJoinLogsResponse
         ):
@@ -355,7 +420,15 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_kills(self, *, oldest_first: bool = False) -> List[KillEntry]:
-        """Get server kill logs. Newer logs come first by default, set `oldest_first=True` to reverse."""
+        """
+        Get server kill logs.
+
+        Parameters
+        ----------
+        oldest_first
+            Whether to return older logs first. By default, newer logs come first.
+        """
+
         return self._sort(
             [
                 KillEntry(self._server, data=e)
@@ -369,7 +442,15 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_commands(self, *, oldest_first: bool = False) -> List[CommandEntry]:
-        """Get server command usage logs. Newer logs come first by default, set `oldest_first=True` to reverse."""
+        """
+        Get server command usage logs.
+
+        Parameters
+        ----------
+        oldest_first
+            Whether to return older logs first. By default, newer logs come first.
+        """
+
         return self._sort(
             [
                 CommandEntry(self._server, data=e)
@@ -384,7 +465,15 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_mod_calls(self, *, oldest_first: bool = False) -> List[ModCallEntry]:
-        """Get server mod call logs. Newer logs come first by default, set `oldest_first=True` to reverse."""
+        """
+        Get server mod call logs.
+
+        Parameters
+        ----------
+        oldest_first
+            Whether to return older logs first. By default, newer logs come first.
+        """
+
         return self._sort(
             [
                 ModCallEntry(self._server, data=e)
@@ -402,13 +491,23 @@ CommandTargetPlayerNameOrId = Union[CommandTargetPlayerName, CommandTargetPlayer
 
 
 class ServerCommands(ServerModule):
-    """Interact with the PRC ER:LC server remote command execution API."""
+    """
+    Interact with the PRC ER:LC server remote command execution API.
+    """
 
     def __init__(self, server: Server):
         super().__init__(server)
 
     async def _raw(self, command: str):
-        """Send an **UNSANITIZED** command string to the remote command execution API."""
+        """
+        Send an **UNSANITIZED** command string to the remote command execution API.
+
+        Parameters
+        ----------
+        command
+            The full command content string to send.
+        """
+
         return self._handle(
             await self._requests.post("/command", json={"command": command}),
             v1_ServerCommandExecutionResponse,
@@ -419,12 +518,24 @@ class ServerCommands(ServerModule):
         name: CommandName,
         *,
         targets: Optional[Sequence[CommandTargetPlayerNameOrId]] = None,
-        args: Optional[List[CommandArg]] = None,
+        args: Optional[List[Union[CommandArg, Player]]] = None,
         text: Optional[str] = None,
         _max_retries: int = 3,
         _prefer_player_id: bool = False,
-    ):
-        """Run any command as the remote player in the server."""
+    ) -> None:
+        """
+        Run any command as the remote player in the server.
+
+        Parameters
+        ----------
+        targets
+            Players to be targeted by the command.
+        args
+            Specific command arguments (e.g. weather, fire type).
+        text
+            Any text to be sent along the command (e.g. reason, announcement message content).
+        """
+
         command = f":{name} "
 
         def parse_target(target: CommandTargetPlayerNameOrId):
@@ -434,19 +545,20 @@ class ServerCommands(ServerModule):
                 return str(target.name)
             return str(target)
 
+        def parse_arg(arg: Union[CommandArg, Player]):
+            if isinstance(arg, Player):
+                if _prefer_player_id:
+                    return str(arg.id)
+                return str(arg.name)
+            if isinstance(arg, InsensitiveEnum):
+                return arg.value
+            return str(arg)
+
         if targets:
             command += ",".join([parse_target(t) for t in targets]) + " "
 
         if args:
-            command += (
-                " ".join(
-                    [
-                        (a.value if isinstance(a, InsensitiveEnum) else str(a))
-                        for a in args
-                    ]
-                )
-                + " "
-            )
+            command += " ".join([parse_arg(a) for a in args]) + " "
 
         if text:
             command += text
@@ -466,125 +578,366 @@ class ServerCommands(ServerModule):
             )
 
     async def kill(self, targets: List[CommandTargetPlayerName]):
-        """Kill players in the server."""
+        """
+        Kill players in the server.
+
+        Parameters
+        ----------
+        targets
+            The players to kill. A player can be a username, partial username or a player (and any of its subclasses).
+        """
+
         await self.run("kill", targets=targets)
 
     async def heal(self, targets: List[CommandTargetPlayerName]):
-        """Heal players in the server."""
+        """
+        Heal players in the server.
+
+        Parameters
+        ----------
+        targets
+            The players to heal. A player can be a username, partial username or a player (and any of its subclasses).
+        """
+
         await self.run("heal", targets=targets)
 
     async def make_wanted(self, targets: List[CommandTargetPlayerName]):
-        """Make players wanted in the server."""
+        """
+        Make players wanted in the server.
+
+        Parameters
+        ----------
+        targets
+            The players to make wanted. A player can be a username, partial username or a player (and any of its subclasses).
+        """
+
         await self.run("wanted", targets=targets)
 
     async def remove_wanted(self, targets: List[CommandTargetPlayerName]):
-        """Remove wanted status from players in the server."""
+        """
+        Remove wanted status from players in the server.
+
+        Parameters
+        ----------
+        targets
+            The players to remove wanted status from. A player can be a username, partial username or a player (and any of its subclasses).
+        """
+
         await self.run("unwanted", targets=targets)
 
     async def make_jailed(self, targets: List[CommandTargetPlayerName]):
-        """Make players jailed in the server. Teleports them to a prison cell and changes the server player's tema."""
+        """
+        Make players jailed in the server. Teleports them to a prison cell and changes the server player's team.
+
+        Parameters
+        ----------
+        targets
+            The players to make jailed. A player can be a username, partial username or a player (and any of its subclasses).
+        """
+
         await self.run("jail", targets=targets)
 
     async def remove_jailed(self, targets: List[CommandTargetPlayerName]):
-        """Remove jailed status from players in the server."""
+        """
+        Remove jailed status from players in the server.
+
+        Parameters
+        ----------
+        targets
+            The players to remove jail status from. A player can be a username, partial username or a player (and any of its subclasses).
+        """
+
         await self.run("unjail", targets=targets)
 
     async def refresh(self, targets: List[CommandTargetPlayerName]):
-        """Respawn players in the server and return them to their last positions."""
+        """
+        Respawn players in the server and return them to their last positions.
+
+        Parameters
+        ----------
+        targets
+            The players to refresh. A player can be a username, partial username or a player (and any of its subclasses).
+        """
+
         await self.run("refresh", targets=targets)
 
     async def respawn(self, targets: List[CommandTargetPlayerName]):
-        """Respawn players in the server and return them to their set spawn location."""
+        """
+        Respawn players in the server and return them to their set spawn location.
+
+        Parameters
+        ----------
+        targets
+            The players to respawn. A player can be a username, partial username or a player (and any of its subclasses).
+        """
+
         await self.run("load", targets=targets)
 
-    async def teleport(self, targets: List[CommandTargetPlayerName], to: str):
-        """Teleport players to another player in the server."""
+    async def teleport(
+        self, targets: List[CommandTargetPlayerName], *, to: CommandTargetPlayerName
+    ):
+        """
+        Teleport players to another player in the server.
+
+        Parameters
+        ----------
+        targets
+            The players to teleport. A player can be a username, partial username or a player (and any of its subclasses).
+        to
+            The player to be teleported to. A player can be a username, partial username or a player (and any of its subclasses).
+        """
+
         await self.run("tp", targets=targets, args=[to])
 
     async def kick(
-        self,
-        targets: List[CommandTargetPlayerName],
-        reason: Optional[str] = None,
+        self, targets: List[CommandTargetPlayerName], *, reason: Optional[str] = None
     ):
-        """Kick players from the server."""
+        """
+        Kick players from the server.
+
+        Parameters
+        ----------
+        targets
+            The players to kick. A player can be a username, partial username or a player (and any of its subclasses).
+        reason
+            The reason for the kick, if any.
+        """
+
         await self.run("kick", targets=targets, text=reason)
 
     async def ban(self, targets: List[CommandTargetPlayerNameOrId]):
-        """Ban players from the server."""
+        """
+        Ban players from the server.
+
+        Parameters
+        ----------
+        targets
+            The players to ban. A player can be a username, partial username, ID or a player (and any of its subclasses).
+        """
+
         await self.run("ban", targets=targets, _prefer_player_id=True)
 
     async def unban(self, targets: List[CommandTargetPlayerNameOrId]):
-        """Unban players from the server."""
+        """
+        Unban players from the server.
+
+        Parameters
+        ----------
+        targets
+            The players to unban. A player can be a username, ID or a player (and any of its subclasses).
+        """
+
         await self.run("unban", targets=targets, _prefer_player_id=True)
 
     async def grant_helper(self, targets: List[CommandTargetPlayerNameOrId]):
-        """Grant helper permissions to players in the server."""
+        """
+        Grant helper permissions to players in the server.
+
+        Parameters
+        ----------
+        targets
+            The players to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
+        """
+
         await self.run("helper", targets=targets, _prefer_player_id=True)
 
     async def revoke_helper(self, targets: List[CommandTargetPlayerNameOrId]):
-        """Revoke helper permissions to players in the server."""
+        """
+        Revoke helper permissions to players in the server.
+
+        Parameters
+        ----------
+        targets
+            The players to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
+        """
+
         await self.run("unhelper", targets=targets, _prefer_player_id=True)
 
     async def grant_mod(self, targets: List[CommandTargetPlayerNameOrId]):
-        """Grant moderator permissions to players in the server."""
+        """
+        Grant moderator permissions to players in the server.
+
+        Parameters
+        ----------
+        targets
+            The players to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
+        """
+
         await self.run("mod", targets=targets, _prefer_player_id=True)
 
     async def revoke_mod(self, targets: List[CommandTargetPlayerNameOrId]):
-        """Revoke moderator permissions from players in the server."""
+        """
+        Revoke moderator permissions from players in the server.
+
+        Parameters
+        ----------
+        targets
+            The players to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
+        """
+
         await self.run("unmod", targets=targets, _prefer_player_id=True)
 
     async def grant_admin(self, targets: List[CommandTargetPlayerNameOrId]):
-        """Grant admin permissions to players in the server."""
+        """
+        Grant admin permissions to players in the server.
+
+        Parameters
+        ----------
+        targets
+            The players to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
+        """
+
         await self.run("admin", targets=targets, _prefer_player_id=True)
 
     async def revoke_admin(self, targets: List[CommandTargetPlayerNameOrId]):
-        """Revoke admin permissions from players in the server."""
+        """
+        Revoke admin permissions from players in the server.
+
+        Parameters
+        ----------
+        targets
+            The players to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
+        """
+
         await self.run("unadmin", targets=targets, _prefer_player_id=True)
 
     async def send_hint(self, text: str):
-        """Send a temporary message to the server (undismissable banner)."""
+        """
+        Send a temporary message to the server (undismissable banner).
+
+        Parameters
+        ----------
+        text
+            The hint message content.
+        """
+
         await self.run("h", text=text)
 
     async def send_announcement(self, text: str):
-        """Send an announcement message to the server (dismissable popup)."""
+        """
+        Send an announcement message to the server (dismissable popup).
+
+        Parameters
+        ----------
+        text
+            The announcement message content.
+        """
+
         await self.run("m", text=text)
 
     async def send_pm(self, targets: List[CommandTargetPlayerName], text: str):
-        """Send a private message to players in the server (dismissable popup)."""
+        """
+        Send a private message to players in the server (dismissable popup).
+
+        Parameters
+        ----------
+        targets
+            The players to message. A player can be a username, partial username or a player (and any of its subclasses).
+        text
+            The private message content.
+        """
+
         await self.run("pm", targets=targets, text=text)
 
     async def send_log(self, text: str):
-        """Emit a custom string that will be saved in command logs and sent to configured command usage webhooks (if any), mostly for integrating with other applications. Uses the `:log` command."""
+        """
+        Emit a custom string that will be saved in command logs and sent to configured command usage webhooks (if any) using the `log` command. Mostly used for integrating with other applications.
+
+        Parameters
+        ----------
+        text
+            The custom string to emit.
+        """
+
         await self.run("log", text=text)
 
-    async def set_priority(self, seconds: int = 0):
-        """Set the server priority timer. Shows an undismissable countdown notification to all players until it reaches `0`. Leave empty or set to `0` to disable."""
+    async def set_priority(self, *, seconds: int = 0):
+        """
+        Set the server priority timer. Shows an undismissable countdown notification to all players until it reaches `0`.
+
+        Parameters
+        ----------
+        seconds
+            The priority timer duration in seconds. Leave empty or set to `0` to disable.
+        """
+
         await self.run("prty", args=[seconds])
 
-    async def set_peace(self, seconds: int = 0):
-        """Set the server peace timer. Shows an undismissable countdown notification to all players until it reaches `0` while disabling PVP damage. Leave empty or set to `0` to disable."""
+    async def set_peace(self, *, seconds: int = 0):
+        """
+        Set the server peace timer. Shows an undismissable countdown notification to all players until it reaches `0` while disabling PVP damage.
+
+        Parameters
+        ----------
+        seconds
+            The peace timer duration in seconds. Leave empty or set to `0` to disable.
+        """
+
         await self.run("pt", args=[seconds])
 
     async def set_time(self, hour: int):
-        """Set the current server time of day as the given hour. Uses 24-hour formatting (`12` = noon, `0`/`24` = midnight)."""
+        """
+        Set the current server time of day as the given hour. Uses 24-hour formatting.
+
+        Parameters
+        ----------
+        hour
+            The hour of day to set (`12` = noon, `0`/`24` = midnight).
+        """
+
         await self.run("time", args=[hour])
 
     async def set_weather(self, type: Weather):
-        """Set the current server weather. `Weather.SNOW` can only be set during winter."""
+        """
+        Set the current server weather.
+
+        Parameters
+        ----------
+        type
+            The type of weather to set. `SNOW` can only be set during winter.
+        """
+
         await self.run("weather", args=[type])
 
     async def start_fire(self, type: FireType):
-        """Start a fire at a random location in the server."""
+        """
+        Start a fire at a random location in the server.
+
+        Parameters
+        ----------
+        type
+            The type of fire to start.
+        """
+
         await self.run("startfire", args=[type])
 
     async def stop_fires(self):
-        """Stop all fires in the server."""
+        """
+        Stop all fires in the server.
+        """
+
         await self.run("stopfire")
 
-    async def load_layout(self, name_or_code: str):
-        """Load a map editor layout (aka. map template)."""
-        await self.run("loadlayout", text=name_or_code)
+    async def load_layout(self, key: str):
+        """
+        Load a map editor layout (aka. map template).
 
-    async def unload_layout(self, name_or_code: str):
-        """Unload a map editor layout (aka. map template)."""
-        await self.run("unloadlayout", text=name_or_code)
+        Parameters
+        ----------
+        key
+            The custom layout name or public share code.
+        """
+
+        await self.run("loadlayout", text=key)
+
+    async def unload_layout(self, key: str):
+        """
+        Unload a map editor layout (aka. map template).
+
+        Parameters
+        ----------
+        key
+            The custom layout name or public share code.
+        """
+
+        await self.run("unloadlayout", text=key)

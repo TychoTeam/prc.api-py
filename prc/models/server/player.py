@@ -74,6 +74,10 @@ class ServerPlayer(Player):
             include_helpers or self.permission != PlayerPermission.HELPER
         )
 
+    def is_jailed(self) -> bool:
+        """Whether this player is jailed."""
+        return self.team == PlayerTeam.JAIL
+
     def is_leo(self) -> bool:
         """Whether this player is on a law enforcement team."""
         return self.team in (PlayerTeam.SHERIFF, PlayerTeam.POLICE)

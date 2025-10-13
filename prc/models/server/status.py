@@ -41,16 +41,31 @@ class ServerStatus:
         server.team_balance = self.team_balance
 
     @property
-    def join_link(self):
-        """Web URL that allows users to join the game and queue automatically for the server. Hosted by PRC. ⚠️ *(May not function properly on mobile devices -- May not function at random times)*"""
+    def join_link(self) -> str:
+        """
+        Web URL that allows users to join the game and queue automatically for the server.
+        Hosted by PRC. Server status must be fetched separately. ⚠️ *(May not function properly on mobile devices -- May not function at random times)*
+        """
+
         return "https://policeroleplay.community/join/" + self.join_code
 
     def is_online(self) -> bool:
-        """Whether the server is online (i.e. has online players)."""
+        """
+        Whether the server is online (i.e. has any online players). Server status or players must be fetched separately.
+        """
+
         return self.player_count > 0
 
     def is_full(self, include_reserved: bool = False) -> bool:
-        """Whether the server player count has reached the max player limit. Excludes owner-reserved spot by default (`max_players - 1`), set `include_reserved=True` to include."""
+        """
+        Whether the server player count has reached the max player limit. Server status must be fetched separately.
+
+        Parameters
+        ----------
+        include_reserved
+            Whether to include the owner-reserved spot. By default, it is excluded (`max_players - 1`).
+        """
+
         return self.player_count >= self.max_players - (0 if include_reserved else 1)
 
     def __repr__(self) -> str:
