@@ -36,6 +36,17 @@ class GlobalCache:
 class PRC:
     """The main PRC API client. Controls servers and global cache."""
 
+    """
+    The main PRC API client. Controls servers and global cache.
+
+    Parameters
+    ----------
+    global_key
+        The global authentication key (large scale apps), if any.
+    default_server_key
+        The default unique server key to use. This will allow you to use `get_server` without needing to pass a key.
+    """
+
     def __init__(
         self,
         global_key: Optional[str] = None,
@@ -64,9 +75,19 @@ class PRC:
         self.webhooks = Webhooks(self)
 
     def get_server(
-        self, server_key: Optional[str] = None, ignore_global_key: bool = False
-    ):
-        """Get a server handler using a key. Defaults to `default_server_key` if no `server_key` is passed. Servers are cached and data is synced across the client. Setting `ignore_global_key` may reset the cached server if cached `ignore_global_key` is conflicting."""
+        self, server_key: Optional[str] = None, *, ignore_global_key: bool = False
+    ) -> Server:
+        """
+        Get a server handler using a key. Servers are cached and data is synced across the client.
+
+        Parameters
+        ----------
+        server_key
+            The unique server key used to authenticate requests. Defaults to `default_server_key`, if any.
+        ignore_global_key
+            Whether to ignore the client's global authentication key (if set). By default, it is not ignored. This may reset the cached server if the cached `ignore_global_key` is conflicting.
+        """
+
         if not server_key:
             server_key = self._default_server_key
 
@@ -99,30 +120,11 @@ class PRC:
                 ),
             )
 
-    async def get_stats(self):
-        """Get game statistics (ER:LC) using the PRC public statistics API."""
-        response = await self._session.get("https://policeroleplay.community/api/stats")
+    async def reset_key(self) -> None:
+        """
+        Reset the global key and generate a new one. The new key will be used automatically and will **NOT** be returned. This will reset all cache.
+        """
 
-        if response.is_success:
-
-            class GameStatistics:
-                def __init__(self, data: Dict) -> None:
-                    self.name = str(data.get("name", "Unknown"))
-                    self.playing = int(data.get("playing", 0))
-                    self.visits = int(data.get("visits", 0))
-                    self.favorites = int(data.get("favorites", 0))
-                    self.likes = int(data.get("likes", 0))
-                    fetched_at = data.get("fetchedAt")
-                    self.last_updated = (
-                        datetime.fromtimestamp(fetched_at)
-                        if fetched_at
-                        else datetime.now()
-                    )
-
-            return GameStatistics(response.json())
-
-    async def reset_key(self):
-        """Reset the global key and generate a new one. The new key will be used automatically and will **not** be returned. This will reset all cache."""
         if not self._key_requests or self._global_key is None:
             raise ValueError("No global key is set but is required")
 
