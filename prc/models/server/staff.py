@@ -25,6 +25,8 @@ class ServerStaff:
         ]
         server.mods = self.mods
 
+        server.total_staff_count = self.count()
+
     def count(self, dedupe: bool = True):
         """Total number of **unique** server staff excluding server owner. Set `dedupe=False` to include duplicates (players with multiple permissions set)."""
         all_staff = self.co_owners + self.admins + self.mods

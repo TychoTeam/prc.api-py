@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
 R = TypeVar("R")
 M = TypeVar("M")
+LOG = TypeVar("LOG")
 
 
 class ServerCache:
@@ -308,14 +309,12 @@ class Server:
     @_ephemeral
     async def get_staff(self):
         """Get all server staff members excluding server owner. ⚠️ *(This endpoint is deprecated, use at your own risk)*"""
-        staff = ServerStaff(
+        return ServerStaff(
             self,
             data=self._handle(
                 await self._requests.get("/staff"), v1_ServerStaffResponse
             ),
         )
-        self.total_staff_count = staff.count()
-        return staff
 
 
 class ServerModule:
@@ -338,50 +337,63 @@ class ServerLogs(ServerModule):
     def __init__(self, server: Server):
         super().__init__(server)
 
+    def _sort(self, logs: Sequence[LOG], oldest_first: bool = False) -> List[LOG]:
+        return sorted(
+            logs, key=lambda x: getattr(x, "created_at"), reverse=not oldest_first
+        )
+
     @_refresh_server
     @_ephemeral
-    async def get_access(self):
-        """Get server access (join/leave) logs. Newer logs come first."""
-        [
+    async def get_access(self, *, oldest_first: bool = False) -> List[AccessEntry]:
+        """Get server access (join/leave) logs. Newer logs come first by default, set `oldest_first=True` to reverse."""
+        for e in self._handle(
+            await self._requests.get("/joinlogs"), v1_ServerJoinLogsResponse
+        ):
             AccessEntry(self._server, data=e)
-            for e in self._handle(
-                await self._requests.get("/joinlogs"), v1_ServerJoinLogsResponse
-            )
-        ]
-        return self._server_cache.access_logs.items()
+        return self._sort(self._server_cache.access_logs.items(), oldest_first)
 
     @_refresh_server
     @_ephemeral
-    async def get_kills(self):
-        """Get server kill logs. Older logs come first."""
-        return [
-            KillEntry(self._server, data=e)
-            for e in self._handle(
-                await self._requests.get("/killlogs"), v1_ServerKillLogsResponse
-            )
-        ]
+    async def get_kills(self, *, oldest_first: bool = False) -> List[KillEntry]:
+        """Get server kill logs. Newer logs come first by default, set `oldest_first=True` to reverse."""
+        return self._sort(
+            [
+                KillEntry(self._server, data=e)
+                for e in self._handle(
+                    await self._requests.get("/killlogs"), v1_ServerKillLogsResponse
+                )
+            ],
+            oldest_first,
+        )
 
     @_refresh_server
     @_ephemeral
-    async def get_commands(self):
-        """Get server command logs. Older logs come first."""
-        return [
-            CommandEntry(self._server, data=e)
-            for e in self._handle(
-                await self._requests.get("/commandlogs"), v1_ServerCommandLogsResponse
-            )
-        ]
+    async def get_commands(self, *, oldest_first: bool = False) -> List[CommandEntry]:
+        """Get server command usage logs. Newer logs come first by default, set `oldest_first=True` to reverse."""
+        return self._sort(
+            [
+                CommandEntry(self._server, data=e)
+                for e in self._handle(
+                    await self._requests.get("/commandlogs"),
+                    v1_ServerCommandLogsResponse,
+                )
+            ],
+            oldest_first,
+        )
 
     @_refresh_server
     @_ephemeral
-    async def get_mod_calls(self):
-        """Get server mod call logs. Older logs come first."""
-        return [
-            ModCallEntry(self._server, data=e)
-            for e in self._handle(
-                await self._requests.get("/modcalls"), v1_ServerModCallsResponse
-            )
-        ]
+    async def get_mod_calls(self, *, oldest_first: bool = False) -> List[ModCallEntry]:
+        """Get server mod call logs. Newer logs come first by default, set `oldest_first=True` to reverse."""
+        return self._sort(
+            [
+                ModCallEntry(self._server, data=e)
+                for e in self._handle(
+                    await self._requests.get("/modcalls"), v1_ServerModCallsResponse
+                )
+            ],
+            oldest_first,
+        )
 
 
 CommandTargetPlayerName = Union[str, Player]
@@ -396,7 +408,7 @@ class ServerCommands(ServerModule):
         super().__init__(server)
 
     async def _raw(self, command: str):
-        """Send a raw command string to the remote command execution API."""
+        """Send an **UNSANITIZED** command string to the remote command execution API."""
         return self._handle(
             await self._requests.post("/command", json={"command": command}),
             v1_ServerCommandExecutionResponse,
@@ -405,6 +417,7 @@ class ServerCommands(ServerModule):
     async def run(
         self,
         name: CommandName,
+        *,
         targets: Optional[Sequence[CommandTargetPlayerNameOrId]] = None,
         args: Optional[List[CommandArg]] = None,
         text: Optional[str] = None,
