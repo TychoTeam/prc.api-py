@@ -342,7 +342,6 @@ VehicleModel = Literal[
     "BKM Risen Roadster",
     "Bank Truck",
     "Brush Falcon Advance+",
-    "Bullhorn Ambulance",
     "Bullhorn BH15 SSV",
     "Bullhorn BH15",
     "Bullhorn Determinator SFP Blackjack Widebody",
