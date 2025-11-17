@@ -731,6 +731,13 @@ class ServerCommands(ServerModule):
 
         await self.run("unban", targets=targets, _prefer_player_id=True)
 
+    async def shutdown(self):
+        """
+        Shutdown the server. Kicks all players in-game.
+        """
+
+        await self.run("shutdown")
+
     async def grant_helper(self, targets: List[CommandTargetPlayerNameOrId]):
         """
         Grant helper permissions to players in the server.

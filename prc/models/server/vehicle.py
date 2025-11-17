@@ -302,9 +302,10 @@ VehicleName = Literal[
     "2011 SWAT Armored Truck",
     # FD
     "2020 Brush Falcon Advance+",
-    "Bullhorn Ambulance",
-    "2015 Bullhorn Prancer",
+    "2022 Bullhorn Pueblo Pursuit",
     "2018 Chevlon Camion",
+    "2020 Falcon Advance 350",
+    "2020 Falcon Advance 450 Ambulance",
     "Heavy Rescue",
     "Heavy Tanker",
     "International Ambulance",

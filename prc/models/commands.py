@@ -307,6 +307,7 @@ CommandName = Literal[
     "weather",
     "loadlayout",
     "unloadlayout",
+    "shutdown",
 ]
 
 _supports_targets: List[CommandName] = [
