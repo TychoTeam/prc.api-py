@@ -350,6 +350,7 @@ class Server:
         Get all spawned vehicles in the server. A single server player may have up to 2 spawned vehicles (1 primary + 1 secondary).
         """
 
+        self._server_cache.vehicles.clear()
         return [
             Vehicle(self, data=v)
             for v in self._handle(
