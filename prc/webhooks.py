@@ -148,6 +148,46 @@ class Webhooks:
         return footer.split(" ")[-1]
 
     @overload
+    def is_valid(self, *, embed: object) -> bool: ...
+
+    @overload
+    def is_valid(self, *, title: str, description: str, footer: str) -> bool: ...
+
+    def is_valid(
+        self,
+        *,
+        embed: Optional[object] = None,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        footer: Optional[str] = None,
+    ) -> bool:
+        """
+        Check whether a message is a valid webhook message.
+
+        Parameters
+        ----------
+        embed
+            The webhook message embed. This object must have the following attributes: "title", "description", "footer.text" (nested).
+        title
+            The webhook message embed title.
+        description
+            The webhook message embed description.
+        footer
+            The webhook message embed footer.
+        """
+
+        try:
+            if embed:
+                self.parse(embed=embed)
+            else:
+                assert title and description and footer
+                self.parse(title=title, description=description, footer=footer)
+        except Exception:
+            return False
+
+        return True
+
+    @overload
     def parse(self, *, embed: object) -> WebhookMessage: ...
 
     @overload
@@ -200,6 +240,46 @@ class Webhooks:
         type = self.get_type(title=title, command_name=command.name)
 
         return WebhookMessage(self, type, version, command, author, server)
+
+    @overload
+    def safe_parse(self, *, embed: object) -> Optional[WebhookMessage]: ...
+
+    @overload
+    def safe_parse(
+        self, *, title: str, description: str, footer: str
+    ) -> Optional[WebhookMessage]: ...
+
+    def safe_parse(
+        self,
+        *,
+        embed: Optional[object] = None,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        footer: Optional[str] = None,
+    ) -> Optional[WebhookMessage]:
+        """
+        Safely parse a webhook message without raising any exceptions.
+
+        Parameters
+        ----------
+        embed
+            The webhook message embed. This object must have the following attributes: "title", "description", "footer.text" (nested).
+        title
+            The webhook message embed title.
+        description
+            The webhook message embed description.
+        footer
+            The webhook message embed footer.
+        """
+
+        try:
+            if embed:
+                return self.parse(embed=embed)
+            else:
+                assert title and description and footer
+                return self.parse(title=title, description=description, footer=footer)
+        except Exception:
+            return None
 
     def _get_server(self, *, footer: str) -> Optional["Server"]:
         join_code = self.get_join_code(footer=footer)
