@@ -303,6 +303,7 @@ class Server:
         Get all online server players.
         """
 
+        self._server_cache.players.clear()
         players = [
             ServerPlayer(self, data=p)
             for p in self._handle(
