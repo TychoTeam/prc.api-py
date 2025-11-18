@@ -170,7 +170,7 @@ class Command:
 
         parsed_command = self.full_content.split(" ")
         if not parsed_command[0].startswith(":"):
-            raise ValueError(f"Malformed command received: {self.full_content}")
+            raise ValueError(f"A malformed command was received: {self.full_content}")
 
         self.name: CommandName = cast(
             CommandName, parsed_command.pop(0).replace(":", "").lower()

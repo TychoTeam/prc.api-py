@@ -140,7 +140,7 @@ class PRC:
         elif response.status_code == 403:
             self._global_cache.invalid_keys.add(self._global_key)
             raise PRCException(
-                f"The global key provided is invalid and cannot be reset."
+                f"The global key provided is invalid and cannot be reset. ({response.status_code})"
             )
         else:
             raise PRCException(

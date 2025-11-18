@@ -33,7 +33,7 @@ class Player:
             id, name = [*data]
 
         if not id.isdigit():
-            raise ValueError(f"Malformed player ID received: {data}")
+            raise ValueError(f"A malformed player ID was received: {data}")
 
         self.id = int(id)
         self.name = str(name)

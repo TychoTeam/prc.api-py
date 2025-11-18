@@ -226,11 +226,13 @@ class Server:
 
     def _raise_error_code(self, response: Any) -> NoReturn:
         if not isinstance(response, Dict):
-            raise PRCException("A malformed response was received.")
+            raise PRCException(
+                f"A malformed response was received: '{type(response).__name__ if response else 'None'}'"
+            )
 
         error_code = response.get("code")
         if error_code is None:
-            raise PRCException("No error code was received.")
+            raise PRCException("An API error has occurred but not code was received.")
 
         exceptions: List[Callable[..., APIException]] = [
             UnknownError,
@@ -272,13 +274,15 @@ class Server:
 
         raise APIException(
             error_code,
-            f"An unknown API error has occured: {response.get('message') or '...'}",
+            f"An unknown API error has occured: ({error_code}) {response.get('message') or '...'}",
         )
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
         content_type: Optional[str] = response.headers.get("Content-Type", None)
         if not content_type or not content_type.startswith("application/json"):
-            raise PRCException(f"Received a non-json content type: '{content_type}'")
+            raise PRCException(
+                f"Received a non-json content type: '{content_type}' ({response.status_code})"
+            )
 
         if not response.is_success:
             self._raise_error_code(response.json())

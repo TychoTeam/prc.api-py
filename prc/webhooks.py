@@ -292,7 +292,7 @@ class Webhooks:
             return 1
         if description[-1] == "`":
             return 2
-        raise PRCException("Could not identify webhook message version.")
+        raise PRCException(f"Unknown webhook message version: '{description}'")
 
         # 'Command Usage' - 17/01/2022 - v1 + v2
 
