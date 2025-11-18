@@ -59,10 +59,17 @@ class VehicleTexture:
 
     def is_default(self) -> bool:
         """
-        Whether this texture is **LIKELY** a default game texture and **NOT** a custom texture (aka. custom livery).
+        Whether this texture is **LIKELY** a default game texture and **NOT** a custom texture (aka. custom livery). Default game textures include **ALL** non-custom textures/liveries.
         """
 
         return self.name in _default_textures
+
+    def is_fictional(self) -> bool:
+        """
+        Whether this texture is **LIKELY** a fictional game texture. Fictional textures include most in-game textures that have fictional text.
+        """
+
+        return self.name in _fictional_textures
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, VehicleTexture):
@@ -506,10 +513,14 @@ _prestige_vehicles: List[VehicleModel] = [
     "Terrain Traveller",
 ]
 
-_default_textures = [
+_fictional_textures = [
     "Standard",
     "Ghost",
-    "Undercover",
     "SWAT",
     "Supervisor",
+]
+
+_default_textures = [
+    *_fictional_textures,
+    "Undercover",
 ]
