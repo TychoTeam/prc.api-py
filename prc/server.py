@@ -224,15 +224,19 @@ class Server:
             if name and player.name == name:
                 return player
 
-    def _raise_error_code(self, response: Any) -> NoReturn:
-        if not isinstance(response, Dict):
-            raise PRCException(
-                f"A malformed response was received: '{type(response).__name__ if response else 'None'}'"
+    def _raise_error_code(self, content: Any, response: httpx.Response) -> NoReturn:
+        if not isinstance(content, Dict):
+            raise HTTPException(
+                f"Malformed response content was received: '{type(content).__name__ if content else 'None'}'",
+                status_code=response.status_code,
             )
 
-        error_code = response.get("code")
+        error_code = content.get("code")
         if error_code is None:
-            raise PRCException("An API error has occurred but not code was received.")
+            raise HTTPException(
+                f"An API error has occurred but no code was received.",
+                status_code=response.status_code,
+            )
 
         exceptions: List[Callable[..., APIException]] = [
             UnknownError,
@@ -264,28 +268,28 @@ class Server:
 
                 if isinstance(exception, RateLimited):
                     exception = RateLimited(
-                        response.get("bucket"), response.get("retry_after")
+                        content.get("bucket"), content.get("retry_after")
                     )
 
                 if isinstance(exception, (CommunicationError, ServerOffline)):
-                    exception = _exception(command_id=response.get("commandId"))
+                    exception = _exception(command_id=content.get("commandId"))
 
+                exception.status_code = response.status_code
                 raise exception
 
         raise APIException(
             error_code,
-            f"An unknown API error has occured: ({error_code}) {response.get('message') or '...'}",
+            f"An unknown API error has occured: {content.get('message') or '...'}",
+            status_code=response.status_code,
         )
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
         content_type: Optional[str] = response.headers.get("Content-Type", None)
         if not content_type or not content_type.startswith("application/json"):
-            raise PRCException(
-                f"Received a non-json content type: '{content_type}' ({response.status_code})"
-            )
+            raise BadContentType(response.status_code, content_type)
 
         if not response.is_success:
-            self._raise_error_code(response.json())
+            self._raise_error_code(response.json(), response)
         return response.json()
 
     @_refresh_server

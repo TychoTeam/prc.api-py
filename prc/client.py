@@ -5,11 +5,10 @@ The main prc.api client.
 """
 
 from .utility import KeylessCache, Cache, CacheConfig, Requests
-from typing import Optional, TYPE_CHECKING, Dict, Literal
+from typing import Optional, TYPE_CHECKING, Literal
 from .utility.requests import CleanAsyncClient
-from .exceptions import PRCException
+from .exceptions import HTTPException
 from .webhooks import Webhooks
-from datetime import datetime
 from .server import Server
 import re
 
@@ -139,12 +138,14 @@ class PRC:
             self._global_key = new_key
         elif response.status_code == 403:
             self._global_cache.invalid_keys.add(self._global_key)
-            raise PRCException(
-                f"The global key provided is invalid and cannot be reset. ({response.status_code})"
+            raise HTTPException(
+                f"The global key provided is invalid and cannot be reset.",
+                status_code=response.status_code,
             )
         else:
-            raise PRCException(
-                f"An unknown error has occured while resetting the global key. ({response.status_code})"
+            raise HTTPException(
+                f"An unknown error has occured while resetting the global key.",
+                status_code=response.status_code,
             )
 
     def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):

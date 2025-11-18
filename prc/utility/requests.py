@@ -1,7 +1,7 @@
+from ..exceptions import HTTPException, PRCException, RequestTimeout
 from typing import Dict, Optional, TypeVar, Generic
 from time import time
 from .cache import Cache, KeylessCache
-from ..exceptions import PRCException
 import asyncio
 import httpx
 
@@ -60,8 +60,9 @@ class RateLimiter:
             resets_in = bucket.reset_at - time()
             if resets_in > 0:
                 if resets_in > max_retry_after:
-                    raise PRCException(
-                        f"Rate limit exceeded max threshold ({max_retry_after}s). An IP ban or limit has likely occured."
+                    raise HTTPException(
+                        f"Rate limit exceeded max threshold ({max_retry_after}s). An IP ban or limit has likely occured.",
+                        status_code=429,
                     )
                 await asyncio.sleep(resets_in)
             else:
@@ -76,7 +77,9 @@ class RateLimiter:
                 return False
             else:
                 await asyncio.sleep(retry_after)
-        return True
+                return True
+
+        return False
 
 
 class Requests(Generic[R]):
@@ -124,6 +127,11 @@ class Requests(Generic[R]):
         url = f"{self._base_url}{route}"
         headers = {**self._default_headers, **kwargs.pop("headers", {})}
 
+        async def resend():
+            return await self._make_request(
+                method, route, retry + 1, **kwargs, headers=headers
+            )
+
         try:
             response = await self._session.request(
                 method,
@@ -135,13 +143,9 @@ class Requests(Generic[R]):
         except httpx.ReadTimeout:
             if self._can_retry(retry=retry):
                 await asyncio.sleep(retry * 1.5)
-                return await self._make_request(
-                    method, route, retry + 1, **kwargs, headers=headers
-                )
+                return await resend()
             else:
-                raise PRCException(
-                    f"PRC API took too long to respond. ({retry}/{self._max_retries} retries) ({self._timeout}s timeout)"
-                )
+                raise RequestTimeout(retry, self._max_retries, self._timeout)
 
         self._rate_limiter.save_bucket(route, response.headers)
 
@@ -149,9 +153,10 @@ class Requests(Generic[R]):
             if await self._rate_limiter.wait_to_retry(
                 response.headers, self._max_retry_after
             ):
-                return await self._make_request(
-                    method, route, retry + 1, **kwargs, headers=headers
-                )
+                return await resend()
+            else:
+                await asyncio.sleep(retry * 1.5)
+                return await resend()
 
         return response
 
