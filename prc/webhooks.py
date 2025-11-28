@@ -125,8 +125,10 @@ class Webhooks:
         else:
             raise ValueError(f"Unknown webhook version: {version}")
 
-        targets = content.split(" ")[1]
-        content = content.replace(targets, targets.replace(",", ", ").strip())
+        parts = content.split(" ")
+        if len(parts) > 1:
+            targets = content.split(" ")[1]
+            content = content.replace(targets, targets.replace(",", ", ").strip())
 
         return Command(
             content,
