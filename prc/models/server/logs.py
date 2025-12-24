@@ -28,6 +28,8 @@ class LogEntry:
         The corresponding initialized cache, if any.
     """
 
+    created_at: datetime
+
     def __init__(
         self,
         data: Union[
@@ -38,7 +40,7 @@ class LogEntry:
         ],
         cache: Optional["KeylessCache"] = None,
     ):
-        self.created_at = datetime.fromtimestamp(data.get("Timestamp", 0))
+        self.created_at = datetime.fromtimestamp(data["Timestamp"])
 
         if cache is not None:
             for entry in cache.items():
@@ -48,18 +50,22 @@ class LogEntry:
                 cache.add(self)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, LogEntry):
-            return self.created_at == other.created_at
-        return False
+        return isinstance(other, LogEntry) and self.created_at == other.created_at
 
     def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
 
-    def __gt__(self, other: "LogEntry"):
-        return self.created_at > other.created_at
+    def __gt__(self, other: "LogEntry") -> bool:
+        return isinstance(other, LogEntry) and self.created_at > other.created_at
 
-    def __lt__(self, other: "LogEntry"):
-        return self.created_at < other.created_at
+    def __ge__(self, other: "LogEntry") -> bool:
+        return self.__gt__(other) or self.__eq__(other)
+
+    def __lt__(self, other: "LogEntry") -> bool:
+        return not self.__gt__(other)
+
+    def __le__(self, other: "LogEntry") -> bool:
+        return self.__lt__(other) or self.__eq__(other)
 
 
 class LogPlayer(Player):
@@ -94,7 +100,7 @@ class AccessType(Enum):
     """
 
     @staticmethod
-    def parse(value: bool):
+    def parse(value: bool) -> "AccessType":
         return AccessType.JOIN if value else AccessType.LEAVE
 
     JOIN = 0
@@ -112,6 +118,9 @@ class AccessEntry(LogEntry):
     data
         The response data.
     """
+
+    type: AccessType
+    subject: LogPlayer
 
     def __init__(self, server: "Server", data: "v1_ServerJoinLog"):
         self._server = server
@@ -151,16 +160,19 @@ class KillEntry(LogEntry):
         The response data.
     """
 
+    killer: LogPlayer
+    killed: LogPlayer
+
     def __init__(self, server: "Server", data: "v1_ServerKillLog"):
         self._server = server
 
-        self.killed = LogPlayer(server, data=data.get("Killed"))
         self.killer = LogPlayer(server, data=data.get("Killer"))
+        self.killed = LogPlayer(server, data=data.get("Killed"))
 
         super().__init__(data)
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} killed={self.killed.name, self.killed.id}>"
+        return f"<{self.__class__.__name__} killer={self.killer.name, self.killer.id} killed={self.killed.name, self.killed.id}>"
 
 
 class CommandEntry(LogEntry):
@@ -174,6 +186,9 @@ class CommandEntry(LogEntry):
     data
         The response data.
     """
+
+    author: LogPlayer
+    command: Command
 
     def __init__(self, server: "Server", data: "v1_ServerCommandLog"):
         self._server = server
@@ -201,6 +216,9 @@ class ModCallEntry(LogEntry):
         The response data.
     """
 
+    caller: LogPlayer
+    responder: Optional[LogPlayer]
+
     def __init__(self, server: "Server", data: "v1_ServerModCall"):
         self._server = server
 
@@ -218,4 +236,4 @@ class ModCallEntry(LogEntry):
         return bool(self.responder)
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} caller={self.caller.name, self.caller.id}>"
+        return f"<{self.__class__.__name__} caller={self.caller.name, self.caller.id} acknowledged={self.is_acknowledged()}>"

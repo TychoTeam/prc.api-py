@@ -19,6 +19,8 @@ class VehicleOwner:
         The player name.
     """
 
+    name: str
+
     def __init__(self, server: "Server", name: str):
         self._server = server
 
@@ -33,9 +35,9 @@ class VehicleOwner:
         return self._server._get_player(name=self.name)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, VehicleOwner) or isinstance(other, Player):
-            return self.name == other.name
-        return False
+        return (
+            isinstance(other, VehicleOwner) or isinstance(other, Player)
+        ) and self.name == other.name
 
     def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
@@ -53,6 +55,8 @@ class VehicleTexture:
     name
         The vehicle texture's name.
     """
+
+    name: str
 
     def __init__(self, name: str):
         self.name = name
@@ -72,9 +76,7 @@ class VehicleTexture:
         return self.name in _fictional_textures
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, VehicleTexture):
-            return self.name == other.name
-        return False
+        return isinstance(other, VehicleTexture) and self.name == other.name
 
     def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
@@ -95,14 +97,18 @@ class Vehicle:
         The response data.
     """
 
+    owner: VehicleOwner
+    texture: VehicleTexture
+    model: "VehicleModel"
+    year: Optional[int] = None
+
     def __init__(self, server: "Server", data: "v1_ServerVehicle"):
         self._server = server
 
         self.owner = VehicleOwner(server, data.get("Owner"))
         self.texture = VehicleTexture(name=data.get("Texture") or "Standard")
 
-        self.model: VehicleModel = cast(VehicleModel, data.get("Name"))
-        self.year: Optional[int] = None
+        self.model = cast(VehicleModel, data.get("Name"))
 
         parsed_name = self.model.split(" ")
         for i in [0, -1]:
@@ -140,9 +146,11 @@ class Vehicle:
         return self.model in _prestige_vehicles
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Vehicle):
-            return self.full_name == other.full_name and self.owner == other.owner
-        return False
+        return (
+            isinstance(other, Vehicle)
+            and (self.full_name == other.full_name)
+            and (self.owner == other.owner)
+        )
 
     def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)

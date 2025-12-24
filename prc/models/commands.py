@@ -44,6 +44,10 @@ class CommandTarget:
         The author of the command.
     """
 
+    original: str
+    referenced_name: Optional[str] = None
+    referenced_id: Optional[int] = None
+
     def __init__(self, command: "Command", data: str, author: "Player"):
         self._client = command._client
         self._server = command._server
@@ -51,8 +55,6 @@ class CommandTarget:
 
         self.original = data
 
-        self.referenced_name: Optional[str] = None
-        self.referenced_id: Optional[int] = None
         if self.original.isdigit() and command.name in _supports_id_targets:
             self.referenced_id = int(self.original)
         elif (
@@ -62,7 +64,7 @@ class CommandTarget:
             self.referenced_id = author.id
             self.referenced_name = author.name
         else:
-            self.referenced_name = self.original
+            self.referenced_name = self.original.strip()
 
     @property
     def guessed_player(self) -> Optional[Union["ServerPlayer", "Player"]]:
@@ -70,38 +72,23 @@ class CommandTarget:
         The closest matched player or server player based on the referenced name or ID. Server players must be fetched separately.
         """
 
+        cached_players = None
         if self._server:
-            return next(
-                (
-                    player
-                    for _, player in self._server._server_cache.players.items()
-                    if (
-                        player.name.lower().startswith(self.referenced_name.lower())
-                        if (self.referenced_name is not None)
-                        else (
-                            self.referenced_id is not None
-                            and player.id == self.referenced_id
-                        )
-                    )
-                ),
-                None,
-            )
+            cached_players = self._server._server_cache.players
         elif self._client:
-            return next(
-                (
-                    player
-                    for _, player in self._client._global_cache.players.items()
-                    if (
-                        player.name.lower().startswith(self.referenced_name.lower())
-                        if (self.referenced_name is not None)
-                        else (
-                            self.referenced_id is not None
-                            and player.id == self.referenced_id
-                        )
-                    )
-                ),
-                None,
-            )
+            cached_players = self._client._global_cache.players
+
+        if not cached_players:
+            return None
+
+        if self.referenced_id is not None:
+            return cached_players.get(self.referenced_id)
+
+        if self.referenced_name is not None:
+            ref = self.referenced_name.lower()
+            for _, player in cached_players.items():
+                if player.name.lower().startswith(ref):
+                    return player
 
     def is_author(self, guess: bool = True) -> bool:
         """
@@ -121,14 +108,14 @@ class CommandTarget:
 
     def is_all(self) -> bool:
         """
-        Whether this target references `all`; i.e. affects all players in the server.
+        Whether this target references `all`; i.e, affects all players in the server.
         """
 
         return self.original.lower() in ["all"]
 
     def is_others(self) -> bool:
         """
-        Whether this target references `others`; i.e. affects all players in the server except the command author.
+        Whether this target references `others`; i.e, affects all players in the server except the command author.
         """
 
         return self.original.lower() in ["others"]
@@ -155,6 +142,12 @@ class Command:
         Whether this command is from a webhook message. This will use a different parser for some attributes.
     """
 
+    full_content: str
+    name: "CommandName"
+    targets: Optional[List[CommandTarget]] = None
+    args: Optional[List["CommandArg"]] = None
+    text: Optional[str]
+
     def __init__(
         self,
         data: str,
@@ -166,17 +159,14 @@ class Command:
         self._client = client
         self._server = server
 
-        self.full_content: str = data
+        self.full_content = data
 
         parsed_command = self.full_content.split(" ")
         if not parsed_command[0].startswith(":"):
             raise ValueError(f"A malformed command was received: {self.full_content}")
 
-        self.name: CommandName = cast(
-            CommandName, parsed_command.pop(0).replace(":", "").lower()
-        )
+        self.name = cast(CommandName, parsed_command.pop(0).replace(":", "").lower())
 
-        self.targets: Optional[List[CommandTarget]] = None
         if parsed_command and self.name in _supports_targets:
             if self.name in _supports_multi_targets:
                 self.targets = []
@@ -213,7 +203,6 @@ class Command:
         elif not parsed_command and self.name in _supports_blank_target:
             self.targets = [CommandTarget(self, data="me", author=author)]
 
-        self.args: Optional[List[CommandArg]] = None
         if parsed_command and self.name in _supports_args:
             self.args = []
             args_count: int = _supports_args.get(self.name, 0)

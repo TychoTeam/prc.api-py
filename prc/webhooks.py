@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, Union, overload
+from typing import TYPE_CHECKING, Optional, overload
 from .exceptions import PRCException
 from .models import *
 import re

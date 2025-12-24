@@ -79,6 +79,11 @@ class WebhookMessage:
         The server handler, if any.
     """
 
+    type: WebhookType
+    command: Command
+    author: WebhookPlayer
+    version: WebhookVersion
+
     def __init__(
         self,
         webhooks: "Webhooks",

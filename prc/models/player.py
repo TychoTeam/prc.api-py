@@ -16,6 +16,9 @@ class Player:
         The player name and ID. Either a tuple or default response format (`PlayerName:123`).
     """
 
+    id: int
+    name: str
+
     def __init__(
         self,
         client: "PRC",
@@ -49,9 +52,7 @@ class Player:
         return self.id == 0
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Player):
-            return self.id == other.id
-        return False
+        return isinstance(other, Player) and self.id == other.id
 
     def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)

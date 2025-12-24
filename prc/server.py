@@ -96,7 +96,7 @@ class Server:
     server_key
         The unique server key used to authenticate requests.
     ephemeral_ttl
-        How long, in seconds, ephemeral results (i.e. cached responses) are kept before expiring. Defaults to `3` seconds.
+        How long, in seconds, ephemeral results (i.e, cached responses) are kept before expiring. Defaults to `3` seconds.
     cache
         An initialized server cache to use. By default, a new instance is created.
     requests
@@ -165,7 +165,7 @@ class Server:
     def join_link(self) -> Optional[str]:
         """
         Web URL that allows users to join the game and queue automatically for the server.
-        Hosted by PRC. Server status must be fetched separately. ⚠️ *(May not function properly on mobile devices -- May not function at random times)*
+        Hosted by PRC. Server status must be fetched separately. ⚠️ *(May not function properly on mobile devices)*
         """
 
         return (
@@ -176,12 +176,12 @@ class Server:
 
     def is_online(self) -> Optional[bool]:
         """
-        Whether the server is online (i.e. has any online players). Server status or players must be fetched separately.
+        Whether the server is online (i.e, has any online players). Server status or players must be fetched separately.
         """
 
         return self.player_count > 0 if self.player_count else None
 
-    def is_full(self, include_reserved: bool = False) -> Optional[bool]:
+    def is_full(self, *, include_reserved: bool = False) -> Optional[bool]:
         """
         Whether the server player count has reached the max player limit. Server status must be fetched separately.
 
