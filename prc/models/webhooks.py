@@ -80,7 +80,7 @@ class WebhookMessage:
     """
 
     type: WebhookType
-    command: Command
+    command: "Command"
     author: WebhookPlayer
     version: WebhookVersion
 
