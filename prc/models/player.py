@@ -1,4 +1,4 @@
-from typing import Tuple, Union, TYPE_CHECKING, Optional
+from typing import Tuple, Union, TYPE_CHECKING, Optional, overload
 
 if TYPE_CHECKING:
     from prc.client import PRC
@@ -59,3 +59,29 @@ class Player:
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={self.name}, id={self.id}>"
+
+
+class PlayerList(list[Player]):
+    def copy(self):
+        return PlayerList(self)
+
+    @overload
+    def find_player(self, *, id: int, name: None = ...) -> Optional[Player]: ...
+
+    @overload
+    def find_player(self, *, id: None = ..., name: str) -> Optional[Player]: ...
+
+    def find_player(
+        self, *, id: Optional[int] = None, name: Optional[str] = None
+    ) -> Optional[Player]:
+        """
+        Find a player using their player ID or username.
+        """
+
+        if id is not None:
+            return next((p for p in self if p.id == id), None)
+
+        if name is not None:
+            return next(
+                (p for p in self if p.name.lower() == name.lower().strip()), None
+            )

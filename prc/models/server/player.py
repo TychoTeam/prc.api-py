@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import List, Optional, Tuple, TYPE_CHECKING, Union, overload
 from prc.utility import DisplayNameEnum
 from ..player import Player
 
@@ -82,6 +82,9 @@ class ServerPlayer(Player):
         if not self.is_remote():
             server._server_cache.players.set(self.id, self)
 
+        if self.permission == PlayerPermission.OWNER:
+            server.owner = ServerOwner(server, self.id, self.permission)
+
     @property
     def joined_at(self):
         """
@@ -159,6 +162,96 @@ class ServerPlayer(Player):
         return f"<{self.__class__.__name__} name={self.name}, id={self.id}, permission={self.permission.name}, team={self.team.name}>"
 
 
+class ServerPlayerList(list[ServerPlayer]):
+    def copy(self):
+        return ServerPlayerList(self)
+
+    @overload
+    def find_player(self, *, id: int, name: None = ...) -> Optional[ServerPlayer]: ...
+
+    @overload
+    def find_player(self, *, id: None = ..., name: str) -> Optional[ServerPlayer]: ...
+
+    def find_player(
+        self, *, id: Optional[int] = None, name: Optional[str] = None
+    ) -> Optional[ServerPlayer]:
+        """
+        Find a server player using their player ID or username.
+        """
+
+        if id is not None:
+            return next((p for p in self if p.id == id), None)
+
+        if name is not None:
+            return next(
+                (p for p in self if p.name.lower() == name.lower().strip()), None
+            )
+
+    def get_team(self, team: PlayerTeam):
+        """
+        Get all players in a team.
+        """
+
+        return ServerPlayerList(p for p in self if p.team == team)
+
+    def get_staff(self):
+        """
+        Get all **online** server staff players.
+        """
+
+        return ServerPlayerList(p for p in self if p.is_staff())
+
+    def get_owner(self) -> Optional[ServerPlayer]:
+        """
+        Get the server owner player if they are **online**.
+        """
+
+        return next((p for p in self if p.permission == PlayerPermission.OWNER), None)
+
+    def get_co_owners(self):
+        """
+        Get all **online** server co-owner players.
+        """
+
+        return ServerPlayerList(
+            p for p in self if p.permission == PlayerPermission.CO_OWNER
+        )
+
+    def get_admins(self):
+        """
+        Get all **online** server admin players.
+        """
+
+        return ServerPlayerList(
+            p for p in self if p.permission == PlayerPermission.ADMIN
+        )
+
+    def get_mods(self):
+        """
+        Get all **online** server mod players.
+        """
+
+        return ServerPlayerList(p for p in self if p.permission == PlayerPermission.MOD)
+
+    def get_helpers(self):
+        """
+        Get all **online** server helper players.
+        """
+
+        return ServerPlayerList(
+            p for p in self if p.permission == PlayerPermission.HELPER
+        )
+
+    def get_normal(self):
+        """
+        Get all **online** normal server players (players with no staff permissions).
+        """
+
+        return ServerPlayerList(
+            p for p in self if p.permission == PlayerPermission.NORMAL
+        )
+
+
 class QueuedPlayer:
     """
     Represents a partial player in the server join queue.
@@ -194,6 +287,18 @@ class QueuedPlayer:
         return f"<{self.__class__.__name__} id={self.id}, spot={self.spot}>"
 
 
+class QueuedPlayerList(list[QueuedPlayer]):
+    def copy(self):
+        return QueuedPlayerList(self)
+
+    def find_player(self, *, id: int) -> Optional[QueuedPlayer]:
+        """
+        Find a queued player using their player ID.
+        """
+
+        return next((p for p in self if p.id == id), None)
+
+
 class ServerOwner:
     """
     Represents a server [co-]owner partial player.
@@ -214,6 +319,9 @@ class ServerOwner:
 
         self.id = int(id)
         self.permission = permission
+
+        if not server.owner:
+            server.owner = self
 
     @property
     def player(self) -> Optional["ServerPlayer"]:

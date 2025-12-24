@@ -10,8 +10,11 @@ from typing import (
     Union,
     Sequence,
     Any,
+    overload,
 )
+
 from .utility import KeylessCache, Cache, CacheConfig, Requests, InsensitiveEnum
+from .models import PlayerList, ServerPlayerList, QueuedPlayerList, VehicleList
 from functools import wraps
 from .exceptions import *
 from .models import *
@@ -63,6 +66,7 @@ def _refresh_server(func):
 def _ephemeral(func):
     @wraps(func)
     async def wrapper(self: "Server", *args, **kwargs):
+        force_fetch = kwargs.pop("fetch", False)
         try:
             args_repr = json.dumps(args, sort_keys=True, default=str)
             kwargs_repr = json.dumps(kwargs, sort_keys=True, default=str)
@@ -73,12 +77,14 @@ def _ephemeral(func):
         hashed_args = hashlib.sha256(f"{args_repr}|{kwargs_repr}".encode()).hexdigest()
         cache_key = f"{func.__name__}_cache_{hashed_args}"
 
-        if hasattr(self, cache_key):
-            cached_result, timestamp = getattr(self, cache_key)
-            if (asyncio.get_event_loop().time() - timestamp) < self._ephemeral_ttl:
-                return copy.copy(cached_result)
+        if not force_fetch:
+            if hasattr(self, cache_key):
+                cached_result, timestamp = getattr(self, cache_key)
+                if (asyncio.get_event_loop().time() - timestamp) < self._ephemeral_ttl:
+                    return copy.copy(cached_result)
 
         result = await func(self, *args, **kwargs)
+
         setattr(self, cache_key, (result, asyncio.get_event_loop().time()))
         return copy.copy(result)
 
@@ -164,8 +170,9 @@ class Server:
     @property
     def join_link(self) -> Optional[str]:
         """
-        Web URL that allows users to join the game and queue automatically for the server.
-        Hosted by PRC. Server status must be fetched separately. ⚠️ *(May not function properly on mobile devices)*
+        Web URL that allows users to join the game and queue automatically for the private server. Hosted by PRC. Server status must be fetched separately.
+
+        ⚠️ *May not function properly on mobile devices.*
         """
 
         return (
@@ -294,7 +301,7 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_status(self) -> ServerStatus:
+    async def get_status(self, **kwargs) -> ServerStatus:
         """
         Get the current server status.
         """
@@ -306,72 +313,100 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_players(self) -> List[ServerPlayer]:
+    async def get_players(self, **kwargs) -> ServerPlayerList:
         """
         Get all online server players.
         """
 
         self._server_cache.players.clear()
-        players = [
+        players = ServerPlayerList(
             ServerPlayer(self, data=p)
             for p in self._handle(
                 await self._requests.get("/players"), v1_ServerPlayersResponse
             )
-        ]
+        )
         self.player_count = len(players)
         self.staff_count = len([p for p in players if p.is_staff()])
         return players
 
+    @overload
+    async def get_player(
+        self, *, id: int, name: None = ..., **kwargs
+    ) -> Optional[ServerPlayer]: ...
+
+    @overload
+    async def get_player(
+        self, *, id: None = ..., name: str, **kwargs
+    ) -> Optional[ServerPlayer]: ...
+
+    async def get_player(
+        self, *, id: Optional[int] = None, name: Optional[str] = None, **kwargs
+    ) -> Optional[ServerPlayer]:
+        """
+        Get an online server player using their player ID or username, if found.
+
+        This is equivalent to `get_players` and using `find_player`.
+        """
+
+        players = await self.get_players(fetch=kwargs.pop("fetch", False))
+
+        if id is not None:
+            return players.find_player(id=id)
+        if name is not None:
+            return players.find_player(name=name)
+
     @_refresh_server
     @_ephemeral
-    async def get_queue(self) -> List[QueuedPlayer]:
+    async def get_queue(self, **kwargs) -> QueuedPlayerList:
         """
         Get all players in the server join queue.
         """
 
-        players = [
+        players = QueuedPlayerList(
             QueuedPlayer(self, id=p, index=i)
             for i, p in enumerate(
                 self._handle(await self._requests.get("/queue"), v1_ServerQueueResponse)
             )
-        ]
+        )
         self.queue_count = len(players)
         return players
 
     @_refresh_server
     @_ephemeral
-    async def get_bans(self) -> List[Player]:
+    async def get_bans(self, **kwargs) -> PlayerList:
         """
         Get all banned players.
         """
 
-        return [
+        return PlayerList(
             Player(self._client, data=p, _skip_cache=True)
             for p in self._parse_api_map(
                 self._handle(await self._requests.get("/bans"), v1_ServerBanResponse)
             ).items()
-        ]
+        )
 
     @_refresh_server
     @_ephemeral
-    async def get_vehicles(self) -> List[Vehicle]:
+    async def get_vehicles(self, **kwargs) -> VehicleList:
         """
         Get all spawned vehicles in the server. A single server player may have up to 2 spawned vehicles (1 primary + 1 secondary).
         """
 
         self._server_cache.vehicles.clear()
-        return [
+        return VehicleList(
             Vehicle(self, data=v)
             for v in self._handle(
                 await self._requests.get("/vehicles"), v1_ServerVehiclesResponse
             )
-        ]
+        )
 
     @_refresh_server
     @_ephemeral
-    async def get_staff(self) -> ServerStaff:
+    async def get_staff(self, **kwargs) -> ServerStaff:
         """
-        Get all server staff members excluding server owner. ⚠️ *(This endpoint is deprecated, use at your own risk)*
+        Get all server staff members excluding server owner.
+
+        ⚠️ *This endpoint is deprecated, use at your own risk.*
         """
 
         return ServerStaff(
@@ -413,7 +448,9 @@ class ServerLogs(ServerModule):
 
     @_refresh_server
     @_ephemeral
-    async def get_access(self, *, oldest_first: bool = False) -> List[AccessEntry]:
+    async def get_access(
+        self, *, oldest_first: bool = False, **kwargs
+    ) -> List[AccessEntry]:
         """
         Get server access (join/leave) logs.
 
@@ -431,7 +468,9 @@ class ServerLogs(ServerModule):
 
     @_refresh_server
     @_ephemeral
-    async def get_kills(self, *, oldest_first: bool = False) -> List[KillEntry]:
+    async def get_kills(
+        self, *, oldest_first: bool = False, **kwargs
+    ) -> List[KillEntry]:
         """
         Get server kill logs.
 
@@ -453,7 +492,9 @@ class ServerLogs(ServerModule):
 
     @_refresh_server
     @_ephemeral
-    async def get_commands(self, *, oldest_first: bool = False) -> List[CommandEntry]:
+    async def get_commands(
+        self, *, oldest_first: bool = False, **kwargs
+    ) -> List[CommandEntry]:
         """
         Get server command usage logs.
 
@@ -476,7 +517,9 @@ class ServerLogs(ServerModule):
 
     @_refresh_server
     @_ephemeral
-    async def get_mod_calls(self, *, oldest_first: bool = False) -> List[ModCallEntry]:
+    async def get_mod_calls(
+        self, *, oldest_first: bool = False, **kwargs
+    ) -> List[ModCallEntry]:
         """
         Get server mod call logs.
 
@@ -530,7 +573,7 @@ class ServerCommands(ServerModule):
         name: CommandName,
         *,
         targets: Optional[Sequence[CommandTargetPlayerNameOrId]] = None,
-        args: Optional[List[Union[CommandArg, Player]]] = None,
+        args: Optional[Sequence[Union[CommandArg, Player]]] = None,
         text: Optional[str] = None,
         _max_retries: int = 3,
         _prefer_player_id: bool = False,
@@ -589,7 +632,7 @@ class ServerCommands(ServerModule):
                 f"Command execution has unexpectedly failed: '{message}'"
             )
 
-    async def kill(self, targets: List[CommandTargetPlayerName]):
+    async def kill(self, targets: Sequence[CommandTargetPlayerName]):
         """
         Kill players in the server.
 
@@ -601,7 +644,7 @@ class ServerCommands(ServerModule):
 
         await self.run("kill", targets=targets)
 
-    async def heal(self, targets: List[CommandTargetPlayerName]):
+    async def heal(self, targets: Sequence[CommandTargetPlayerName]):
         """
         Heal players in the server.
 
@@ -613,7 +656,7 @@ class ServerCommands(ServerModule):
 
         await self.run("heal", targets=targets)
 
-    async def make_wanted(self, targets: List[CommandTargetPlayerName]):
+    async def make_wanted(self, targets: Sequence[CommandTargetPlayerName]):
         """
         Make players wanted in the server.
 
@@ -625,7 +668,7 @@ class ServerCommands(ServerModule):
 
         await self.run("wanted", targets=targets)
 
-    async def remove_wanted(self, targets: List[CommandTargetPlayerName]):
+    async def remove_wanted(self, targets: Sequence[CommandTargetPlayerName]):
         """
         Remove wanted status from players in the server.
 
@@ -637,7 +680,7 @@ class ServerCommands(ServerModule):
 
         await self.run("unwanted", targets=targets)
 
-    async def make_jailed(self, targets: List[CommandTargetPlayerName]):
+    async def make_jailed(self, targets: Sequence[CommandTargetPlayerName]):
         """
         Make players jailed in the server. Teleports them to a prison cell and changes the server player's team.
 
@@ -649,7 +692,7 @@ class ServerCommands(ServerModule):
 
         await self.run("jail", targets=targets)
 
-    async def remove_jailed(self, targets: List[CommandTargetPlayerName]):
+    async def remove_jailed(self, targets: Sequence[CommandTargetPlayerName]):
         """
         Remove jailed status from players in the server.
 
@@ -661,7 +704,7 @@ class ServerCommands(ServerModule):
 
         await self.run("unjail", targets=targets)
 
-    async def refresh(self, targets: List[CommandTargetPlayerName]):
+    async def refresh(self, targets: Sequence[CommandTargetPlayerName]):
         """
         Respawn players in the server and return them to their last positions.
 
@@ -673,7 +716,7 @@ class ServerCommands(ServerModule):
 
         await self.run("refresh", targets=targets)
 
-    async def respawn(self, targets: List[CommandTargetPlayerName]):
+    async def respawn(self, targets: Sequence[CommandTargetPlayerName]):
         """
         Respawn players in the server and return them to their set spawn location.
 
@@ -686,7 +729,7 @@ class ServerCommands(ServerModule):
         await self.run("load", targets=targets)
 
     async def teleport(
-        self, targets: List[CommandTargetPlayerName], *, to: CommandTargetPlayerName
+        self, targets: Sequence[CommandTargetPlayerName], *, to: CommandTargetPlayerName
     ):
         """
         Teleport players to another player in the server.
@@ -702,7 +745,10 @@ class ServerCommands(ServerModule):
         await self.run("tp", targets=targets, args=[to])
 
     async def kick(
-        self, targets: List[CommandTargetPlayerName], *, reason: Optional[str] = None
+        self,
+        targets: Sequence[CommandTargetPlayerName],
+        *,
+        reason: Optional[str] = None,
     ):
         """
         Kick players from the server.
@@ -717,7 +763,7 @@ class ServerCommands(ServerModule):
 
         await self.run("kick", targets=targets, text=reason)
 
-    async def ban(self, targets: List[CommandTargetPlayerNameOrId]):
+    async def ban(self, targets: Sequence[CommandTargetPlayerNameOrId]):
         """
         Ban players from the server.
 
@@ -729,7 +775,7 @@ class ServerCommands(ServerModule):
 
         await self.run("ban", targets=targets, _prefer_player_id=True)
 
-    async def unban(self, targets: List[CommandTargetPlayerNameOrId]):
+    async def unban(self, targets: Sequence[CommandTargetPlayerNameOrId]):
         """
         Unban players from the server.
 
@@ -748,7 +794,7 @@ class ServerCommands(ServerModule):
 
         await self.run("shutdown")
 
-    async def grant_helper(self, targets: List[CommandTargetPlayerNameOrId]):
+    async def grant_helper(self, targets: Sequence[CommandTargetPlayerNameOrId]):
         """
         Grant helper permissions to players in the server.
 
@@ -760,7 +806,7 @@ class ServerCommands(ServerModule):
 
         await self.run("helper", targets=targets, _prefer_player_id=True)
 
-    async def revoke_helper(self, targets: List[CommandTargetPlayerNameOrId]):
+    async def revoke_helper(self, targets: Sequence[CommandTargetPlayerNameOrId]):
         """
         Revoke helper permissions to players in the server.
 
@@ -772,7 +818,7 @@ class ServerCommands(ServerModule):
 
         await self.run("unhelper", targets=targets, _prefer_player_id=True)
 
-    async def grant_mod(self, targets: List[CommandTargetPlayerNameOrId]):
+    async def grant_mod(self, targets: Sequence[CommandTargetPlayerNameOrId]):
         """
         Grant moderator permissions to players in the server.
 
@@ -784,7 +830,7 @@ class ServerCommands(ServerModule):
 
         await self.run("mod", targets=targets, _prefer_player_id=True)
 
-    async def revoke_mod(self, targets: List[CommandTargetPlayerNameOrId]):
+    async def revoke_mod(self, targets: Sequence[CommandTargetPlayerNameOrId]):
         """
         Revoke moderator permissions from players in the server.
 
@@ -796,7 +842,7 @@ class ServerCommands(ServerModule):
 
         await self.run("unmod", targets=targets, _prefer_player_id=True)
 
-    async def grant_admin(self, targets: List[CommandTargetPlayerNameOrId]):
+    async def grant_admin(self, targets: Sequence[CommandTargetPlayerNameOrId]):
         """
         Grant admin permissions to players in the server.
 
@@ -808,7 +854,7 @@ class ServerCommands(ServerModule):
 
         await self.run("admin", targets=targets, _prefer_player_id=True)
 
-    async def revoke_admin(self, targets: List[CommandTargetPlayerNameOrId]):
+    async def revoke_admin(self, targets: Sequence[CommandTargetPlayerNameOrId]):
         """
         Revoke admin permissions from players in the server.
 
@@ -844,7 +890,7 @@ class ServerCommands(ServerModule):
 
         await self.run("m", text=text)
 
-    async def send_pm(self, targets: List[CommandTargetPlayerName], text: str):
+    async def send_pm(self, targets: Sequence[CommandTargetPlayerName], text: str):
         """
         Send a private message to players in the server (dismissable popup).
 

@@ -23,6 +23,8 @@ class ServerStaff:
     mods: List[StaffMember]
 
     def __init__(self, server: "Server", data: "v1_ServerStaffResponse"):
+        self._server = server
+
         self.co_owners = [
             ServerOwner(server, id=co_owner_id, permission=PlayerPermission.CO_OWNER)
             for co_owner_id in data.get("CoOwners")
@@ -40,6 +42,14 @@ class ServerStaff:
         server.mods = self.mods
 
         server.total_staff_count = self.count()
+
+    @property
+    def all(self):
+        """
+        All server staff, including server owner (if cached). Some players may have multiple permissions set, hence may be present multiple times.
+        """
+
+        return self.co_owners + self.admins + self.mods + [self._server.owner]
 
     @overload
     def find_player(
@@ -102,8 +112,6 @@ class ServerStaff:
             return next(
                 (s for s in self.admins if s.name.lower() == name.lower().strip()), None
             )
-
-        return None
 
     @overload
     def find_mod(self, *, id: int, name: None = ...) -> Optional[StaffMember]: ...

@@ -65,9 +65,9 @@ class ServerStatus:
     @property
     def join_link(self) -> str:
         """
-        Web URL that allows users to join the game and queue automatically for the server.
+        Web URL that allows users to join the game and queue automatically for the private server. Hosted by PRC. Server status must be fetched separately.
 
-        Hosted by PRC. Server status must be fetched separately. ⚠️ *(May not function properly on mobile devices)*
+        ⚠️ *May not function properly on mobile devices.*
         """
 
         return "https://policeroleplay.community/join/" + self.join_code

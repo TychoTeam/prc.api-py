@@ -159,6 +159,78 @@ class Vehicle:
         return f"<{self.__class__.__name__} name={self.full_name}, owner={self.owner.name}>"
 
 
+class VehicleList(list[Vehicle]):
+    def copy(self):
+        return VehicleList(self)
+
+    def get_prestige(self) -> "VehicleList":
+        """
+        Find all spawned prestige vehicles (aka. exotic vehicles).
+        """
+
+        return VehicleList(v for v in self if v.is_prestige())
+
+    def get_primary(self) -> "VehicleList":
+        """
+        Find all spawned primary vehicles.
+        """
+
+        return VehicleList(v for v in self if not v.is_secondary())
+
+    def get_secondary(self) -> "VehicleList":
+        """
+        Find all spawned secondary vehicles.
+        """
+
+        return VehicleList(v for v in self if v.is_secondary())
+
+    def get_name(self, name: "VehicleName") -> "VehicleList":
+        """
+        Find all spawned vehicles of this exact full name.
+        """
+
+        return VehicleList(v for v in self if v.full_name == name)
+
+    def get_model(self, model: "VehicleModel") -> "VehicleList":
+        """
+        Find all spawned vehicles of this model.
+        """
+
+        return VehicleList(v for v in self if v.model == model)
+
+    def with_texture(self, texture: str) -> "VehicleList":
+        """
+        Find all spawned vehicles with this texture set (case insensitive).
+        """
+
+        return VehicleList(
+            v for v in self if v.texture.name.lower() == texture.lower().strip()
+        )
+
+    def with_default_texture(self) -> "VehicleList":
+        """
+        Find all spawned vehicles with a texture that is **LIKELY** a default game texture and **NOT** a custom texture (aka. custom livery). Default game textures include **ALL** non-custom textures/liveries.
+        """
+
+        return VehicleList(v for v in self if v.texture.is_default())
+
+    def with_fictional_texture(self) -> "VehicleList":
+        """
+        Find all spawned vehicles with a texture that is **LIKELY** a fictional game texture. Fictional textures include most in-game textures that have fictional text.
+        """
+
+        return VehicleList(v for v in self if v.texture.is_fictional())
+
+    def by_owner(self, *, name: str) -> "VehicleList":
+        """
+        Find all spawned vehicles owned by a player using their username. A player may have up to 2 vehicles (1 primary, 1 secondary).
+        """
+
+        return VehicleList(
+            v for v in self if v.owner.name.lower() == name.lower().strip()
+        )
+
+
 # All vehicle names
 VehicleName = Literal[
     # CIV
