@@ -42,10 +42,12 @@ class ServerStaff:
         server.total_staff_count = self.count()
 
     @overload
-    def find_player(self, *, id: int, name: None = ...): ...
+    def find_player(
+        self, *, id: int, name: None = ...
+    ) -> Optional[Union[ServerOwner, StaffMember]]: ...
 
     @overload
-    def find_player(self, *, id: None = ..., name: str): ...
+    def find_player(self, *, id: None = ..., name: str) -> Optional[StaffMember]: ...
 
     def find_player(
         self, *, id: Optional[int] = None, name: Optional[str] = None
@@ -81,10 +83,10 @@ class ServerStaff:
         return next((s for s in self.co_owners if s.id == id), None)
 
     @overload
-    def find_admin(self, *, id: int, name: None = ...): ...
+    def find_admin(self, *, id: int, name: None = ...) -> Optional[StaffMember]: ...
 
     @overload
-    def find_admin(self, *, id: None = ..., name: str): ...
+    def find_admin(self, *, id: None = ..., name: str) -> Optional[StaffMember]: ...
 
     def find_admin(
         self, *, id: Optional[int] = None, name: Optional[str] = None
@@ -101,11 +103,13 @@ class ServerStaff:
                 (s for s in self.admins if s.name.lower() == name.lower().strip()), None
             )
 
-    @overload
-    def find_mod(self, *, id: int, name: None = ...): ...
+        return None
 
     @overload
-    def find_mod(self, *, id: None = ..., name: str): ...
+    def find_mod(self, *, id: int, name: None = ...) -> Optional[StaffMember]: ...
+
+    @overload
+    def find_mod(self, *, id: None = ..., name: str) -> Optional[StaffMember]: ...
 
     def find_mod(
         self, *, id: Optional[int] = None, name: Optional[str] = None
