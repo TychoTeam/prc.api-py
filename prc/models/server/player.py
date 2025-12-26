@@ -73,11 +73,11 @@ class ServerPlayer(Player):
     def __init__(self, server: "Server", data: "v1_ServerPlayer"):
         self._server = server
 
-        self.permission = PlayerPermission.parse(data.get("Permission"))
-        self.callsign = data.get("Callsign")
-        self.team = PlayerTeam.parse(data.get("Team"))
+        self.permission = PlayerPermission.parse(data["Permission"])
+        self.callsign = data["Callsign"]
+        self.team = PlayerTeam.parse(data["Team"])
 
-        super().__init__(server._client, data=data.get("Player"))
+        super().__init__(server._client, data=data["Player"])
 
         if not self.is_remote():
             server._server_cache.players.set(self.id, self)

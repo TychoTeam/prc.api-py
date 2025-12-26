@@ -39,27 +39,27 @@ class ServerStatus:
     team_balance: bool
 
     def __init__(self, server: "Server", data: "v1_ServerStatusResponse"):
-        self.name = str(data.get("Name"))
+        self.name = data["Name"]
         server.name = self.name
         self.owner = ServerOwner(
-            server, id=data.get("OwnerId"), permission=PlayerPermission.OWNER
+            server, id=data["OwnerId"], permission=PlayerPermission.OWNER
         )
         server.owner = self.owner
         self.co_owners = [
             ServerOwner(server, id=co_owner_id, permission=PlayerPermission.CO_OWNER)
-            for co_owner_id in data.get("CoOwnerIds")
+            for co_owner_id in data["CoOwnerIds"]
         ]
         server.co_owners = self.co_owners
-        self.player_count = int(data.get("CurrentPlayers"))
+        self.player_count = int(data["CurrentPlayers"])
         server.player_count = self.player_count
-        self.max_players = int(data.get("MaxPlayers"))
+        self.max_players = int(data["MaxPlayers"])
         server.max_players = self.max_players
-        self.join_code = str(data.get("JoinKey"))
+        self.join_code = str(data["JoinKey"])
         server.join_code = self.join_code
         server._client._global_cache.join_codes.set(self.join_code, server._id)
-        self.account_requirement = AccountRequirement.parse(data.get("AccVerifiedReq"))
+        self.account_requirement = AccountRequirement.parse(data["AccVerifiedReq"])
         server.account_requirement = self.account_requirement
-        self.team_balance = bool(data.get("TeamBalance"))
+        self.team_balance = bool(data["TeamBalance"])
         server.team_balance = self.team_balance
 
     @property

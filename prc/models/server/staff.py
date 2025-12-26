@@ -27,17 +27,17 @@ class ServerStaff:
 
         self.co_owners = [
             ServerOwner(server, id=co_owner_id, permission=PlayerPermission.CO_OWNER)
-            for co_owner_id in data.get("CoOwners")
+            for co_owner_id in data["CoOwners"]
         ]
         server.co_owners = self.co_owners
         self.admins = [
             StaffMember(server, data=player, permission=PlayerPermission.ADMIN)
-            for player in server._parse_api_map(data.get("Admins")).items()
+            for player in server._parse_api_map(data["Admins"]).items()
         ]
         server.admins = self.admins
         self.mods = [
             StaffMember(server, data=player, permission=PlayerPermission.MOD)
-            for player in server._parse_api_map(data.get("Mods")).items()
+            for player in server._parse_api_map(data["Mods"]).items()
         ]
         server.mods = self.mods
 

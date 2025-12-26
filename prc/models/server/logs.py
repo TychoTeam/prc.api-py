@@ -125,8 +125,8 @@ class AccessEntry(LogEntry):
     def __init__(self, server: "Server", data: "v1_ServerJoinLog"):
         self._server = server
 
-        self.type = AccessType.parse(bool(data.get("Join", False)))
-        self.subject = LogPlayer(server, data=data.get("Player"))
+        self.type = AccessType.parse(bool(data["Join"]))
+        self.subject = LogPlayer(server, data=data["Player"])
 
         super().__init__(data, cache=server._server_cache.access_logs)
 
@@ -166,8 +166,8 @@ class KillEntry(LogEntry):
     def __init__(self, server: "Server", data: "v1_ServerKillLog"):
         self._server = server
 
-        self.killer = LogPlayer(server, data=data.get("Killer"))
-        self.killed = LogPlayer(server, data=data.get("Killed"))
+        self.killer = LogPlayer(server, data=data["Killer"])
+        self.killed = LogPlayer(server, data=data["Killed"])
 
         super().__init__(data)
 
@@ -193,10 +193,8 @@ class CommandEntry(LogEntry):
     def __init__(self, server: "Server", data: "v1_ServerCommandLog"):
         self._server = server
 
-        self.author = LogPlayer(server, data=data.get("Player"))
-        self.command = Command(
-            data=data.get("Command"), author=self.author, server=server
-        )
+        self.author = LogPlayer(server, data=data["Player"])
+        self.command = Command(data=data["Command"], author=self.author, server=server)
 
         super().__init__(data)
 
@@ -222,8 +220,8 @@ class ModCallEntry(LogEntry):
     def __init__(self, server: "Server", data: "v1_ServerModCall"):
         self._server = server
 
-        self.caller = LogPlayer(server, data=data.get("Caller"))
-        responder = data.get("Moderator")
+        self.caller = LogPlayer(server, data=data["Caller"])
+        responder = data.get("Moderator", None)
         self.responder = LogPlayer(server, data=responder) if responder else None
 
         super().__init__(data)

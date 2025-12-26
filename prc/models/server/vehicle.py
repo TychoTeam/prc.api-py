@@ -105,10 +105,10 @@ class Vehicle:
     def __init__(self, server: "Server", data: "v1_ServerVehicle"):
         self._server = server
 
-        self.owner = VehicleOwner(server, data.get("Owner"))
-        self.texture = VehicleTexture(name=data.get("Texture") or "Standard")
+        self.owner = VehicleOwner(server, data["Owner"])
+        self.texture = VehicleTexture(name=data.get("Texture", None) or "Standard")
 
-        self.model = cast(VehicleModel, data.get("Name"))
+        self.model = cast(VehicleModel, data["Name"])
 
         parsed_name = self.model.split(" ")
         for i in [0, -1]:
