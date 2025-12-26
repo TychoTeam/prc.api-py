@@ -1,4 +1,4 @@
-from typing import Tuple, Union, TYPE_CHECKING, Optional, overload
+from typing import List, Tuple, Union, TYPE_CHECKING, Optional, overload
 
 if TYPE_CHECKING:
     from prc.client import PRC
@@ -61,7 +61,7 @@ class Player:
         return f"<{self.__class__.__name__} name={self.name}, id={self.id}>"
 
 
-class PlayerList(list[Player]):
+class PlayerList(List[Player]):
     def copy(self):
         return PlayerList(self)
 

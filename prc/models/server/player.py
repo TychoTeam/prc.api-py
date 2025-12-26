@@ -74,7 +74,7 @@ class ServerPlayer(Player):
         self._server = server
 
         self.permission = PlayerPermission.parse(data["Permission"])
-        self.callsign = data["Callsign"]
+        self.callsign = data.get("Callsign", None)
         self.team = PlayerTeam.parse(data["Team"])
 
         super().__init__(server._client, data=data["Player"])
@@ -162,7 +162,7 @@ class ServerPlayer(Player):
         return f"<{self.__class__.__name__} name={self.name}, id={self.id}, permission={self.permission.name}, team={self.team.name}>"
 
 
-class ServerPlayerList(list[ServerPlayer]):
+class ServerPlayerList(List[ServerPlayer]):
     def copy(self):
         return ServerPlayerList(self)
 
@@ -287,7 +287,7 @@ class QueuedPlayer:
         return f"<{self.__class__.__name__} id={self.id}, spot={self.spot}>"
 
 
-class QueuedPlayerList(list[QueuedPlayer]):
+class QueuedPlayerList(List[QueuedPlayer]):
     def copy(self):
         return QueuedPlayerList(self)
 

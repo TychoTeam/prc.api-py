@@ -159,7 +159,7 @@ class Vehicle:
         return f"<{self.__class__.__name__} name={self.full_name}, owner={self.owner.name}>"
 
 
-class VehicleList(list[Vehicle]):
+class VehicleList(List[Vehicle]):
     def copy(self):
         return VehicleList(self)
 
