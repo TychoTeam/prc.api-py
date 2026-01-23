@@ -586,7 +586,7 @@ class ServerCommands(ServerModule):
         targets
             Players to be targeted by the command.
         args
-            Specific command arguments (e.g. weather, fire type).
+            Specific command arguments (e.g. weather, fire event type).
         text
             Any text to be sent along the command (e.g. reason, announcement message content).
         """
@@ -966,22 +966,30 @@ class ServerCommands(ServerModule):
 
     async def start_fire(self, type: FireType):
         """
-        Start a fire at a random location in the server.
+        Start a fire event at a random location in the server.
 
         Parameters
         ----------
         type
-            The type of fire to start.
+            The type of fire event to start.
         """
 
         await self.run("startfire", args=[type])
 
-    async def stop_fires(self):
+    async def stop_fires(self, *, dumpster: bool = False):
         """
-        Stop all fires in the server.
+        Stop all active fire events in the server.
+
+        Parameters
+        ----------
+        dumpster
+            Whether to stop dumpster fires only. Otherwise, **all non-dumpster fires** will be stopped.
         """
 
-        await self.run("stopfire")
+        if dumpster:
+            await self.run("stopdumpsterfire")
+        else:
+            await self.run("stopfire")
 
     async def load_layout(self, key: str):
         """

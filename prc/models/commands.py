@@ -22,12 +22,13 @@ class Weather(InsensitiveEnum):
 
 class FireType(InsensitiveEnum):
     """
-    Enum that represents a server fire type.
+    Enum that represents a server fire event type.
     """
 
     HOUSE = "house"
     BRUSH = "brush"
     BUILDING = "building"
+    DUMPSTER = "dumpster"
 
 
 class CommandTarget:
@@ -289,6 +290,7 @@ CommandName = Literal[
     "startnearfire",
     "snf",
     "stopfire",
+    "stopdumpsterfire",
     "log",
     "logs",
     "commands",
