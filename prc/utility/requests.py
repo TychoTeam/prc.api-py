@@ -61,7 +61,7 @@ class RateLimiter:
             if resets_in > 0:
                 if resets_in > max_retry_after:
                     raise HTTPException(
-                        f"Rate limit exceeded max threshold ({max_retry_after}s). An IP ban or limit has likely occured.",
+                        f"Rate limit exceeded max threshold ({resets_in:.2f}s > {max_retry_after}s). An IP ban or limit has likely occured.",
                         status_code=429,
                     )
                 await asyncio.sleep(resets_in)
