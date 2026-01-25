@@ -1,9 +1,9 @@
-from typing import List, Optional, Tuple, TYPE_CHECKING, Union, overload
+from typing import List, Literal, Optional, Tuple, TYPE_CHECKING, Union, cast, overload
 from prc.utility import DisplayNameEnum
 from ..player import Player
 
 if TYPE_CHECKING:
-    from prc.api_types.v2 import v2_ServerPlayer
+    from prc.api_types.v2 import v2_ServerPlayer, v2_ServerPlayerLocation
     from prc.server import Server
     from .vehicle import Vehicle
 
@@ -54,6 +54,49 @@ class PlayerTeam(DisplayNameEnum):
     JAIL = (5, "Jail")
 
 
+class PlayerLocation:
+    """
+    Represents a player's location in a server.
+
+    Parameters
+    ----------
+    data
+        The player location data.
+    """
+
+    x: float
+    z: float
+    postal_code: int
+    street_name: "StreetName"
+    building_number: int
+
+    def __init__(self, data: "v2_ServerPlayerLocation"):
+        self.x = float(data["LocationX"])
+        self.z = float(data["LocationZ"])
+        self.postal_code = int(data["PostalCode"])
+        self.street_name = cast(StreetName, str(data["StreetName"]))
+        self.building_number = int(data["BuildingNumber"])
+
+    @property
+    def coordinates(self) -> Tuple[float, float]:
+        """
+        A tuple representing location coordinates (x, z).
+        """
+
+        return (self.x, self.z)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, PlayerLocation) and (
+            self.coordinates == other.coordinates
+        )
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} coordinates={self.coordinates}, street_name={self.street_name}, postal_code={self.postal_code}>"
+
+
 class ServerPlayer(Player):
     """
     Represents a full player in a server.
@@ -69,6 +112,8 @@ class ServerPlayer(Player):
     permission: PlayerPermission
     callsign: Optional[str]
     team: PlayerTeam
+    location: PlayerLocation
+    wanted_stars: int
 
     def __init__(self, server: "Server", data: "v2_ServerPlayer"):
         self._server = server
@@ -76,6 +121,8 @@ class ServerPlayer(Player):
         self.permission = PlayerPermission.parse(data["Permission"])
         self.callsign = data.get("Callsign", None)
         self.team = PlayerTeam.parse(data["Team"])
+        self.location = PlayerLocation(data["Location"])
+        self.wanted_stars = int(data["WantedStars"])
 
         super().__init__(server._client, data=data["Player"])
 
@@ -158,8 +205,15 @@ class ServerPlayer(Player):
 
         return self.team in (PlayerTeam.SHERIFF, PlayerTeam.POLICE)
 
+    def is_wanted(self) -> bool:
+        """
+        Whether this player is wanted.
+        """
+
+        return self.wanted_stars > 0
+
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} name={self.name}, id={self.id}, permission={self.permission.name}, team={self.team.name}>"
+        return f"<{self.__class__.__name__} name={self.name}, id={self.id}, permission={self.permission.name}, team={self.team.name}, coordinates={self.location.coordinates}, street_name={self.location.street_name}>"
 
 
 class ServerPlayerList(List[ServerPlayer]):
@@ -378,3 +432,51 @@ class StaffMember(Player):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={self.name}, id={self.id}, permission={self.permission}>"
+
+
+# All street names
+StreetName = Literal[
+    "Gibson Lane",
+    "Fairfax Road",
+    "Highway 55 South",
+    "Elm Street",
+    "Iron Road",
+    "Highway 55 North",
+    "Madison Court",
+    "Medical Way",
+    "Riverside Drive",
+    "Durham Road",
+    "Southern Avenue",
+    "Highway 55",
+    "Main Street",
+    "Academy Place",
+    "Grand Street",
+    "Oak Valley Drive",
+    "Hillview Road",
+    "Maple Street",
+    "Liberty Way",
+    "Sandstone Road",
+    "Freedom Avenue",
+    "Georgia Avenue",
+    "Emerson Drive",
+    "Fairfax Avenue",
+    "Lakeview Court",
+    "Valley Drive",
+    "Northern Way",
+    "Cedar Street",
+    "Park Street",
+    "Cline Street",
+    "Cross Street",
+    "Grand Avenue",
+    "Franklin Court",
+    "Industrial Road",
+    "Spring Creek Road",
+    "Arbor Lane",
+    "Vine Street",
+    "Pineview Circle",
+    "Colonial Drive",
+    "Terrace Drive",
+    "Orchard Boulevard",
+    "Independence Parkway",
+    "Lee Street",
+]

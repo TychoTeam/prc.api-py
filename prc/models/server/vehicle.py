@@ -46,6 +46,41 @@ class VehicleOwner:
         return f"<{self.__class__.__name__} name={self.name}>"
 
 
+class VehicleColor:
+    """
+    Represents a server vehicle color.
+
+    Parameters
+    ----------
+    name
+        The color name.
+    hex
+        The color HEX code formatted as `#ffffff`.
+    """
+
+    name: str
+    hex: str
+    value: int
+
+    def __init__(self, name: str, hex: str):
+        self.name = name
+        self.hex = hex.lower()
+
+        self.value = int(self.hex.replace("#", ""), 16)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, VehicleTexture) and self.name == other.name
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
+    def __str__(self) -> str:
+        return self.hex
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} name={self.name}>"
+
+
 class VehicleTexture:
     """
     Represents a server vehicle texture or livery.
@@ -68,6 +103,13 @@ class VehicleTexture:
 
         return self.name in _default_textures
 
+    def is_custom(self) -> bool:
+        """
+        Whether this texture is **LIKELY** a custom livery.
+        """
+
+        return not self.is_default
+
     def is_fictional(self) -> bool:
         """
         Whether this texture is **LIKELY** a fictional game texture. Fictional textures include most in-game textures that have fictional text.
@@ -80,6 +122,9 @@ class VehicleTexture:
 
     def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
+
+    def __str__(self) -> str:
+        return self.name
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={self.name}>"
@@ -107,6 +152,7 @@ class Vehicle:
 
         self.owner = VehicleOwner(server, data["Owner"])
         self.texture = VehicleTexture(name=data.get("Texture", None) or "Standard")
+        self.color = VehicleColor(name=data["ColorName"], hex=data["ColorHex"])
 
         self.model = cast(VehicleModel, data["Name"])
 
@@ -156,7 +202,7 @@ class Vehicle:
         return not self.__eq__(other)
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} name={self.full_name}, owner={self.owner.name}>"
+        return f"<{self.__class__.__name__} name={self.full_name}, owner={self.owner.name}, color={self.color}, texture={self.texture}>"
 
 
 class VehicleList(List[Vehicle]):
@@ -184,29 +230,6 @@ class VehicleList(List[Vehicle]):
 
         return VehicleList(v for v in self if v.is_secondary())
 
-    def get_name(self, name: "VehicleName") -> "VehicleList":
-        """
-        Find all spawned vehicles of this exact full name.
-        """
-
-        return VehicleList(v for v in self if v.full_name == name)
-
-    def get_model(self, model: "VehicleModel") -> "VehicleList":
-        """
-        Find all spawned vehicles of this model.
-        """
-
-        return VehicleList(v for v in self if v.model == model)
-
-    def with_texture(self, texture: str) -> "VehicleList":
-        """
-        Find all spawned vehicles with this texture set (case insensitive).
-        """
-
-        return VehicleList(
-            v for v in self if v.texture.name.lower() == texture.lower().strip()
-        )
-
     def with_default_texture(self) -> "VehicleList":
         """
         Find all spawned vehicles with a texture that is **LIKELY** a default game texture and **NOT** a custom texture (aka. custom livery). Default game textures include **ALL** non-custom textures/liveries.
@@ -220,6 +243,29 @@ class VehicleList(List[Vehicle]):
         """
 
         return VehicleList(v for v in self if v.texture.is_fictional())
+
+    def by_texture(self, texture: str) -> "VehicleList":
+        """
+        Find all spawned vehicles with this texture set (case insensitive).
+        """
+
+        return VehicleList(
+            v for v in self if v.texture.name.lower() == texture.lower().strip()
+        )
+
+    def by_name(self, name: "VehicleName") -> "VehicleList":
+        """
+        Find all spawned vehicles of this exact full name.
+        """
+
+        return VehicleList(v for v in self if v.full_name == name)
+
+    def by_model(self, model: "VehicleModel") -> "VehicleList":
+        """
+        Find all spawned vehicles of this model.
+        """
+
+        return VehicleList(v for v in self if v.model == model)
 
     def by_owner(self, *, name: str) -> "VehicleList":
         """
