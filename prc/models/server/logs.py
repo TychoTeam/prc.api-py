@@ -7,11 +7,11 @@ from ..commands import Command
 if TYPE_CHECKING:
     from prc.server import Server
     from prc.utility import KeylessCache
-    from prc.api_types.v1 import (
-        v1_ServerJoinLog,
-        v1_ServerKillLog,
-        v1_ServerCommandLog,
-        v1_ServerModCall,
+    from prc.api_types.v2 import (
+        v2_ServerJoinLog,
+        v2_ServerKillLog,
+        v2_ServerCommandLog,
+        v2_ServerModCall,
     )
     from .player import ServerPlayer
 
@@ -33,10 +33,10 @@ class LogEntry:
     def __init__(
         self,
         data: Union[
-            "v1_ServerJoinLog",
-            "v1_ServerKillLog",
-            "v1_ServerCommandLog",
-            "v1_ServerModCall",
+            "v2_ServerJoinLog",
+            "v2_ServerKillLog",
+            "v2_ServerCommandLog",
+            "v2_ServerModCall",
         ],
         cache: Optional["KeylessCache"] = None,
     ):
@@ -122,7 +122,7 @@ class AccessEntry(LogEntry):
     type: AccessType
     subject: LogPlayer
 
-    def __init__(self, server: "Server", data: "v1_ServerJoinLog"):
+    def __init__(self, server: "Server", data: "v2_ServerJoinLog"):
         self._server = server
 
         self.type = AccessType.parse(bool(data["Join"]))
@@ -163,7 +163,7 @@ class KillEntry(LogEntry):
     killer: LogPlayer
     killed: LogPlayer
 
-    def __init__(self, server: "Server", data: "v1_ServerKillLog"):
+    def __init__(self, server: "Server", data: "v2_ServerKillLog"):
         self._server = server
 
         self.killer = LogPlayer(server, data=data["Killer"])
@@ -190,7 +190,7 @@ class CommandEntry(LogEntry):
     author: LogPlayer
     command: Command
 
-    def __init__(self, server: "Server", data: "v1_ServerCommandLog"):
+    def __init__(self, server: "Server", data: "v2_ServerCommandLog"):
         self._server = server
 
         self.author = LogPlayer(server, data=data["Player"])
@@ -217,7 +217,7 @@ class ModCallEntry(LogEntry):
     caller: LogPlayer
     responder: Optional[LogPlayer]
 
-    def __init__(self, server: "Server", data: "v1_ServerModCall"):
+    def __init__(self, server: "Server", data: "v2_ServerModCall"):
         self._server = server
 
         self.caller = LogPlayer(server, data=data["Caller"])

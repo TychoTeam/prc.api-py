@@ -24,8 +24,9 @@ import httpx
 import copy
 import json
 
-from .api_types.v1 import *
-from .api_types.v1 import _APIMap
+from .api_types.v1 import v1_ServerCommandExecutionResponse, v1_ServerBanResponse
+from .api_types.v2 import *
+from .api_types.v2 import _APIMap
 
 if TYPE_CHECKING:
     from .client import PRC
@@ -91,6 +92,86 @@ def _ephemeral(func):
     return wrapper
 
 
+class ServerQuery(ServerStatus):
+    """
+    Represents a server information query result.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    oldest_first
+        Whether to sort logs by oldest first. By default, newer logs come first.
+    data
+        The response data.
+    """
+
+    players: Optional[ServerPlayerList] = None
+    staff: Optional[ServerStaff] = None
+    queue: Optional[QueuedPlayerList] = None
+    access_logs: Optional[List[AccessEntry]] = None
+    kill_logs: Optional[List[KillEntry]] = None
+    command_logs: Optional[List[CommandEntry]] = None
+    mod_calls: Optional[List[ModCallEntry]] = None
+    vehicles: Optional[VehicleList] = None
+
+    def __init__(
+        self,
+        server: "Server",
+        oldest_first: bool,
+        data: v2_FullServerInformation,
+    ):
+        super().__init__(server, data)
+
+        if ((_players := data.get("Players"))) is not None:
+            server._server_cache.players.clear()
+            players = ServerPlayerList(ServerPlayer(server, data=p) for p in _players)
+            server.staff_count = len([p for p in players if p.is_staff()])
+            self.players = players
+
+        if ((staff := data.get("Staff"))) is not None:
+            self.staff = ServerStaff(server, data=staff)
+
+        if ((_queue := data.get("Queue"))) is not None:
+            queue = QueuedPlayerList(
+                QueuedPlayer(server, id=p, index=i) for i, p in enumerate(_queue)
+            )
+            server.queue_count = len(queue)
+            self.queue = queue
+
+        if ((access_logs := data.get("JoinLogs"))) is not None:
+            for e in access_logs:
+                AccessEntry(server, data=e)
+            self.access_logs = server.logs._sort(
+                server._server_cache.access_logs.items(), oldest_first
+            )
+
+        if ((kill_logs := data.get("KillLogs"))) is not None:
+            self.kill_logs = server.logs._sort(
+                [KillEntry(server, data=e) for e in kill_logs],
+                oldest_first,
+            )
+
+        if ((command_logs := data.get("CommandLogs"))) is not None:
+            self.command_logs = server.logs._sort(
+                [CommandEntry(server, data=e) for e in command_logs],
+                oldest_first,
+            )
+
+        if ((mod_calls := data.get("ModCalls"))) is not None:
+            self.mod_calls = server.logs._sort(
+                [ModCallEntry(server, data=e) for e in mod_calls],
+                oldest_first,
+            )
+
+        if ((vehicles := data.get("Vehicles"))) is not None:
+            server._server_cache.vehicles.clear()
+            self.vehicles = VehicleList(Vehicle(server, data=v) for v in vehicles)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} name={self.name}, owner={self.owner.id}, join_code={self.join_code}>"
+
+
 class Server:
     """
     The main class to interface with PRC ER:LC server APIs.
@@ -132,23 +213,7 @@ class Server:
         self._global_key = client._global_key
         self._server_key = server_key
         self._ignore_global_key = ignore_global_key
-        self._requests: Requests[
-            Literal[
-                "/",
-                "/players",
-                "/queue",
-                "/bans",
-                "/vehicles",
-                "/staff",
-                "/joinlogs",
-                "/killlogs",
-                "/commandlogs",
-                "/modcalls",
-                "/command",
-            ]
-        ] = (
-            requests or self._refresh_requests()
-        )
+        self._requests = requests or self._refresh_requests()
 
         self.logs = ServerLogs(self)
         self.commands = ServerCommands(self)
@@ -158,6 +223,7 @@ class Server:
     co_owners: List[ServerOwner] = []
     admins: List[StaffMember] = []
     mods: List[StaffMember] = []
+    helpers: List[StaffMember] = []
     total_staff_count: Optional[int] = None
     player_count: Optional[int] = None
     staff_count: Optional[int] = None
@@ -210,7 +276,7 @@ class Server:
         if global_key and not self._ignore_global_key:
             headers["Authorization"] = global_key
         self._requests = Requests(
-            base_url=self._client._base_url + "/server",
+            base_url=self._client._base_url,
             headers=headers,
             session=self._client._session,
             invalid_keys=self._global_cache.invalid_keys,
@@ -235,14 +301,14 @@ class Server:
         if not isinstance(content, Dict):
             raise HTTPException(
                 f"Malformed response content was received: '{type(content).__name__ if content else 'None'}'",
-                status_code=response.status_code,
+                response,
             )
 
         error_code = content.get("code")
         if error_code is None:
             raise HTTPException(
                 f"An API error has occurred but no code was received.",
-                status_code=response.status_code,
+                response,
             )
 
         exceptions: List[Callable[..., APIException]] = [
@@ -281,23 +347,94 @@ class Server:
                 if isinstance(exception, (CommunicationError, ServerOffline)):
                     exception = _exception(command_id=content.get("commandId"))
 
-                exception.status_code = response.status_code
+                exception.response = response
                 raise exception
 
         raise APIException(
             error_code,
             f"An unknown API error has occured: {content.get('message') or '...'}",
-            status_code=response.status_code,
+            response,
         )
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
         content_type: Optional[str] = response.headers.get("Content-Type", None)
         if not content_type or not content_type.startswith("application/json"):
-            raise BadContentType(response.status_code, content_type)
+            raise PRCException(f"Received a non-json content type: '{content_type}'")
 
         if not response.is_success:
             self._raise_error_code(response.json(), response)
         return response.json()
+
+    @_refresh_server
+    @_ephemeral
+    async def get_info(
+        self,
+        *,
+        all: bool = False,
+        players: bool = False,
+        staff: bool = False,
+        queue: bool = False,
+        access_logs: bool = False,
+        kill_logs: bool = False,
+        command_logs: bool = False,
+        mod_calls: bool = False,
+        vehicles: bool = False,
+        oldest_first: bool = False,
+        **kwargs,
+    ) -> ServerQuery:
+        """
+        Get information about the server. By default, only the server status is queried.
+
+        Parameters
+        ----------
+        all
+            Whether to query all server information. Takes priority over other kwargs.
+        players
+            Whether to query server players.
+        staff
+            Whether to query server staff.
+        queue
+            Whether to query the server join queue.
+        access_logs
+            Whether to query server access (join/leave) logs.
+        kill_logs
+            Whether to query server kill logs.
+        command_logs
+            Whether to query server command usage logs.
+        mod_calls
+            Whether to query server mod calls.
+        vehicles
+            Whether to query server vehicles.
+        oldest_first
+            Whether to sort logs by oldest first. By default, newer logs come first.
+        """
+
+        params = {
+            "Players": players,
+            "Staff": staff,
+            "JoinLogs": access_logs,
+            "Queue": queue,
+            "KillLogs": kill_logs,
+            "CommandLogs": command_logs,
+            "ModCalls": mod_calls,
+            "Vehicles": vehicles,
+        }
+
+
+        for k, v in params.copy().items():
+            if all is True:
+                params[k] = True
+            elif v is False:
+                params.pop(k)
+
+        return ServerQuery(
+            self,
+            oldest_first,
+            data=self._handle(
+                await self._requests.get("/v2/server", params=params),
+                v2_FullServerInformation,
+            ),
+        )
 
     @_refresh_server
     @_ephemeral
@@ -308,7 +445,9 @@ class Server:
 
         return ServerStatus(
             self,
-            data=self._handle(await self._requests.get("/"), v1_ServerStatusResponse),
+            data=self._handle(
+                await self._requests.get("/v2/server"), v2_ServerInformation
+            ),
         )
 
     @_refresh_server
@@ -318,16 +457,9 @@ class Server:
         Get all online server players.
         """
 
-        self._server_cache.players.clear()
-        players = ServerPlayerList(
-            ServerPlayer(self, data=p)
-            for p in self._handle(
-                await self._requests.get("/players"), v1_ServerPlayersResponse
-            )
-        )
-        self.player_count = len(players)
-        self.staff_count = len([p for p in players if p.is_staff()])
-        return players
+        if ((players := (await self.get_info(players=True)).players)) is not None:
+            return players
+        raise ValueError("Player list unexpectedly not defined")
 
     @overload
     async def get_player(
@@ -339,13 +471,14 @@ class Server:
         self, *, id: None = ..., name: str, **kwargs
     ) -> Optional[ServerPlayer]: ...
 
+    @_refresh_server
     async def get_player(
         self, *, id: Optional[int] = None, name: Optional[str] = None, **kwargs
     ) -> Optional[ServerPlayer]:
         """
         Get an online server player using their player ID or username, if found.
 
-        This is equivalent to `get_players` and using `find_player`.
+        This is equivalent to `get_players.find_player`.
         """
 
         players = await self.get_players(fetch=kwargs.pop("fetch", False))
@@ -362,14 +495,9 @@ class Server:
         Get all players in the server join queue.
         """
 
-        players = QueuedPlayerList(
-            QueuedPlayer(self, id=p, index=i)
-            for i, p in enumerate(
-                self._handle(await self._requests.get("/queue"), v1_ServerQueueResponse)
-            )
-        )
-        self.queue_count = len(players)
-        return players
+        if ((queue := (await self.get_info(queue=True)).queue)) is not None:
+            return queue
+        raise ValueError("Queue list unexpectedly not defined")
 
     @_refresh_server
     @_ephemeral
@@ -381,7 +509,9 @@ class Server:
         return PlayerList(
             Player(self._client, data=p, _skip_cache=True)
             for p in self._parse_api_map(
-                self._handle(await self._requests.get("/bans"), v1_ServerBanResponse)
+                self._handle(
+                    await self._requests.get("/v1/server/bans"), v1_ServerBanResponse
+                )
             ).items()
         )
 
@@ -392,29 +522,20 @@ class Server:
         Get all spawned vehicles in the server. A single server player may have up to 2 spawned vehicles (1 primary + 1 secondary).
         """
 
-        self._server_cache.vehicles.clear()
-        return VehicleList(
-            Vehicle(self, data=v)
-            for v in self._handle(
-                await self._requests.get("/vehicles"), v1_ServerVehiclesResponse
-            )
-        )
+        if ((vehicles := (await self.get_info(vehicles=True)).vehicles)) is not None:
+            return vehicles
+        raise ValueError("Vehicles list unexpectedly not defined")
 
     @_refresh_server
     @_ephemeral
     async def get_staff(self, **kwargs) -> ServerStaff:
         """
         Get all server staff members excluding server owner.
-
-        ⚠️ *This endpoint is deprecated, use at your own risk.*
         """
 
-        return ServerStaff(
-            self,
-            data=self._handle(
-                await self._requests.get("/staff"), v1_ServerStaffResponse
-            ),
-        )
+        if ((staff := (await self.get_info(staff=True)).staff)) is not None:
+            return staff
+        raise ValueError("Staff list unexpectedly not defined")
 
 
 class ServerModule:
@@ -431,6 +552,7 @@ class ServerModule:
 
         self._requests = server._requests
         self._handle = server._handle
+        self.get_info = server.get_info
 
 
 class ServerLogs(ServerModule):
@@ -460,11 +582,13 @@ class ServerLogs(ServerModule):
             Whether to return older logs first. By default, newer logs come first.
         """
 
-        for e in self._handle(
-            await self._requests.get("/joinlogs"), v1_ServerJoinLogsResponse
-        ):
-            AccessEntry(self._server, data=e)
-        return self._sort(self._server_cache.access_logs.items(), oldest_first)
+        if (
+            logs := (
+                await self.get_info(access_logs=True, oldest_first=oldest_first)
+            ).access_logs
+        ) is not None:
+            return logs
+        raise ValueError("Access logs unexpectedly not defined")
 
     @_refresh_server
     @_ephemeral
@@ -480,15 +604,13 @@ class ServerLogs(ServerModule):
             Whether to return older logs first. By default, newer logs come first.
         """
 
-        return self._sort(
-            [
-                KillEntry(self._server, data=e)
-                for e in self._handle(
-                    await self._requests.get("/killlogs"), v1_ServerKillLogsResponse
-                )
-            ],
-            oldest_first,
-        )
+        if (
+            logs := (
+                await self.get_info(kill_logs=True, oldest_first=oldest_first)
+            ).kill_logs
+        ) is not None:
+            return logs
+        raise ValueError("Kill logs unexpectedly not defined")
 
     @_refresh_server
     @_ephemeral
@@ -504,16 +626,13 @@ class ServerLogs(ServerModule):
             Whether to return older logs first. By default, newer logs come first.
         """
 
-        return self._sort(
-            [
-                CommandEntry(self._server, data=e)
-                for e in self._handle(
-                    await self._requests.get("/commandlogs"),
-                    v1_ServerCommandLogsResponse,
-                )
-            ],
-            oldest_first,
-        )
+        if (
+            logs := (
+                await self.get_info(command_logs=True, oldest_first=oldest_first)
+            ).command_logs
+        ) is not None:
+            return logs
+        raise ValueError("Command logs unexpectedly not defined")
 
     @_refresh_server
     @_ephemeral
@@ -529,15 +648,13 @@ class ServerLogs(ServerModule):
             Whether to return older logs first. By default, newer logs come first.
         """
 
-        return self._sort(
-            [
-                ModCallEntry(self._server, data=e)
-                for e in self._handle(
-                    await self._requests.get("/modcalls"), v1_ServerModCallsResponse
-                )
-            ],
-            oldest_first,
-        )
+        if (
+            logs := (
+                await self.get_info(mod_calls=True, oldest_first=oldest_first)
+            ).mod_calls
+        ) is not None:
+            return logs
+        raise ValueError("Mod call list unexpectedly not defined")
 
 
 CommandTargetPlayerName = Union[str, Player]
@@ -564,7 +681,7 @@ class ServerCommands(ServerModule):
         """
 
         return self._handle(
-            await self._requests.post("/command", json={"command": command}),
+            await self._requests.post("/v1/server/command", json={"command": command}),
             v1_ServerCommandExecutionResponse,
         )
 

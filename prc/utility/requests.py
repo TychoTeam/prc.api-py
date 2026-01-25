@@ -1,11 +1,9 @@
-from ..exceptions import HTTPException, PRCException, RequestTimeout
-from typing import Dict, Optional, TypeVar, Generic
-from time import time
+from ..exceptions import PRCException, RequestTimeout
 from .cache import Cache, KeylessCache
+from typing import Dict, Optional
+from time import time
 import asyncio
 import httpx
-
-R = TypeVar("R", bound=str)
 
 
 class CleanAsyncClient(httpx.AsyncClient):
@@ -60,9 +58,8 @@ class RateLimiter:
             resets_in = bucket.reset_at - time()
             if resets_in > 0:
                 if resets_in > max_retry_after:
-                    raise HTTPException(
-                        f"Rate limit exceeded max threshold ({resets_in:.2f}s > {max_retry_after}s). An IP ban or limit has likely occured.",
-                        status_code=429,
+                    raise PRCException(
+                        f"Rate limit exceeded max threshold ({resets_in:.2f}s > {max_retry_after}s). An IP ban or limit has likely occured."
                     )
                 await asyncio.sleep(resets_in)
             else:
@@ -82,7 +79,7 @@ class RateLimiter:
         return False
 
 
-class Requests(Generic[R]):
+class Requests:
     """
     Handles outgoing API requests while respecting rate limits.
     """
@@ -119,7 +116,7 @@ class Requests(Generic[R]):
                 )
 
     async def _make_request(
-        self, method: str, route: R, retry: int = 0, **kwargs
+        self, method: str, route: str, retry: int = 0, **kwargs
     ) -> httpx.Response:
         self._check_default_headers()
         await self._rate_limiter.avoid_limit(route, self._max_retry_after)
@@ -160,10 +157,10 @@ class Requests(Generic[R]):
 
         return response
 
-    async def get(self, route: R, **kwargs):
+    async def get(self, route: str, **kwargs):
         return await self._make_request("GET", route, **kwargs)
 
-    async def post(self, route: R, **kwargs):
+    async def post(self, route: str, **kwargs):
         return await self._make_request("POST", route, **kwargs)
 
     async def _close(self):

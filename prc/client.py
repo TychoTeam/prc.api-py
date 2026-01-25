@@ -5,8 +5,8 @@ The main prc.api client.
 """
 
 from .utility import KeylessCache, Cache, CacheConfig, Requests
-from typing import Optional, TYPE_CHECKING, Literal
 from .utility.requests import CleanAsyncClient
+from typing import Optional, TYPE_CHECKING
 from .exceptions import HTTPException
 from .webhooks import Webhooks
 from .server import Server
@@ -50,7 +50,7 @@ class PRC:
         self,
         global_key: Optional[str] = None,
         default_server_key: Optional[str] = None,
-        _base_url: str = "https://api.policeroleplay.community/v1",
+        _base_url: str = "https://api.policeroleplay.community",
         _cache: Optional[GlobalCache] = None,
     ):
         self._global_key = global_key
@@ -61,8 +61,8 @@ class PRC:
         self._global_cache = _cache if _cache is not None else GlobalCache()
         self._session = CleanAsyncClient()
         self._key_requests = (
-            Requests[Literal["/reset"]](
-                base_url=self._base_url + "/api-key",
+            Requests(
+                base_url=self._base_url + "/v1/api-key",
                 headers={"Authorization": self._global_key},
                 session=self._session,
                 invalid_keys=self._global_cache.invalid_keys,
@@ -140,12 +140,12 @@ class PRC:
             self._global_cache.invalid_keys.add(self._global_key)
             raise HTTPException(
                 f"The global key provided is invalid and cannot be reset.",
-                status_code=response.status_code,
+                response,
             )
         else:
             raise HTTPException(
                 f"An unknown error has occured while resetting the global key.",
-                status_code=response.status_code,
+                response,
             )
 
     def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):

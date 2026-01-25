@@ -3,8 +3,8 @@ from prc.utility import DisplayNameEnum
 from ..player import Player
 
 if TYPE_CHECKING:
+    from prc.api_types.v2 import v2_ServerPlayer
     from prc.server import Server
-    from prc.api_types.v1 import v1_ServerPlayer
     from .vehicle import Vehicle
 
 
@@ -70,7 +70,7 @@ class ServerPlayer(Player):
     callsign: Optional[str]
     team: PlayerTeam
 
-    def __init__(self, server: "Server", data: "v1_ServerPlayer"):
+    def __init__(self, server: "Server", data: "v2_ServerPlayer"):
         self._server = server
 
         self.permission = PlayerPermission.parse(data["Permission"])

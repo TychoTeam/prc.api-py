@@ -2,7 +2,7 @@ from typing import Optional, Literal, TYPE_CHECKING, cast, List
 from ..player import Player
 
 if TYPE_CHECKING:
-    from prc.api_types.v1 import v1_ServerVehicle
+    from prc.api_types.v2 import v2_ServerVehicle
     from prc.server import Server
     from .player import ServerPlayer
 
@@ -102,7 +102,7 @@ class Vehicle:
     model: "VehicleModel"
     year: Optional[int] = None
 
-    def __init__(self, server: "Server", data: "v1_ServerVehicle"):
+    def __init__(self, server: "Server", data: "v2_ServerVehicle"):
         self._server = server
 
         self.owner = VehicleOwner(server, data["Owner"])

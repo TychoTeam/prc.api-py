@@ -3,7 +3,7 @@ from .player import ServerOwner, StaffMember, PlayerPermission
 
 if TYPE_CHECKING:
     from prc.server import Server
-    from prc.api_types.v1 import v1_ServerStaffResponse
+    from prc.api_types.v2 import v2_ServerStaff
 
 
 class ServerStaff:
@@ -18,38 +18,65 @@ class ServerStaff:
         The response data.
     """
 
+    owner: ServerOwner
     co_owners: List[ServerOwner]
     admins: List[StaffMember]
     mods: List[StaffMember]
+    helpers: List[StaffMember]
 
-    def __init__(self, server: "Server", data: "v1_ServerStaffResponse"):
+    def __init__(self, server: "Server", data: "v2_ServerStaff"):
         self._server = server
 
-        self.co_owners = [
-            ServerOwner(server, id=co_owner_id, permission=PlayerPermission.CO_OWNER)
-            for co_owner_id in data["CoOwners"]
-        ]
-        server.co_owners = self.co_owners
+        assert server.owner
+        self.owner = server.owner
+
+        self.co_owners = server.co_owners
+
         self.admins = [
             StaffMember(server, data=player, permission=PlayerPermission.ADMIN)
             for player in server._parse_api_map(data["Admins"]).items()
         ]
         server.admins = self.admins
+
         self.mods = [
             StaffMember(server, data=player, permission=PlayerPermission.MOD)
             for player in server._parse_api_map(data["Mods"]).items()
         ]
         server.mods = self.mods
 
+        self.helpers = [
+            StaffMember(server, data=player, permission=PlayerPermission.HELPER)
+            for player in server._parse_api_map(data["Helpers"]).items()
+        ]
+        server.mods = self.mods
+
         server.total_staff_count = self.count()
+
+    @property
+    def owners(self):
+        """
+        Server owner and all co-owners.
+        """
+
+        assert self._server.owner
+        return self._server.co_owners + [self._server.owner]
+
+    @property
+    def members(self):
+        """
+        All server staff members, excluding server owners.
+        """
+
+        return self.admins + self.mods + self.helpers
 
     @property
     def all(self):
         """
-        All server staff, including server owner (if cached). Some players may have multiple permissions set, hence may be present multiple times.
+        All server staff, including server owner. Some players may have multiple permissions set, hence may be present multiple times.
         """
 
-        return self.co_owners + self.admins + self.mods + [self._server.owner]
+        assert self._server.owner
+        return self.owners + self.members
 
     @overload
     def find_player(
@@ -63,25 +90,21 @@ class ServerStaff:
         self, *, id: Optional[int] = None, name: Optional[str] = None
     ) -> Optional[Union[ServerOwner, StaffMember]]:
         """
-        Find a staff member using their player ID or username. Co-owners cannot be found using their usernames.
+        Find a staff member using their player ID or username. [Co-]owners cannot be found using their usernames.
 
         Since a player can have multiple permissions, results will be in the following order, if found:
 
-        Co-Owner -> Admins -> Mods
+        Owner -> Co-Owner -> Admins -> Mods -> Helpers
         """
 
         if id is not None:
-            return next((p for p in self.co_owners if p.id == id), None) or next(
-                (s for s in (self.admins + self.mods) if s.id == id), None
+            return next((p for p in self.owners if p.id == id), None) or next(
+                (s for s in self.members if s.id == id), None
             )
 
         if name is not None:
             return next(
-                (
-                    s
-                    for s in (self.admins + self.mods)
-                    if s.name.lower() == name.lower().strip()
-                ),
+                (s for s in self.members if s.name.lower() == name.lower().strip()),
                 None,
             )
 
@@ -134,18 +157,45 @@ class ServerStaff:
                 (s for s in self.mods if s.name.lower() == name.lower().strip()), None
             )
 
-    def count(self, *, dedupe: bool = True) -> int:
+    @overload
+    def find_helper(self, *, id: int, name: None = ...) -> Optional[StaffMember]: ...
+
+    @overload
+    def find_helper(self, *, id: None = ..., name: str) -> Optional[StaffMember]: ...
+
+    def find_helper(
+        self, *, id: Optional[int] = None, name: Optional[str] = None
+    ) -> Optional[StaffMember]:
         """
-        Total number of server staff (excluding server owner).
+        Find a helper using their player ID or username. A player may have other permissions set. Use `find_player` to get their highest set permission.
+        """
+
+        if id is not None:
+            return next((s for s in self.helpers if s.id == id), None)
+
+        if name is not None:
+            return next(
+                (s for s in self.helpers if s.name.lower() == name.lower().strip()),
+                None,
+            )
+
+    def count(self, *, exclude_owner: bool = False, dedupe: bool = True) -> int:
+        """
+        Total number of server staff.
 
         Parameters
         ----------
+        exclude_owner
+            Whether to exclude the server owner (`-1`).
         dedupe
-            Whether to exclude duplicates (players with multiple permissions set).
+            Whether to exclude duplicates (players with multiple permissions set). If true (default), every player will be counted **once**.
         """
 
-        all_staff = self.co_owners + self.admins + self.mods
-        return len({s.id for s in all_staff}) if dedupe else len(all_staff)
+        count = len({s.id for s in self.all}) if dedupe else len(self.all)
+        if exclude_owner:
+            count -= 1
+
+        return count
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} count={self.count()}>"
