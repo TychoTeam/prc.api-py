@@ -39,6 +39,7 @@ class v2_ServerPlayer(TypedDict):
     Callsign: Optional[str]
     Team: Literal["Civilian", "Sheriff", "Police", "Fire", "DOT", "Jail"]
     Location: v2_ServerPlayerLocation
+    WantedStars: int
 
 
 class v2_ServerPlayersResponse(v2_ServerInformation):
