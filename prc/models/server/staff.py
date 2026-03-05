@@ -78,6 +78,25 @@ class ServerStaff:
         assert self._server.owner
         return self.owners + self.members
 
+    @property
+    def unique(self):
+        """
+        All server staff, including server owner. Unlike `.all`, this property shows only unique players based on their highest permission, hence each player is guaranteed to be present only once.
+
+        Since a player can have multiple permissions, the unique player permission will be selected based on the following order, if found:
+
+        Owner -> Co-Owner -> Admins -> Mods -> Helpers
+        """
+
+        used = set()
+        unique: List[Union[ServerOwner, StaffMember]] = []
+        for p in self.all:
+            if p.id not in used:
+                used.add(p.id)
+                unique.append(p)
+
+        return unique
+
     @overload
     def find_player(
         self, *, id: int, name: None = ...

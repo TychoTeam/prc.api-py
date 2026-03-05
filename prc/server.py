@@ -420,7 +420,6 @@ class Server:
             "Vehicles": vehicles,
         }
 
-
         for k, v in params.copy().items():
             if all is True:
                 params[k] = True
