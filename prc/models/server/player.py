@@ -80,7 +80,7 @@ class PlayerLocation:
     @property
     def coordinates(self) -> Tuple[float, float]:
         """
-        A tuple representing location coordinates (x, z).
+        A tuple representing location coordinates (x, z) on an official [PRC API map](https://apidocs.policeroleplay.community/for-developers/v2-api-reference/er-lc-location-information).
         """
 
         return (self.x, self.z)
