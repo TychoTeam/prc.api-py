@@ -6,6 +6,16 @@ V = TypeVar("V")
 # but when empty are actually sent as lists
 _APIMap = Union[Dict[str, V], List[None]]
 
+v2_Permission = Literal[
+    "Normal",
+    "Server Helper",
+    "Server Moderator",
+    "Server Administrator",
+    "Server Co-Owner",
+    "Server Owner",
+]
+v2_Team = Literal["Civilian", "Sheriff", "Police", "Fire", "DOT", "Jail"]
+
 
 class v2_ServerInformation(TypedDict):
     Name: str
@@ -28,16 +38,9 @@ class v2_ServerPlayerLocation(TypedDict):
 
 class v2_ServerPlayer(TypedDict):
     Player: str
-    Permission: Literal[
-        "Normal",
-        "Server Helper",
-        "Server Moderator",
-        "Server Administrator",
-        "Server Co-Owner",
-        "Server Owner",
-    ]
+    Permission: v2_Permission
     Callsign: Optional[str]
-    Team: Literal["Civilian", "Sheriff", "Police", "Fire", "DOT", "Jail"]
+    Team: v2_Team
     Location: v2_ServerPlayerLocation
     WantedStars: int
 
@@ -104,12 +107,28 @@ class v2_ServerVehicle(TypedDict):
     Name: str
     Owner: str
     Texture: Optional[str]
+    Plate: str
     ColorHex: str
     ColorName: str
 
 
 class v2_ServerVehiclesResponse(v2_ServerInformation):
     Vehicles: List[v2_ServerVehicle]
+
+
+class v2_ServerEmergencyCall(TypedDict):
+    Team: v2_Team
+    Caller: Optional[int]
+    Players: List[int]
+    Position: List[int]
+    StartedAt: int
+    CallNumber: int
+    Description: Optional[str]
+    PositionDescriptor: Optional[str]
+
+
+class v2_ServerEmergencyCallsResponse(v2_ServerInformation):
+    EmergencyCalls: List[v2_ServerEmergencyCall]
 
 
 class v2_FullServerInformation(
@@ -121,5 +140,6 @@ class v2_FullServerInformation(
     v2_ServerCommandLogsResponse,
     v2_ServerModCallsResponse,
     v2_ServerVehiclesResponse,
+    v2_ServerEmergencyCallsResponse,
 ):
     pass
