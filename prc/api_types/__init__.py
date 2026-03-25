@@ -1,5 +1,5 @@
 """
 
-PRC API raw response data types.
+PRC API data types.
 
 """
