@@ -688,7 +688,9 @@ class ServerCommands(ServerModule):
         self,
         name: CommandName,
         *,
-        targets: Optional[Sequence[CommandTargetPlayerNameOrId]] = None,
+        targets: Optional[
+            Union[Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId]
+        ] = None,
         args: Optional[Sequence[Union[CommandArg, Player]]] = None,
         text: Optional[str] = None,
         _max_retries: int = 3,
@@ -726,7 +728,12 @@ class ServerCommands(ServerModule):
             return str(arg)
 
         if targets:
-            command += ",".join([parse_target(t) for t in targets]) + " "
+            if isinstance(targets, (str, int)):
+                command += str(targets) + " "
+            elif isinstance(targets, Player):
+                command += Player.name + " "
+            else:
+                command += ",".join([parse_target(t) for t in targets]) + " "
 
         if args:
             command += " ".join([parse_arg(a) for a in args]) + " "
@@ -748,104 +755,123 @@ class ServerCommands(ServerModule):
                 f"Command execution has unexpectedly failed: '{message}'"
             )
 
-    async def kill(self, targets: Sequence[CommandTargetPlayerName]):
+    async def kill(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Kill players in the server.
 
         Parameters
         ----------
         targets
-            The players to kill. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to kill. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("kill", targets=targets)
 
-    async def heal(self, targets: Sequence[CommandTargetPlayerName]):
+    async def heal(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Heal players in the server.
 
         Parameters
         ----------
         targets
-            The players to heal. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to heal. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("heal", targets=targets)
 
-    async def make_wanted(self, targets: Sequence[CommandTargetPlayerName]):
+    async def make_wanted(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Make players wanted in the server.
 
         Parameters
         ----------
         targets
-            The players to make wanted. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to make wanted. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("wanted", targets=targets)
 
-    async def remove_wanted(self, targets: Sequence[CommandTargetPlayerName]):
+    async def remove_wanted(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Remove wanted status from players in the server.
 
         Parameters
         ----------
         targets
-            The players to remove wanted status from. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to remove wanted status from. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("unwanted", targets=targets)
 
-    async def make_jailed(self, targets: Sequence[CommandTargetPlayerName]):
+    async def make_jailed(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Make players jailed in the server. Teleports them to a prison cell and changes the server player's team.
 
         Parameters
         ----------
         targets
-            The players to make jailed. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to make jailed. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("jail", targets=targets)
 
-    async def remove_jailed(self, targets: Sequence[CommandTargetPlayerName]):
+    async def remove_jailed(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Remove jailed status from players in the server.
 
         Parameters
         ----------
         targets
-            The players to remove jail status from. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to remove jail status from. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("unjail", targets=targets)
 
-    async def refresh(self, targets: Sequence[CommandTargetPlayerName]):
+    async def refresh(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Respawn players in the server and return them to their last positions.
 
         Parameters
         ----------
         targets
-            The players to refresh. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to refresh. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("refresh", targets=targets)
 
-    async def respawn(self, targets: Sequence[CommandTargetPlayerName]):
+    async def respawn(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Respawn players in the server and return them to their set spawn location.
 
         Parameters
         ----------
         targets
-            The players to respawn. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to respawn. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("load", targets=targets)
 
     async def teleport(
-        self, targets: Sequence[CommandTargetPlayerName], *, to: CommandTargetPlayerName
+        self,
+        targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName],
+        *,
+        to: CommandTargetPlayerName,
     ):
         """
         Teleport players to another player in the server.
@@ -853,7 +879,7 @@ class ServerCommands(ServerModule):
         Parameters
         ----------
         targets
-            The players to teleport. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to teleport. A player can be a username, partial username or a player (and any of its subclasses).
         to
             The player to be teleported to. A player can be a username, partial username or a player (and any of its subclasses).
         """
@@ -862,7 +888,7 @@ class ServerCommands(ServerModule):
 
     async def kick(
         self,
-        targets: Sequence[CommandTargetPlayerName],
+        targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName],
         *,
         reason: Optional[str] = None,
     ):
@@ -872,112 +898,152 @@ class ServerCommands(ServerModule):
         Parameters
         ----------
         targets
-            The players to kick. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to kick. A player can be a username, partial username or a player (and any of its subclasses).
         reason
             The reason for the kick, if any.
         """
 
         await self.run("kick", targets=targets, text=reason)
 
-    async def ban(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def ban(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Ban players from the server.
 
         Parameters
         ----------
         targets
-            The players to ban. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to ban. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("ban", targets=targets, _prefer_player_id=True)
 
-    async def unban(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def unban(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Unban players from the server.
 
         Parameters
         ----------
         targets
-            The players to unban. A player can be a username, ID or a player (and any of its subclasses).
+            The player(s) to unban. A player can be a username, ID or a player (and any of its subclasses).
         """
 
         await self.run("unban", targets=targets, _prefer_player_id=True)
 
     async def shutdown(self):
         """
-        Shutdown the server. Kicks all players in-game.
+        Shutdown the server. Kicks all players in-game, including players with elevated permissions.
         """
 
         await self.run("shutdown")
 
-    async def grant_helper(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def grant_helper(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Grant helper permissions to players in the server.
 
         Parameters
         ----------
         targets
-            The players to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("helper", targets=targets, _prefer_player_id=True)
 
-    async def revoke_helper(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def revoke_helper(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Revoke helper permissions to players in the server.
 
         Parameters
         ----------
         targets
-            The players to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("unhelper", targets=targets, _prefer_player_id=True)
 
-    async def grant_mod(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def grant_mod(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Grant moderator permissions to players in the server.
 
         Parameters
         ----------
         targets
-            The players to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("mod", targets=targets, _prefer_player_id=True)
 
-    async def revoke_mod(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def revoke_mod(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Revoke moderator permissions from players in the server.
 
         Parameters
         ----------
         targets
-            The players to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("unmod", targets=targets, _prefer_player_id=True)
 
-    async def grant_admin(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def grant_admin(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Grant admin permissions to players in the server.
 
         Parameters
         ----------
         targets
-            The players to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("admin", targets=targets, _prefer_player_id=True)
 
-    async def revoke_admin(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def revoke_admin(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Revoke admin permissions from players in the server.
 
         Parameters
         ----------
         targets
-            The players to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("unadmin", targets=targets, _prefer_player_id=True)
@@ -1006,14 +1072,18 @@ class ServerCommands(ServerModule):
 
         await self.run("m", text=text)
 
-    async def send_pm(self, targets: Sequence[CommandTargetPlayerName], text: str):
+    async def send_pm(
+        self,
+        targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName],
+        text: str,
+    ):
         """
         Send a private message to players in the server (dismissable popup).
 
         Parameters
         ----------
         targets
-            The players to message. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to message. A player can be a username, partial username or a player (and any of its subclasses).
         text
             The private message content.
         """
@@ -1099,7 +1169,7 @@ class ServerCommands(ServerModule):
         Parameters
         ----------
         dumpster
-            Whether to stop dumpster fires only. Otherwise, **all non-dumpster fires** will be stopped.
+            Whether to stop dumpster fires only. Otherwise, **only non-dumpster fires** will be stopped.
         """
 
         if dumpster:

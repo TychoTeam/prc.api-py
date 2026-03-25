@@ -156,7 +156,7 @@ class PRC:
                 return player
 
     def _validate_server_key(self, server_key: str):
-        expression = r"^[a-z]{10,}\-[a-z]{40,}$"
+        expression = r"^[a-z0-9]+\-[a-z0-9]+$"
         if not re.match(expression, server_key, re.IGNORECASE):
             raise ValueError(f"Invalid server-key format: {server_key}")
 
