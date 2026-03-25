@@ -43,17 +43,13 @@ class LogEntry:
         ],
         cache: Optional["KeylessCache"] = None,
     ):
-        ts_attr: str
-        if hasattr(data, "Timestamp"):
-            ts_attr = "Timestamp"
-        elif hasattr(data, "StartedAt"):
-            ts_attr = "StartedAt"
-        else:
+        time = data.get("Timestamp", data.get("StartedAt", None))
+        if not time:
             raise ValueError(
                 "Log entry unexpectedly has neither a timestamp nor a start time"
             )
 
-        self.created_at = datetime.fromtimestamp(getattr(data, ts_attr))
+        self.created_at = datetime.fromtimestamp(time)
 
         if cache is not None:
             for entry in cache.items():
@@ -352,6 +348,9 @@ class EmergencyCallEntry(LogEntry):
         self.team = PlayerTeam.parse(data["Team"])
         caller = data.get("Caller", None)
         self.caller = CallPlayer(server, id=int(caller)) if caller else None
+        self.responders = CallPlayerList(
+            CallPlayer(server, id=int(id)) for id in data["Players"]
+        )
         self.location = CallLocation(data)
         self.call_number = int(self.call_number)
         description = data.get("Description", None)
@@ -368,4 +367,3 @@ class EmergencyCallEntry(LogEntry):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} call_number={self.call_number}, team={self.team}, caller={self.caller.id if self.caller else None}, description={self.description}, responders={len(self.responders)}>"
-    

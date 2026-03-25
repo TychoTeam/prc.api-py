@@ -113,6 +113,7 @@ class ServerQuery(ServerStatus):
     kill_logs: Optional[List[KillEntry]] = None
     command_logs: Optional[List[CommandEntry]] = None
     mod_calls: Optional[List[ModCallEntry]] = None
+    emergency_calls: Optional[List[EmergencyCallEntry]] = None
     vehicles: Optional[VehicleList] = None
 
     def __init__(
@@ -161,6 +162,12 @@ class ServerQuery(ServerStatus):
         if ((mod_calls := data.get("ModCalls"))) is not None:
             self.mod_calls = server.logs._sort(
                 [ModCallEntry(server, data=e) for e in mod_calls],
+                oldest_first,
+            )
+
+        if ((emergency_calls := data.get("EmergencyCalls"))) is not None:
+            self.emergency_calls = server.logs._sort(
+                [EmergencyCallEntry(server, data=e) for e in emergency_calls],
                 oldest_first,
             )
 
@@ -370,7 +377,7 @@ class Server:
     async def get_info(
         self,
         *,
-        all: bool = False,
+        all: Optional[bool] = None,
         players: bool = False,
         staff: bool = False,
         queue: bool = False,
@@ -378,6 +385,7 @@ class Server:
         kill_logs: bool = False,
         command_logs: bool = False,
         mod_calls: bool = False,
+        emergency_calls: bool = False,
         vehicles: bool = False,
         oldest_first: bool = False,
         **kwargs,
@@ -388,7 +396,7 @@ class Server:
         Parameters
         ----------
         all
-            Whether to query all server information. Takes priority over other kwargs.
+            Whether to query all server information. Overrides all other kwargs.
         players
             Whether to query server players.
         staff
@@ -403,6 +411,8 @@ class Server:
             Whether to query server command usage logs.
         mod_calls
             Whether to query server mod calls.
+        emergency_calls
+            Whether to query server emergency calls.
         vehicles
             Whether to query server vehicles.
         oldest_first
@@ -417,12 +427,13 @@ class Server:
             "KillLogs": kill_logs,
             "CommandLogs": command_logs,
             "ModCalls": mod_calls,
+            "EmergencyCalls": emergency_calls,
             "Vehicles": vehicles,
         }
 
         for k, v in params.copy().items():
-            if all is True:
-                params[k] = True
+            if all is not None:
+                params[k] = all
             elif v is False:
                 params.pop(k)
 
@@ -654,6 +665,28 @@ class ServerLogs(ServerModule):
         ) is not None:
             return logs
         raise ValueError("Mod call list unexpectedly not defined")
+
+    @_refresh_server
+    @_ephemeral
+    async def get_emergency_calls(
+        self, *, oldest_first: bool = False, **kwargs
+    ) -> List[EmergencyCallEntry]:
+        """
+        Get server emergency call logs.
+
+        Parameters
+        ----------
+        oldest_first
+            Whether to return older logs first. By default, newer logs come first.
+        """
+
+        if (
+            logs := (
+                await self.get_info(emergency_calls=True, oldest_first=oldest_first)
+            ).emergency_calls
+        ) is not None:
+            return logs
+        raise ValueError("Emergency call list unexpectedly not defined")
 
 
 CommandTargetPlayerName = Union[str, Player, VehicleOwner]

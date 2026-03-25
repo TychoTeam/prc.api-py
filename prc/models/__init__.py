@@ -54,4 +54,6 @@ __all__ = [
     "BasePlayer",
     "PartialServerPlayer",
     "CallPlayer",
+    "CallLocation",
+    "EmergencyCallEntry",
 ]
