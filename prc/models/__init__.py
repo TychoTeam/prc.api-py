@@ -51,4 +51,7 @@ __all__ = [
     "WebhookType",
     "WebhookMessage",
     "WebhookVersion",
+    "BasePlayer",
+    "PartialServerPlayer",
+    "CallPlayer",
 ]

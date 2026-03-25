@@ -1,8 +1,10 @@
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 from enum import Enum
 from datetime import datetime
-from ..player import Player
+
+from .player import PartialServerPlayer, PlayerTeam
 from ..commands import Command
+from ..player import Player
 
 if TYPE_CHECKING:
     from prc.server import Server
@@ -12,8 +14,8 @@ if TYPE_CHECKING:
         v2_ServerKillLog,
         v2_ServerCommandLog,
         v2_ServerModCall,
+        v2_ServerEmergencyCall,
     )
-    from .player import ServerPlayer
 
 
 class LogEntry:
@@ -37,10 +39,21 @@ class LogEntry:
             "v2_ServerKillLog",
             "v2_ServerCommandLog",
             "v2_ServerModCall",
+            "v2_ServerEmergencyCall",
         ],
         cache: Optional["KeylessCache"] = None,
     ):
-        self.created_at = datetime.fromtimestamp(data["Timestamp"])
+        ts_attr: str
+        if hasattr(data, "Timestamp"):
+            ts_attr = "Timestamp"
+        elif hasattr(data, "StartedAt"):
+            ts_attr = "StartedAt"
+        else:
+            raise ValueError(
+                "Log entry unexpectedly has neither a timestamp nor a start time"
+            )
+
+        self.created_at = datetime.fromtimestamp(getattr(data, ts_attr))
 
         if cache is not None:
             for entry in cache.items():
@@ -68,7 +81,7 @@ class LogEntry:
         return self.__lt__(other) or self.__eq__(other)
 
 
-class LogPlayer(Player):
+class LogPlayer(Player, PartialServerPlayer):
     """
     Represents a player referenced in a log entry.
 
@@ -83,15 +96,92 @@ class LogPlayer(Player):
     def __init__(self, server: "Server", data: str):
         self._server = server
 
-        super().__init__(server._client, data=data)
+        super().__init__(client=server._client, data=data)
+        self._value = self.id
+
+
+class CallPlayer(PartialServerPlayer):
+    """
+    Represents a server partial player referenced in a call entry.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    id
+        The player ID.
+    """
+
+    id: int
+
+    def __init__(self, server: "Server", id: int):
+        self._server = server
+
+        self.id = int(id)
+
+        super().__init__(server, value=self.id)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} id={self.id}>"
+
+
+class CallPlayerList(List[CallPlayer]):
+    def copy(self):
+        return CallPlayerList(self)
+
+    def find_player(self, *, id: int) -> Optional[CallPlayer]:
+        """
+        Find a call player using their player ID.
+        """
+
+        return next((p for p in self if p.id == id), None)
+
+    def has_player(self, *, id: int) -> bool:
+        """
+        Determine whether a player exists in this call player list using their player ID.
+        """
+
+        return bool(self.find_player(id=id))
+
+
+class CallLocation:
+    """
+    Represents a call's location in a server.
+
+    Parameters
+    ----------
+    data
+        The call data.
+    """
+
+    x: float
+    z: float
+    descriptor: Optional[str]
+
+    def __init__(self, data: "v2_ServerEmergencyCall"):
+        self.x = float(data["Position"][0])
+        self.z = float(data["Position"][1])
+        descriptor = data.get("PositionDescriptor", None)
+        self.descriptor = str(descriptor) if descriptor else None
 
     @property
-    def player(self) -> Optional["ServerPlayer"]:
+    def coordinates(self) -> Tuple[float, float]:
         """
-        The full server player, if found.
+        A tuple representing location coordinates (x, z) on an official [PRC API map](https://apidocs.policeroleplay.community/for-developers/v2-api-reference/er-lc-location-information).
         """
 
-        return self._server._get_player(id=self.id)
+        return (self.x, self.z)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, CallLocation) and (
+            self.coordinates == other.coordinates
+        )
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} coordinates={self.coordinates}, descriptor={self.descriptor}>"
 
 
 class AccessType(Enum):
@@ -235,3 +325,47 @@ class ModCallEntry(LogEntry):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} caller={self.caller.name, self.caller.id} acknowledged={self.is_acknowledged()}>"
+
+
+class EmergencyCallEntry(LogEntry):
+    """
+    Represents a server emergency call log entry.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    data
+        The response data.
+    """
+
+    team: PlayerTeam
+    caller: Optional[CallPlayer]
+    responders: List[CallPlayer]
+    location: CallLocation
+    call_number: int
+    description: Optional[str]
+
+    def __init__(self, server: "Server", data: "v2_ServerEmergencyCall"):
+        self._server = server
+
+        self.team = PlayerTeam.parse(data["Team"])
+        caller = data.get("Caller", None)
+        self.caller = CallPlayer(server, id=int(caller)) if caller else None
+        self.location = CallLocation(data)
+        self.call_number = int(self.call_number)
+        description = data.get("Description", None)
+        self.description = str(description) if description else None
+
+        super().__init__(data)
+
+    def is_911(self) -> bool:
+        """
+        Whether this emergency call is a player 911 call.
+        """
+
+        return bool(self.caller)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} call_number={self.call_number}, team={self.team}, caller={self.caller.id if self.caller else None}, description={self.description}, responders={len(self.responders)}>"
+    

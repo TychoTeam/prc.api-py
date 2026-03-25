@@ -1,6 +1,6 @@
 from typing import List, Literal, Optional, Tuple, TYPE_CHECKING, Union, cast, overload
 from prc.utility import DisplayNameEnum
-from ..player import Player
+from ..player import BasePlayer, Player
 
 if TYPE_CHECKING:
     from prc.api_types.v2 import v2_ServerPlayer, v2_ServerPlayerLocation
@@ -95,6 +95,46 @@ class PlayerLocation:
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} coordinates={self.coordinates}, street_name={self.street_name}, postal_code={self.postal_code}>"
+
+
+class PartialServerPlayer(BasePlayer):
+    """
+    Represents a partial server player with either a name or an ID.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    value
+        The player data value. Either a name or an ID.
+    """
+
+    def __init__(self, server: "Server", value: Union[str, int]):
+        self._server = server
+        self._value = value
+
+    @property
+    def player(self) -> Optional["ServerPlayer"]:
+        """
+        The full server player, if found.
+        """
+
+        if isinstance(self._value, int):
+            return self._server._get_player(id=self._value)
+        return self._server._get_player(name=self._value)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, PartialServerPlayer):
+            return self._value == other._value
+        elif isinstance(other, Player):
+            if isinstance(self._value, int):
+                return self._value == other.id
+            return self._value == other.name
+
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
 
 
 class ServerPlayer(Player):
@@ -306,7 +346,7 @@ class ServerPlayerList(List[ServerPlayer]):
         )
 
 
-class QueuedPlayer:
+class QueuedPlayer(BasePlayer):
     """
     Represents a partial player in the server join queue.
 
@@ -353,7 +393,7 @@ class QueuedPlayerList(List[QueuedPlayer]):
         return next((p for p in self if p.id == id), None)
 
 
-class ServerOwner:
+class ServerOwner(PartialServerPlayer):
     """
     Represents a server [co-]owner partial player.
 
@@ -377,21 +417,7 @@ class ServerOwner:
         if not server.owner:
             server.owner = self
 
-    @property
-    def player(self) -> Optional["ServerPlayer"]:
-        """
-        The full server player, if found.
-        """
-
-        return self._server._get_player(id=self.id)
-
-    def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, ServerOwner) or isinstance(other, Player)
-        ) and self.id == other.id
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+        super().__init__(server, value=self.id)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id}, permission={self.permission}>"

@@ -24,7 +24,7 @@ import httpx
 import copy
 import json
 
-from .api_types.v1 import v1_ServerCommandExecutionResponse, v1_ServerBanResponse
+from .api_types.v1 import v1_ServerBanResponse
 from .api_types.v2 import *
 from .api_types.v2 import _APIMap
 
@@ -656,8 +656,8 @@ class ServerLogs(ServerModule):
         raise ValueError("Mod call list unexpectedly not defined")
 
 
-CommandTargetPlayerName = Union[str, Player]
-CommandTargetPlayerId = Union[int, Player]
+CommandTargetPlayerName = Union[str, Player, VehicleOwner]
+CommandTargetPlayerId = Union[int, Player, QueuedPlayer, ServerOwner]
 CommandTargetPlayerNameOrId = Union[CommandTargetPlayerName, CommandTargetPlayerId]
 
 
@@ -691,7 +691,7 @@ class ServerCommands(ServerModule):
         targets: Optional[
             Union[Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId]
         ] = None,
-        args: Optional[Sequence[Union[CommandArg, Player]]] = None,
+        args: Optional[Sequence[Union[CommandArg, CommandTargetPlayerNameOrId]]] = None,
         text: Optional[str] = None,
         _max_retries: int = 3,
         _prefer_player_id: bool = False,
@@ -718,10 +718,14 @@ class ServerCommands(ServerModule):
                 return str(target.name)
             return str(target)
 
-        def parse_arg(arg: Union[CommandArg, Player]):
+        def parse_arg(arg: Union[CommandArg, CommandTargetPlayerNameOrId]):
             if isinstance(arg, Player):
                 if _prefer_player_id:
                     return str(arg.id)
+                return str(arg.name)
+            if isinstance(arg, (QueuedPlayer, ServerOwner)):
+                return str(arg.id)
+            if isinstance(arg, VehicleOwner):
                 return str(arg.name)
             if isinstance(arg, InsensitiveEnum):
                 return arg.value
@@ -732,6 +736,10 @@ class ServerCommands(ServerModule):
                 command += str(targets) + " "
             elif isinstance(targets, Player):
                 command += Player.name + " "
+            elif isinstance(targets, (QueuedPlayer, ServerOwner)):
+                command += str(Player.id) + " "
+            elif isinstance(targets, VehicleOwner):
+                command += str(Player.name) + " "
             else:
                 command += ",".join([parse_target(t) for t in targets]) + " "
 

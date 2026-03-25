@@ -1,13 +1,13 @@
 from typing import Optional, Literal, TYPE_CHECKING, cast, List
-from ..player import Player
+
+from .player import PartialServerPlayer
 
 if TYPE_CHECKING:
     from prc.api_types.v2 import v2_ServerVehicle
     from prc.server import Server
-    from .player import ServerPlayer
 
 
-class VehicleOwner:
+class VehicleOwner(PartialServerPlayer):
     """
     Represents a server vehicle owner partial player.
 
@@ -26,21 +26,7 @@ class VehicleOwner:
 
         self.name = str(name)
 
-    @property
-    def player(self) -> Optional["ServerPlayer"]:
-        """
-        The full server player, if found.
-        """
-
-        return self._server._get_player(name=self.name)
-
-    def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, VehicleOwner) or isinstance(other, Player)
-        ) and self.name == other.name
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+        super().__init__(server, value=self.name)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={self.name}>"
@@ -154,7 +140,7 @@ class Vehicle:
         self.owner = VehicleOwner(server, data["Owner"])
         self.texture = VehicleTexture(name=data.get("Texture", None) or "Standard")
         self.color = VehicleColor(name=data["ColorName"], hex=data["ColorHex"])
-        self.plate = data['Plate']
+        self.plate = data["Plate"]
 
         self.model = cast(VehicleModel, data["Name"])
 
