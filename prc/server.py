@@ -680,8 +680,8 @@ class ServerCommands(ServerModule):
         """
 
         return self._handle(
-            await self._requests.post("/v1/server/command", json={"command": command}),
-            v1_ServerCommandExecutionResponse,
+            await self._requests.post("/v2/server/command", json={"command": command}),
+            v2_ServerCommandExecutionResponse,
         )
 
     async def run(

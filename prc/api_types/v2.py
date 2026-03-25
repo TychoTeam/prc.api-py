@@ -143,3 +143,7 @@ class v2_FullServerInformation(
     v2_ServerEmergencyCallsResponse,
 ):
     pass
+
+
+class v2_ServerCommandExecutionResponse(TypedDict):
+    message: str
