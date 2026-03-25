@@ -146,6 +146,7 @@ class Vehicle:
     texture: VehicleTexture
     model: "VehicleModel"
     year: Optional[int] = None
+    plate: str
 
     def __init__(self, server: "Server", data: "v2_ServerVehicle"):
         self._server = server
@@ -153,6 +154,7 @@ class Vehicle:
         self.owner = VehicleOwner(server, data["Owner"])
         self.texture = VehicleTexture(name=data.get("Texture", None) or "Standard")
         self.color = VehicleColor(name=data["ColorName"], hex=data["ColorHex"])
+        self.plate = data['Plate']
 
         self.model = cast(VehicleModel, data["Name"])
 
