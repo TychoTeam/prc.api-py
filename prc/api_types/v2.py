@@ -15,6 +15,7 @@ v2_Permission = Literal[
     "Server Owner",
 ]
 v2_Team = Literal["Civilian", "Sheriff", "Police", "Fire", "DOT", "Jail"]
+v2_AccVerifiedReq = Literal["Disabled", "Email", "Phone/ID"]
 
 
 class v2_ServerInformation(TypedDict):
@@ -24,7 +25,7 @@ class v2_ServerInformation(TypedDict):
     CurrentPlayers: int
     MaxPlayers: int
     JoinKey: str
-    AccVerifiedReq: Literal["Disabled", "Email", "Phone/ID"]
+    AccVerifiedReq: v2_AccVerifiedReq
     TeamBalance: bool
 
 

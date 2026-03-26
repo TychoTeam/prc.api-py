@@ -9,6 +9,7 @@ from .server.player import *
 from .server.vehicle import *
 from .server.logs import *
 from .server.staff import *
+from .server.shared import *
 
 from .player import *
 from .commands import *
@@ -24,7 +25,7 @@ __all__ = [
     "ServerOwner",
     "StaffMember",
     "PlayerPermission",
-    "PlayerTeam",
+    "ServerTeam",
     "PlayerLocation",
     "Vehicle",
     "VehicleName",

@@ -1,31 +1,56 @@
-from typing import Dict, TypedDict, List, Literal, Union
+from typing import Dict, Optional, TypedDict, List, Literal, Union
 
 PUBLIC_KEY = "MCowBQYDK2VwAyEAjSICb9pp0kHizGQtdG8ySWsDChfGqi+gyFCttigBNOA="
 
+EventName = Literal[
+    "WebhookProbe", "CustomCommand", "EmergencyCallStarted", "EmergencyCallEnded"
+]
+CallTeam = Literal["Police", "Fire", "DOT", "ALL"]
+
 
 class BaseWebhookEvent(TypedDict):
-    event: Literal["WebhookProbe", "CustomCommand", "EmergencyCall"]
+    event: EventName
+    origin: str
     timestamp: int
 
 
 class ProbeWebhookEvent(BaseWebhookEvent):
-    origin: str
     data: Dict
 
 
-class CustomCommandWebhookEvent(BaseWebhookEvent):
+class CustomCommandEventData(TypedDict):
     command: str
     argument: str
-    origin: str
 
 
-class EmergencyCallWebhookEvent(BaseWebhookEvent):
-    # waiting for this to actually work omg
-    pass
+class CustomCommandWebhookEvent(BaseWebhookEvent):
+    data: CustomCommandEventData
+
+
+class EmergencyCallEventData(TypedDict):
+    players: List[int]
+    caller: Optional[int]
+    description: Optional[str]
+    callNumber: int
+    team: CallTeam
+    position: List[int]
+    positionDescriptor: Optional[str]
+    startedAt: int
+
+
+class EmergencyCallStartedWebhookEvent(BaseWebhookEvent):
+    data: EmergencyCallEventData
+
+
+class EmergencyCallEndedWebhookEvent(BaseWebhookEvent):
+    data: EmergencyCallEventData
 
 
 WebhookEvent = Union[
-    ProbeWebhookEvent, CustomCommandWebhookEvent, EmergencyCallWebhookEvent
+    ProbeWebhookEvent,
+    CustomCommandWebhookEvent,
+    EmergencyCallStartedWebhookEvent,
+    EmergencyCallEndedWebhookEvent,
 ]
 
 

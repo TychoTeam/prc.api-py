@@ -1,7 +1,7 @@
 from typing import List, Literal, Optional, Tuple, TYPE_CHECKING, Union, cast, overload
+from .shared import Location, ServerTeam
 from prc.utility import DisplayNameEnum
 from ..player import BasePlayer, Player
-from .location import Location
 
 if TYPE_CHECKING:
     from prc.api_types.v2 import v2_ServerPlayer, v2_ServerPlayerLocation
@@ -40,19 +40,6 @@ class PlayerPermission(DisplayNameEnum):
 
     def __le__(self, other: Union[int, "PlayerPermission"]) -> bool:
         return self.__lt__(other) or self.__eq__(other)
-
-
-class PlayerTeam(DisplayNameEnum):
-    """
-    Enum that represents a server player team.
-    """
-
-    CIVILIAN = (0, "Civilian")
-    SHERIFF = (1, "Sheriff")
-    POLICE = (2, "Police")
-    FIRE = (3, "Fire")
-    DOT = (4, "DOT")
-    JAIL = (5, "Jail")
 
 
 class PlayerLocation(Location):
@@ -136,7 +123,7 @@ class ServerPlayer(Player):
 
     permission: PlayerPermission
     callsign: Optional[str]
-    team: PlayerTeam
+    team: ServerTeam
     location: PlayerLocation
     wanted_stars: int
 
@@ -145,7 +132,7 @@ class ServerPlayer(Player):
 
         self.permission = PlayerPermission.parse(data["Permission"])
         self.callsign = data.get("Callsign", None)
-        self.team = PlayerTeam.parse(data["Team"])
+        self.team = ServerTeam.parse(data["Team"])
         self.location = PlayerLocation(data["Location"])
         self.wanted_stars = int(data["WantedStars"])
 
@@ -221,14 +208,14 @@ class ServerPlayer(Player):
         Whether this player is jailed.
         """
 
-        return self.team == PlayerTeam.JAIL
+        return self.team == ServerTeam.JAIL
 
     def is_leo(self) -> bool:
         """
         Whether this player is on a law enforcement team.
         """
 
-        return self.team in (PlayerTeam.SHERIFF, PlayerTeam.POLICE)
+        return self.team in (ServerTeam.SHERIFF, ServerTeam.POLICE)
 
     def is_wanted(self) -> bool:
         """
@@ -266,7 +253,7 @@ class ServerPlayerList(List[ServerPlayer]):
                 (p for p in self if p.name.lower() == name.lower().strip()), None
             )
 
-    def get_team(self, team: PlayerTeam):
+    def get_team(self, team: ServerTeam):
         """
         Get all players in a team.
         """

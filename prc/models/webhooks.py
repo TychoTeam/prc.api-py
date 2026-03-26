@@ -48,6 +48,9 @@ class WebhookPlayer(Player):
             return self._server._get_player(id=self.id)
         return None
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} id={self.id}, name={self.name}>"
+
 
 class WebhookType(DisplayNameEnum):
     """

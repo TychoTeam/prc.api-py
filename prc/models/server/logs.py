@@ -1,10 +1,10 @@
 from typing import TYPE_CHECKING, List, Optional, Union
-from enum import Enum
 from datetime import datetime
+from enum import Enum
 
 
-from .player import PartialServerPlayer, PlayerTeam
-from .location import Location
+from .player import PartialServerPlayer, ServerTeam
+from .shared import Location
 from ..commands import Command
 from ..player import Player
 
@@ -96,6 +96,9 @@ class LogPlayer(Player, PartialServerPlayer):
 
         super().__init__(client=server._client, data=data)
         self._value = self.id
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} id={self.id}, name={self.name}>"
 
 
 class CallPlayer(PartialServerPlayer):
@@ -319,7 +322,7 @@ class EmergencyCallEntry(LogEntry):
         The response data.
     """
 
-    team: PlayerTeam
+    team: ServerTeam
     caller: Optional[CallPlayer]
     responders: List[CallPlayer]
     location: CallLocation
@@ -329,7 +332,7 @@ class EmergencyCallEntry(LogEntry):
     def __init__(self, server: "Server", data: "v2_ServerEmergencyCall"):
         self._server = server
 
-        self.team = PlayerTeam.parse(data["Team"])
+        self.team = ServerTeam.parse(data["Team"])
         caller = data.get("Caller", None)
         self.caller = CallPlayer(server, id=int(caller)) if caller else None
         self.responders = CallPlayerList(
@@ -344,10 +347,17 @@ class EmergencyCallEntry(LogEntry):
 
     def is_911(self) -> bool:
         """
-        Whether this emergency call is a player 911 call.
+        Whether this emergency call is a player 911 call and not a server call.
         """
 
         return bool(self.caller)
+
+    def is_server(self) -> bool:
+        """
+        Whether this emergency call is an automatic server call and not a 911 call.
+        """
+
+        return not self.is_911()
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} call_number={self.call_number}, team={self.team}, caller={self.caller.id if self.caller else None}, description={self.description}, responders={len(self.responders)}>"

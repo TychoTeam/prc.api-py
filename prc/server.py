@@ -672,7 +672,7 @@ class ServerLogs(ServerModule):
         self, *, oldest_first: bool = False, **kwargs
     ) -> List[EmergencyCallEntry]:
         """
-        Get server emergency call logs.
+        Get server emergency call logs. Call numbers are NOT unique and may be shared across teams (e.g. major server calls).
 
         Parameters
         ----------
