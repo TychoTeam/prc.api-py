@@ -56,4 +56,5 @@ __all__ = [
     "CallPlayer",
     "CallLocation",
     "EmergencyCallEntry",
+    "Location",
 ]

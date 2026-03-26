@@ -40,7 +40,11 @@ class Location:
         return self.distance_from(other.x, other.z)
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, Location) and (self.coordinates == other.coordinates)
+        return (
+            isinstance(other, Location)
+            and (round(self.x, 1) == round(other.x, 1))
+            and (round(self.z, 1) == round(other.z, 1))
+        )
 
     def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)

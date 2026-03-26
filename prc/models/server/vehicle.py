@@ -190,7 +190,7 @@ class Vehicle:
         return not self.__eq__(other)
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} name={self.full_name}, owner={self.owner.name}, color={self.color}, texture={self.texture}>"
+        return f"<{self.__class__.__name__} name={self.full_name}, owner={self.owner.name}, color={self.color}, texture={self.texture}, plate={self.plate}>"
 
 
 class VehicleList(List[Vehicle]):
@@ -232,7 +232,7 @@ class VehicleList(List[Vehicle]):
 
         return VehicleList(v for v in self if v.texture.is_fictional())
 
-    def by_texture(self, texture: str) -> "VehicleList":
+    def by_texture(self, texture: str, /) -> "VehicleList":
         """
         Find all spawned vehicles with this texture set (case insensitive).
         """
@@ -241,14 +241,14 @@ class VehicleList(List[Vehicle]):
             v for v in self if v.texture.name.lower() == texture.lower().strip()
         )
 
-    def by_name(self, name: "VehicleName") -> "VehicleList":
+    def by_name(self, name: "VehicleName", /) -> "VehicleList":
         """
         Find all spawned vehicles of this exact full name.
         """
 
         return VehicleList(v for v in self if v.full_name == name)
 
-    def by_model(self, model: "VehicleModel") -> "VehicleList":
+    def by_model(self, model: "VehicleModel", /) -> "VehicleList":
         """
         Find all spawned vehicles of this model.
         """
@@ -263,6 +263,20 @@ class VehicleList(List[Vehicle]):
         return VehicleList(
             v for v in self if v.owner.name.lower() == name.lower().strip()
         )
+
+    def by_plate(self, plate: str, /) -> "VehicleList":
+        """
+        Find all spawned vehicles with a certain plate (likely same owner). Plates are case insensitive and are always capitalized.
+        """
+
+        return VehicleList(v for v in self if v.plate == plate.upper().strip())
+
+    def find_plate(self, keyword: str, /) -> "VehicleList":
+        """
+        Find all spawned vehicles with a plate containing a certain keyword. Plates and keywords are case insensitive and are always capitalized.
+        """
+
+        return VehicleList(v for v in self if keyword.upper().strip() in v.plate)
 
 
 # All vehicle names
@@ -384,13 +398,10 @@ VehicleName = Literal[
     "1984 Vellfire Runabout",
     # CIV JOBS
     "Bank Truck",
-    "Dump Truck",
     "2003 Falcon Prime Eques Taxi",
     "2013 Falcon Scavenger Security",
     "2024 Falcon Scavenger Taxi",
     "Farm Tractor 5100M",
-    "Forklift",
-    "Front Loader Tractor",
     "Front-Loader Garbage Truck",
     "Fuel Tanker",
     "Garbage Truck",
@@ -409,13 +420,14 @@ VehicleName = Literal[
     "2022 Averon Q8",
     "2020 BKM Munich",
     "2009 Bullhorn BH15 SSV",
+    "2022 Bullhorn Determinator C/T",
+    "2022 Bullhorn Determinator SFP Fury Blackjack Widebody",
     "2022 Bullhorn Determinator SFP Fury",
     "1988 Bullhorn Foreman",
     "2020 Bullhorn Prancer Fury Widebody Pursuit",
     "1969 Bullhorn Prancer HotRod",
     "2011 Bullhorn Prancer Pursuit",
     "2015 Bullhorn Prancer Pursuit",
-    "2011 Bullhorn Prancer Pursuit",
     "2022 Bullhorn Pueblo Pursuit",
     "2024 Celestial Truckatron",
     "2011 Chevlon Amigo LZR",
@@ -442,44 +454,56 @@ VehicleName = Literal[
     "2002 Falcon Traveller",
     "2005 Mobile Command",
     "Prisoner Transport Bus",  # SHERIFF ONLY
-    "2020 Stuttgart Runner",
+    "2020 Stuttgart Runner Prisoner Transport",
     "2011 SWAT Armored Truck",
     # FD
     "2020 Brush Falcon Advance+",
     "2022 Bullhorn Pueblo Pursuit",
     "2018 Chevlon Camion",
+    "1981 Chevlon L15 Brush Truck",
     "2020 Falcon Advance 350",
     "2020 Falcon Advance 450 Ambulance",
+    "2018 Falcon Global 450 Ambulance",
+    "1956 Falcon Advance 600 Pumper",
     "Heavy Rescue",
-    "Heavy Tanker",
-    "International Ambulance",
-    "Ladder Truck",
     "Medical Bus",
     "Mobile Command Center",
-    "Paramedic SUV",
     "Redline Fire Engine",
+    "2014 Redline Heavy Tanker",
+    "Redline Midmount Ladder",
+    "Redline Rearmount Ladder",
+    "2014 Redline Tanker",
+    "2014 Redline Type 3 Brush Truck",
     "2020 Squad Falcon Advance+",
     "Special Operations Unit",
-    "Tanker",
     # DOT
-    "2019 Chevlon Platoro Utility",
-    "Cone Truck",
-    "2020 Falcon Advance+ Roadside Assist",
-    "2020 Falcon Advance+ Tow Truck",
-    "Flatbed Tow Truck",
-    "Street Sweeper",
-    "Salt Truck",
+    "2010 Aikawa Street Sweeper",
+    "1981 Chevlon L/35 Flatbed Tow Truck",
+    "2015 Explorer Dump Truck",
+    "2015 Explorer Flatbed Tow Truck",
+    "2015 Explorer Salt Truck",
+    "2015 Explorer Transport Truck",
+    "2020 Falcon Advance 350",
+    "2020 Falcon Advance 450 Bucket Truck",
+    "2020 Falcon Advance 450 Roadside Assist",
+    "2020 Falcon Advance 450 Tow Truck",
+    "2020 Falcon Advance 450",
+    "2018 Falcon Global 450 Utility",
+    "Front Loader Tractor",
+    "Forklift",
     "1995 Vellfire Evertt Crew Cab",
+    "2013 Vinnimade Heavy Wrecker",
 ]
 
 # Unique vehicle models
 VehicleModel = Literal[
     "4-Wheeler",
+    "Aikawa Street Sweeper",
     "Arrow Phoenix Nationals",
     "Averon Anodic",
     "Averon Bremen VS Garde",
-    "Averon LM R",
     "Averon LM",
+    "Averon LM R",
     "Averon Q8",
     "Averon RS3",
     "Averon S5",
@@ -487,43 +511,43 @@ VehicleModel = Literal[
     "BKM Risen Roadster",
     "Bank Truck",
     "Brush Falcon Advance+",
-    "Bullhorn BH15 SSV",
     "Bullhorn BH15",
-    "Bullhorn Determinator C/T",
-    "Bullhorn Determinator SFP Fury Blackjack Widebody",
-    "Bullhorn Determinator SFP Fury",
+    "Bullhorn BH15 SSV",
     "Bullhorn Determinator",
+    "Bullhorn Determinator C/T",
+    "Bullhorn Determinator SFP Fury",
+    "Bullhorn Determinator SFP Fury Blackjack Widebody",
     "Bullhorn Foreman",
+    "Bullhorn Prancer",
     "Bullhorn Prancer C/T",
     "Bullhorn Prancer Colonel Fields",
-    "Bullhorn Prancer Fury Widebody Pursuit",
     "Bullhorn Prancer Fury Widebody",
+    "Bullhorn Prancer Fury Widebody Pursuit",
     "Bullhorn Prancer HotRod",
     "Bullhorn Prancer Pursuit",
     "Bullhorn Prancer S",
     "Bullhorn Prancer Talladega",
-    "Bullhorn Prancer",
     "Bullhorn Pueblo Pursuit",
     "Bullhorn Pueblo SFP Fury",
     "Bullhorn Pueblo V6",
     "Canyon Descender",
     "Celestial Truckatron",
-    "Celestial Type-5",
-    "Celestial Type-6",
     "Celestial Type-7",
+    "Celestial Type-6",
+    "Celestial Type-5",
     "Chevlon Amigo LZR",
     "Chevlon Amigo S",
     "Chevlon Amigo ZL1",
-    "Chevlon Antelope SS",
     "Chevlon Antelope",
+    "Chevlon Antelope SS",
+    "Chevlon Camion",
     "Chevlon Camion GMT 800 LT",
     "Chevlon Camion GMT 800 LTS",
     "Chevlon Camion GMT 800 S",
     "Chevlon Camion PPV",
-    "Chevlon Camion",
+    "Chevlon Captain",
     "Chevlon Captain LTZ",
     "Chevlon Captain PPV",
-    "Chevlon Captain",
     "Chevlon Commuter Van",
     "Chevlon Corbeta 1M Edition",
     "Chevlon Corbeta 8",
@@ -531,64 +555,67 @@ VehicleModel = Literal[
     "Chevlon Corbeta RZR",
     "Chevlon Corbeta X08",
     "Chevlon Inferno",
-    "Chevlon L/15 Side Step",
+    "Chevlon L15 Brush Truck",
     "Chevlon L/15",
+    "Chevlon L/15 Side Step",
     "Chevlon L/35 Extended",
+    "Chevlon L/35 Flatbed Tow Truck",
     "Chevlon Landslide",
-    "Chevlon Platoro PPV",
-    "Chevlon Platoro Utility",
     "Chevlon Platoro",
+    "Chevlon Platoro PPV",
     "Chevlon Revver",
     "Chryslus Champion",
-    "Cone Truck",
-    "Dump Truck",
     "Elysion Slick",
     "Emergency Services Falcon Advance+",
-    "Falcon Advance 100 Holiday Edition",
+    "Explorer Dump Truck",
+    "Explorer Flatbed Tow Truck",
+    "Explorer Salt Truck",
+    "Explorer Transport Truck",
     "Falcon Advance 100",
-    "Falcon Advance 350 Royal Ranch",
+    "Falcon Advance 100 Holiday Edition",
     "Falcon Advance 350",
-    "Falcon Advance 450 Ambulance",
-    "Falcon Advance 450 Royal Ranch",
+    "Falcon Advance 350 Royal Ranch",
     "Falcon Advance 450",
-    "Falcon Advance+ Roadside Assist",
-    "Falcon Advance+ Tow Truck",
+    "Falcon Advance 450 Ambulance",
+    "Falcon Advance 450 Bucket Truck",
+    "Falcon Advance 450 Roadside Assist",
+    "Falcon Advance 450 Royal Ranch",
+    "Falcon Advance 450 Tow Truck",
+    "Falcon Advance 600 Pumper",
     "Falcon Aquarius STP",
-    "Falcon Coupe Hotrod",
     "Falcon Coupe",
-    "Falcon Heritage Track",
+    "Falcon Coupe Hotrod",
+    "Falcon Global 450 Ambulance",
+    "Falcon Global 450 Utility",
     "Falcon Heritage",
+    "Falcon Heritage Track",
     "Falcon Interceptor Sedan",
     "Falcon Interceptor Utility",
+    "Falcon Prime Eques",
     "Falcon Prime Eques Interceptor",
     "Falcon Prime Eques Taxi",
-    "Falcon Prime Eques",
     "Falcon Rampage Beast",
     "Falcon Rampage Bigfoot 2-Door",
     "Falcon Rampage Interceptor",
     "Falcon Rampage Prairie",
+    "Falcon Scavenger",
     "Falcon Scavenger Royal Ranch",
     "Falcon Scavenger Security",
     "Falcon Scavenger Taxi",
-    "Falcon Scavenger",
     "Falcon Stallion 350",
     "Falcon Traveller",
     "Falcon eStallion",
     "Farm Tractor 5100M",
     "Ferdinand Jalapeno Turbo",
     "Ferrari F8 Tributo",
-    "Flatbed Tow Truck",
     "Forklift",
-    "Front Loader Tractor",
     "Front-Loader Garbage Truck",
+    "Front Loader Tractor",
     "Fuel Tanker",
     "Garbage Truck",
     "Heavy Rescue",
-    "Heavy Tanker",
-    "International Ambulance",
     "Kovac Heladera",
     "La Mesa Food Truck",
-    "Ladder Truck",
     "Lawn Mower",
     "Leland Birchwood Hearse",
     "Leland LTS",
@@ -600,52 +627,55 @@ VehicleModel = Literal[
     "Mail Van",
     "Medical Bus",
     "Metro Transit Bus",
-    "Mobile Command Center",
     "Mobile Command",
+    "Mobile Command Center",
     "Navara Boundary",
     "Navara Horizon",
     "Navara Imperium",
     "News Van",
-    "Overland Apache SFP",
     "Overland Apache",
+    "Overland Apache SFP",
     "Overland Buckaroo",
-    "Paramedic SUV",
     "Pea Car",
     "Prisoner Transport Bus",
     "Redline Fire Engine",
+    "Redline Heavy Tanker",
+    "Redline Midmount Ladder",
+    "Redline Rearmount Ladder",
+    "Redline Tanker",
+    "Redline Type 3 Brush Truck",
     "SWAT Armored Truck",
-    "Salt Truck",
     "Sentinel Platinum",
     "Shuttle Bus",
     "Silhouette Carbon",
     "Special Operations Unit",
     "Squad Falcon Advance+",
-    "Street Sweeper",
     "Strugatti Ettore",
     "Stuttgart Executive",
     "Stuttgart Landschaft",
-    "Stuttgart Runner",
+    "Stuttgart Runner Prisoner Transport",
     "Stuttgart Vierturig",
     "Sumo Reflexion",
     "Surrey 650S",
     "Takeo Experience",
-    "Tanker",
     "Terrain Traveller",
     "Three Guys Food Truck",
     "Vellfire Everest VRD Max",
     "Vellfire Evertt Crew Cab",
     "Vellfire Evertt Extended Cab",
-    "Vellfire Pioneer Targa",
     "Vellfire Pioneer",
+    "Vellfire Pioneer Targa",
     "Vellfire Prairie",
     "Vellfire Prima",
     "Vellfire Riptide",
     "Vellfire Runabout",
+    "Vinnimade Heavy Wrecker",
 ]
 
 _secondary_vehicles: List[VehicleName] = [
     "4-Wheeler",
     "Canyon Descender",
+    "Forklift",
     "Lawn Mower",
 ]
 
