@@ -391,7 +391,7 @@ class Server:
         **kwargs,
     ) -> ServerQuery:
         """
-        Get information about the server. By default, only the server status is queried.
+        Get information about the server. By default, only the server status is queried. When an option is not queried (i.e, is `False`), its property in the returned `ServerQuery` will be of type `None`.
 
         Parameters
         ----------
@@ -562,7 +562,7 @@ class ServerModule:
 
         self._requests = server._requests
         self._handle = server._handle
-        self.get_info = server.get_info
+        self._get_info = server.get_info
 
 
 class ServerLogs(ServerModule):
@@ -594,7 +594,7 @@ class ServerLogs(ServerModule):
 
         if (
             logs := (
-                await self.get_info(access_logs=True, oldest_first=oldest_first)
+                await self._get_info(access_logs=True, oldest_first=oldest_first)
             ).access_logs
         ) is not None:
             return logs
@@ -616,7 +616,7 @@ class ServerLogs(ServerModule):
 
         if (
             logs := (
-                await self.get_info(kill_logs=True, oldest_first=oldest_first)
+                await self._get_info(kill_logs=True, oldest_first=oldest_first)
             ).kill_logs
         ) is not None:
             return logs
@@ -638,7 +638,7 @@ class ServerLogs(ServerModule):
 
         if (
             logs := (
-                await self.get_info(command_logs=True, oldest_first=oldest_first)
+                await self._get_info(command_logs=True, oldest_first=oldest_first)
             ).command_logs
         ) is not None:
             return logs
@@ -660,7 +660,7 @@ class ServerLogs(ServerModule):
 
         if (
             logs := (
-                await self.get_info(mod_calls=True, oldest_first=oldest_first)
+                await self._get_info(mod_calls=True, oldest_first=oldest_first)
             ).mod_calls
         ) is not None:
             return logs
@@ -682,7 +682,7 @@ class ServerLogs(ServerModule):
 
         if (
             logs := (
-                await self.get_info(emergency_calls=True, oldest_first=oldest_first)
+                await self._get_info(emergency_calls=True, oldest_first=oldest_first)
             ).emergency_calls
         ) is not None:
             return logs

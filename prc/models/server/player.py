@@ -1,6 +1,7 @@
 from typing import List, Literal, Optional, Tuple, TYPE_CHECKING, Union, cast, overload
 from prc.utility import DisplayNameEnum
 from ..player import BasePlayer, Player
+from .location import Location
 
 if TYPE_CHECKING:
     from prc.api_types.v2 import v2_ServerPlayer, v2_ServerPlayerLocation
@@ -54,7 +55,7 @@ class PlayerTeam(DisplayNameEnum):
     JAIL = (5, "Jail")
 
 
-class PlayerLocation:
+class PlayerLocation(Location):
     """
     Represents a player's location in a server.
 
@@ -64,34 +65,18 @@ class PlayerLocation:
         The player location data.
     """
 
-    x: float
-    z: float
-    postal_code: int
     street_name: "StreetName"
-    building_number: int
+    postal_code: Optional[int]
+    building_number: Optional[int]
 
     def __init__(self, data: "v2_ServerPlayerLocation"):
-        self.x = float(data["LocationX"])
-        self.z = float(data["LocationZ"])
-        self.postal_code = int(data["PostalCode"])
         self.street_name = cast(StreetName, str(data["StreetName"]))
-        self.building_number = int(data["BuildingNumber"])
+        postal_code = data.get("PostalCode", None)
+        self.postal_code = int(postal_code) if postal_code else None
+        building_number = data.get("BuildingNumber", None)
+        self.building_number = int(building_number) if building_number else None
 
-    @property
-    def coordinates(self) -> Tuple[float, float]:
-        """
-        A tuple representing location coordinates (x, z) on an official [PRC API map](https://apidocs.policeroleplay.community/for-developers/v2-api-reference/er-lc-location-information).
-        """
-
-        return (self.x, self.z)
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, PlayerLocation) and (
-            self.coordinates == other.coordinates
-        )
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+        super().__init__(x=data["LocationX"], z=data["LocationZ"])
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} coordinates={self.coordinates}, street_name={self.street_name}, postal_code={self.postal_code}>"

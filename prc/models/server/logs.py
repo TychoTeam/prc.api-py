@@ -1,8 +1,10 @@
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 from enum import Enum
 from datetime import datetime
 
+
 from .player import PartialServerPlayer, PlayerTeam
+from .location import Location
 from ..commands import Command
 from ..player import Player
 
@@ -140,7 +142,7 @@ class CallPlayerList(List[CallPlayer]):
         return bool(self.find_player(id=id))
 
 
-class CallLocation:
+class CallLocation(Location):
     """
     Represents a call's location in a server.
 
@@ -150,31 +152,13 @@ class CallLocation:
         The call data.
     """
 
-    x: float
-    z: float
     descriptor: Optional[str]
 
     def __init__(self, data: "v2_ServerEmergencyCall"):
-        self.x = float(data["Position"][0])
-        self.z = float(data["Position"][1])
         descriptor = data.get("PositionDescriptor", None)
         self.descriptor = str(descriptor) if descriptor else None
 
-    @property
-    def coordinates(self) -> Tuple[float, float]:
-        """
-        A tuple representing location coordinates (x, z) on an official [PRC API map](https://apidocs.policeroleplay.community/for-developers/v2-api-reference/er-lc-location-information).
-        """
-
-        return (self.x, self.z)
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, CallLocation) and (
-            self.coordinates == other.coordinates
-        )
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+        super().__init__(x=data["Position"][0], z=data["Position"][1])
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} coordinates={self.coordinates}, descriptor={self.descriptor}>"
@@ -352,7 +336,7 @@ class EmergencyCallEntry(LogEntry):
             CallPlayer(server, id=int(id)) for id in data["Players"]
         )
         self.location = CallLocation(data)
-        self.call_number = int(self.call_number)
+        self.call_number = int(data["CallNumber"])
         description = data.get("Description", None)
         self.description = str(description) if description else None
 
