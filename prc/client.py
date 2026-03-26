@@ -119,9 +119,10 @@ class PRC:
                 ),
             )
 
-    async def reset_key(self) -> None:
+    async def reset_key(self) -> str:
         """
-        Reset the global key and generate a new one. The new key will be used automatically and will **NOT** be returned. This will reset all cache.
+        Reset the global key and generate a new one. The new key will be used automatically and will be returned. This will reset all cache.
+        ⚠️ You **MUST** securely save the newly generated key. If you reset your key and the process is exited without saving it somewhere, your key will be **LOST** and you must contact PRC.
         """
 
         if not self._key_requests or self._global_key is None:
@@ -136,6 +137,7 @@ class PRC:
             self._global_cache.players.clear()
 
             self._global_key = new_key
+            return self._global_key
         elif response.status_code == 403:
             self._global_cache.invalid_keys.add(self._global_key)
             raise HTTPException(
