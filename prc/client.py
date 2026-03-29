@@ -93,7 +93,7 @@ class PRC:
         server_key
             The unique server key used to authenticate requests. Defaults to `default_server_key`, if any.
         ephemeral_ttl
-            How long, in seconds, ephemeral results (i.e, cached responses) are kept before expiring. Defaults to `1` second.
+            How long, in seconds, ephemeral results (i.e, cached responses) are kept before expiring. Defaults to `1` second. Set to `0` to disable.
         ignore_global_key
             Whether to ignore the client's global authentication key (if set). By default, it is not ignored.
         """

@@ -26,7 +26,6 @@ from functools import wraps
 from .exceptions import *
 from .models import *
 import hashlib
-import asyncio
 import httpx
 import copy
 import json
@@ -52,8 +51,8 @@ class ServerCache:
         self,
         sweeper: CacheSweeper,
         players: CacheConfig = (50, 0),
-        vehicles: CacheConfig = (100, 1 * 60 * 60),
-        access_logs: CacheConfig = (150, 6 * 60 * 60),
+        vehicles: CacheConfig = (100, 1.0 * 60 * 60),
+        access_logs: CacheConfig = (150, 6.0 * 60 * 60),
     ):
         self.players = Cache[int, ServerPlayer](sweeper, *players)
         self.vehicles = KeylessCache[Vehicle](sweeper, *vehicles)
@@ -75,26 +74,41 @@ def _refresh_server(func):
 def _ephemeral(func):
     @wraps(func)
     async def wrapper(self: "Server", *args, **kwargs):
-        force_fetch = kwargs.pop("fetch", False)
-        try:
-            args_repr = json.dumps(args, sort_keys=True, default=str)
-            kwargs_repr = json.dumps(kwargs, sort_keys=True, default=str)
-        except (TypeError, ValueError):
-            args_repr = str(args)
-            kwargs_repr = str(kwargs)
+        cache: Optional[Cache] = getattr(self, "_ephemeral_cache", None)
+        if self._ephemeral_ttl > 0:
+            if cache is None:
+                cache = Cache(
+                    self._client._cache_sweeper,
+                    max_size=10,
+                    ttl=self._ephemeral_ttl or 1.0,
+                )
+                setattr(self, "_ephemeral_cache", cache)
+            cache.ttl = self._ephemeral_ttl or 1.0
 
-        hashed_args = hashlib.sha256(f"{args_repr}|{kwargs_repr}".encode()).hexdigest()
-        cache_key = f"{func.__name__}_cache_{hashed_args}"
+            try:
+                args_repr = json.dumps(args, sort_keys=True, default=str)
+                kwargs_repr = json.dumps(kwargs, sort_keys=True, default=str)
+            except (TypeError, ValueError):
+                args_repr = str(args)
+                kwargs_repr = str(kwargs)
 
-        if not force_fetch:
-            if hasattr(self, cache_key):
-                cached_result, timestamp = getattr(self, cache_key)
-                if (asyncio.get_event_loop().time() - timestamp) < self._ephemeral_ttl:
-                    return copy.copy(cached_result)
+            hashed_args = hashlib.sha256(
+                f"{args_repr}|{kwargs_repr}".encode()
+            ).hexdigest()
+            cache_key = f"{func.__name__}_cache_{hashed_args}"
+
+            if entry := cache.get(cache_key):
+                return copy.copy(entry)
+
+            result = await func(self, *args, **kwargs)
+            cache.set(cache_key, result)
+            return copy.copy(result)
+
+        elif cache:
+            delattr(self, "_ephemeral_cache")
+            self._client._cache_sweeper.remove(cache)
 
         result = await func(self, *args, **kwargs)
-
-        setattr(self, cache_key, (result, asyncio.get_event_loop().time()))
         return copy.copy(result)
 
     return wrapper
@@ -198,7 +212,7 @@ class Server:
     server_key
         The unique server key used to authenticate requests.
     ephemeral_ttl
-        How long, in seconds, ephemeral results (i.e, cached responses) are kept before expiring.
+        How long, in seconds, ephemeral results (i.e, cached responses) are kept before expiring. Set to `0` to disable.
     cache
         An initialized server cache to use. By default, a new instance is created.
     requests
@@ -461,7 +475,9 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_status(self, **kwargs) -> ServerStatus:
+    async def get_status(
+        self,
+    ) -> ServerStatus:
         """
         Get the current server status.
         """
@@ -475,7 +491,9 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_players(self, **kwargs) -> ServerPlayerList:
+    async def get_players(
+        self,
+    ) -> ServerPlayerList:
         """
         Get all online server players.
         """
@@ -486,17 +504,26 @@ class Server:
 
     @overload
     async def get_player(
-        self, *, id: int, name: None = ..., **kwargs
+        self,
+        *,
+        id: int,
+        name: None = ...,
     ) -> Optional[ServerPlayer]: ...
 
     @overload
     async def get_player(
-        self, *, id: None = ..., name: str, **kwargs
+        self,
+        *,
+        id: None = ...,
+        name: str,
     ) -> Optional[ServerPlayer]: ...
 
     @_refresh_server
     async def get_player(
-        self, *, id: Optional[int] = None, name: Optional[str] = None, **kwargs
+        self,
+        *,
+        id: Optional[int] = None,
+        name: Optional[str] = None,
     ) -> Optional[ServerPlayer]:
         """
         Get an online server player using their player ID or username, if found.
@@ -504,7 +531,7 @@ class Server:
         This is equivalent to `get_players.find_player`.
         """
 
-        players = await self.get_players(fetch=kwargs.pop("fetch", False))
+        players = await self.get_players()
 
         if id is not None:
             return players.find_player(id=id)
@@ -513,7 +540,9 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_queue(self, **kwargs) -> QueuedPlayerList:
+    async def get_queue(
+        self,
+    ) -> QueuedPlayerList:
         """
         Get all players in the server join queue.
         """
@@ -524,7 +553,9 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_bans(self, **kwargs) -> PlayerList:
+    async def get_bans(
+        self,
+    ) -> PlayerList:
         """
         Get all banned players.
         """
@@ -540,7 +571,9 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_vehicles(self, **kwargs) -> VehicleList:
+    async def get_vehicles(
+        self,
+    ) -> VehicleList:
         """
         Get all spawned vehicles in the server. A single server player may have up to 2 spawned vehicles (1 primary + 1 secondary).
         """
@@ -551,7 +584,9 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_staff(self, **kwargs) -> ServerStaff:
+    async def get_staff(
+        self,
+    ) -> ServerStaff:
         """
         Get all server staff members excluding server owner.
         """
@@ -594,7 +629,9 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_access(
-        self, *, oldest_first: bool = False, **kwargs
+        self,
+        *,
+        oldest_first: bool = False,
     ) -> List[AccessEntry]:
         """
         Get server access (join/leave) logs.
@@ -616,7 +653,9 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_kills(
-        self, *, oldest_first: bool = False, **kwargs
+        self,
+        *,
+        oldest_first: bool = False,
     ) -> List[KillEntry]:
         """
         Get server kill logs.
@@ -638,7 +677,9 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_commands(
-        self, *, oldest_first: bool = False, **kwargs
+        self,
+        *,
+        oldest_first: bool = False,
     ) -> List[CommandEntry]:
         """
         Get server command usage logs.
@@ -660,7 +701,9 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_mod_calls(
-        self, *, oldest_first: bool = False, **kwargs
+        self,
+        *,
+        oldest_first: bool = False,
     ) -> List[ModCallEntry]:
         """
         Get server mod call logs.
@@ -682,7 +725,9 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_emergency_calls(
-        self, *, oldest_first: bool = False, **kwargs
+        self,
+        *,
+        oldest_first: bool = False,
     ) -> List[EmergencyCallEntry]:
         """
         Get server emergency call logs. Call numbers are NOT unique and may be shared across teams (e.g. major server calls).

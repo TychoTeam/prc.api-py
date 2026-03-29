@@ -4,14 +4,14 @@ from time import time
 import asyncio
 import weakref
 
-CacheConfig = Tuple[int, int]
+CacheConfig = Tuple[int, float]
 
 K = TypeVar("K")
 V = TypeVar("V")
 
 
 class CacheSweeper:
-    def __init__(self, interval: float = 30.0):
+    def __init__(self, interval: float = 10.0):
         self._interval = interval
         self._caches = weakref.WeakSet()
         self._task: Optional[asyncio.Task] = None
@@ -19,6 +19,12 @@ class CacheSweeper:
     def register(self, cache):
         self._caches.add(cache)
         self._ensure_running()
+
+    def remove(self, cache):
+        try:
+            self._caches.remove(cache)
+        except:
+            pass
 
     def _ensure_running(self):
         if self._task is not None:
@@ -50,16 +56,17 @@ class Cache(Generic[K, V]):
         self,
         sweeper: CacheSweeper,
         max_size: int = 100,
-        ttl: Optional[int] = None,
+        ttl: Optional[float] = None,
         unique: bool = True,
     ):
         """
         A custom cache class with size limitation, TTL, and value uniqueness (toggleable).
         """
 
-        self.max_size: int = max_size
-        self.ttl: Optional[int] = ttl or None
-        self.unique: bool = unique
+        self.max_size = max_size
+        self.ttl = ttl or None
+        self.unique = unique
+
         self._cache: "OrderedDict[K, V]" = OrderedDict()
         self._timestamps: Dict[K, float] = {}
 
@@ -148,7 +155,7 @@ class KeylessCache(Generic[V]):
         self,
         sweeper: CacheSweeper,
         max_size: int = 100,
-        ttl: Optional[int] = None,
+        ttl: Optional[float] = None,
         sort: Optional[Tuple[Callable[[V], Any], Optional[bool]]] = None,
     ):
         """
