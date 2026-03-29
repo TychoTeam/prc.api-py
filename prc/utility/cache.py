@@ -1,6 +1,8 @@
 from typing import Dict, Generic, Optional, TypeVar, Tuple, List, Callable, Any, Deque
 from collections import OrderedDict, deque
 from time import time
+import asyncio
+import weakref
 
 CacheConfig = Tuple[int, int]
 
@@ -8,9 +10,45 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
+class CacheSweeper:
+    def __init__(self, interval: float = 30.0):
+        self._interval = interval
+        self._caches = weakref.WeakSet()
+        self._task: Optional[asyncio.Task] = None
+
+    def register(self, cache):
+        self._caches.add(cache)
+        self._ensure_running()
+
+    def _ensure_running(self):
+        if self._task is not None:
+            return
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+
+        self._task = loop.create_task(self._run())
+
+    async def _run(self):
+        while True:
+            await asyncio.sleep(self._interval)
+
+            if not self._caches:
+                return
+
+            for cache in list(self._caches):
+                try:
+                    cache.cleanup()
+                except Exception:
+                    pass
+
+
 class Cache(Generic[K, V]):
     def __init__(
         self,
+        sweeper: CacheSweeper,
         max_size: int = 100,
         ttl: Optional[int] = None,
         unique: bool = True,
@@ -24,6 +62,8 @@ class Cache(Generic[K, V]):
         self.unique: bool = unique
         self._cache: "OrderedDict[K, V]" = OrderedDict()
         self._timestamps: Dict[K, float] = {}
+
+        sweeper.register(self)
 
     def _is_expired(self, key: K, now: Optional[float] = None) -> bool:
         if self.ttl is None:
@@ -39,7 +79,7 @@ class Cache(Generic[K, V]):
     def set(self, key: K, value: V) -> V:
         now = time()
         if self.unique:
-            to_remove = [k for k, v in self._cache.items() if v == value and k != key]
+            to_remove = [k for k, v in self._cache.items() if v is value and k != key]
             for k in to_remove:
                 self._cache.pop(k, None)
                 self._timestamps.pop(k, None)
@@ -70,6 +110,22 @@ class Cache(Generic[K, V]):
         self._cache.clear()
         self._timestamps.clear()
 
+    def cleanup(self, max_items: int = 50) -> int:
+        if self.ttl is None:
+            return 0
+
+        now = time()
+        removed = 0
+
+        for key in list(self._cache.keys()):
+            if removed >= max_items:
+                break
+            if self._is_expired(key, now):
+                self.delete(key)
+                removed += 1
+
+        return removed
+
     def items(self) -> List[Tuple[K, V]]:
         now = time()
         expired = [k for k in self._cache if self._is_expired(k, now)]
@@ -90,6 +146,7 @@ class Cache(Generic[K, V]):
 class KeylessCache(Generic[V]):
     def __init__(
         self,
+        sweeper: CacheSweeper,
         max_size: int = 100,
         ttl: Optional[int] = None,
         sort: Optional[Tuple[Callable[[V], Any], Optional[bool]]] = None,
@@ -104,6 +161,8 @@ class KeylessCache(Generic[V]):
 
         self._cache: Deque[V] = deque()
         self._timestamps: Deque[float] = deque()
+
+        sweeper.register(self)
 
     def _is_expired(self, index: int, now: Optional[float] = None) -> bool:
         if self.ttl is None:
@@ -127,7 +186,7 @@ class KeylessCache(Generic[V]):
     def add(self, value: V) -> V:
         now = time()
         try:
-            idx = next(i for i, v in enumerate(self._cache) if v == value)
+            idx = next(i for i, v in enumerate(self._cache) if v is value)
             self._timestamps[idx] = now
         except StopIteration:
             if len(self._cache) >= self.max_size:
@@ -154,6 +213,22 @@ class KeylessCache(Generic[V]):
     def clear(self) -> None:
         self._cache.clear()
         self._timestamps.clear()
+
+    def cleanup(self, max_items: int = 50) -> int:
+        if self.ttl is None:
+            return 0
+
+        now = time()
+        removed = 0
+
+        for i in reversed(range(len(self._cache))):
+            if removed >= max_items:
+                break
+            if self._is_expired(i, now):
+                self.remove(i)
+                removed += 1
+
+        return removed
 
     def items(self) -> List[V]:
         now = time()

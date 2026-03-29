@@ -4,7 +4,7 @@ The main prc.api client.
 
 """
 
-from .utility import KeylessCache, Cache, CacheConfig, Requests
+from .utility import KeylessCache, Cache, CacheConfig, Requests, CacheSweeper
 from .utility.requests import CleanAsyncClient
 from typing import Optional, TYPE_CHECKING
 from .exceptions import HTTPException
@@ -23,15 +23,16 @@ class GlobalCache:
 
     def __init__(
         self,
+        sweeper: CacheSweeper,
         servers: CacheConfig = (3, 0),
         join_codes: CacheConfig = (3, 0),
         players: CacheConfig = (100, 0),
         invalid_keys: CacheConfig = (25, 0),
     ):
-        self.servers = Cache[str, Server](*servers)
-        self.join_codes = Cache[str, str](*join_codes)
-        self.players = Cache[int, "Player"](*players)
-        self.invalid_keys = KeylessCache[str](*invalid_keys)
+        self.servers = Cache[str, Server](sweeper, *servers)
+        self.join_codes = Cache[str, str](sweeper, *join_codes)
+        self.players = Cache[int, "Player"](sweeper, *players)
+        self.invalid_keys = KeylessCache[str](sweeper, *invalid_keys)
 
 
 class PRC:
@@ -58,7 +59,10 @@ class PRC:
             self._validate_server_key(default_server_key)
         self._default_server_key = default_server_key
         self._base_url = _base_url
-        self._global_cache = _cache if _cache is not None else GlobalCache()
+        self._cache_sweeper = CacheSweeper()
+        self._global_cache = (
+            _cache if _cache is not None else GlobalCache(sweeper=self._cache_sweeper)
+        )
         self._session = CleanAsyncClient()
         self._key_requests = (
             Requests(
@@ -66,6 +70,7 @@ class PRC:
                 headers={"Authorization": self._global_key},
                 session=self._session,
                 invalid_keys=self._global_cache.invalid_keys,
+                sweeper=self._cache_sweeper,
             )
             if self._global_key is not None
             else None
@@ -74,7 +79,11 @@ class PRC:
         self.webhooks = Webhooks(self)
 
     def get_server(
-        self, server_key: Optional[str] = None, *, ignore_global_key: bool = False
+        self,
+        server_key: Optional[str] = None,
+        *,
+        ephemeral_ttl: float = 1.0,
+        ignore_global_key: bool = False,
     ) -> Server:
         """
         Get a server handler using a key. Servers are cached and data is synced across the client.
@@ -83,8 +92,10 @@ class PRC:
         ----------
         server_key
             The unique server key used to authenticate requests. Defaults to `default_server_key`, if any.
+        ephemeral_ttl
+            How long, in seconds, ephemeral results (i.e, cached responses) are kept before expiring. Defaults to `1` second.
         ignore_global_key
-            Whether to ignore the client's global authentication key (if set). By default, it is not ignored. This may reset the cached server if the cached `ignore_global_key` is conflicting.
+            Whether to ignore the client's global authentication key (if set). By default, it is not ignored.
         """
 
         if not server_key:
@@ -97,7 +108,13 @@ class PRC:
         server_id = self._get_server_id(server_key)
 
         existing_server = self._global_cache.servers.get(server_id)
-        if existing_server and existing_server._ignore_global_key == ignore_global_key:
+        if existing_server:
+            existing_server._ephemeral_ttl = ephemeral_ttl
+
+            if existing_server._ignore_global_key != ignore_global_key:
+                existing_server._ignore_global_key = ignore_global_key
+                existing_server._refresh_requests()
+
             if (
                 existing_server._global_key != self._global_key
                 or existing_server._server_key != server_key
@@ -109,19 +126,21 @@ class PRC:
                 return self._global_cache.servers.set(server_id, existing_server)
             else:
                 return existing_server
+
         else:
             return self._global_cache.servers.set(
                 server_id,
                 Server(
                     client=self,
                     server_key=server_key,
+                    ephemeral_ttl=ephemeral_ttl,
                     ignore_global_key=ignore_global_key,
                 ),
             )
 
     async def reset_key(self) -> str:
         """
-        Reset the global key and generate a new one. The new key will be used automatically and will be returned. This will reset all cache.
+        Reset the global key and generate a new one. The new key will be applied automatically and will be returned.
         ⚠️ You **MUST** securely save the newly generated key. If you reset your key and the process is exited without saving it somewhere, your key will be **LOST** and you must contact PRC.
         """
 
@@ -133,8 +152,10 @@ class PRC:
         if response.is_success:
             new_key: str = response.json()["new"]
 
-            self._global_cache.servers.clear()
-            self._global_cache.players.clear()
+            for server_id, server in self._global_cache.servers.items():
+                server._global_key = new_key
+                server._refresh_requests()
+                self._global_cache.servers.set(server_id, server)
 
             self._global_key = new_key
             return self._global_key
@@ -165,3 +186,5 @@ class PRC:
     def _get_server_id(self, server_key: str):
         parsed_key = server_key.split("-")
         return parsed_key[1]
+
+    

@@ -13,7 +13,14 @@ from typing import (
     overload,
 )
 
-from .utility import KeylessCache, Cache, CacheConfig, Requests, InsensitiveEnum
+from .utility import (
+    KeylessCache,
+    Cache,
+    CacheConfig,
+    Requests,
+    InsensitiveEnum,
+    CacheSweeper,
+)
 from .models import PlayerList, ServerPlayerList, QueuedPlayerList, VehicleList
 from functools import wraps
 from .exceptions import *
@@ -43,14 +50,15 @@ class ServerCache:
 
     def __init__(
         self,
+        sweeper: CacheSweeper,
         players: CacheConfig = (50, 0),
         vehicles: CacheConfig = (100, 1 * 60 * 60),
         access_logs: CacheConfig = (150, 6 * 60 * 60),
     ):
-        self.players = Cache[int, ServerPlayer](*players)
-        self.vehicles = KeylessCache[Vehicle](*vehicles)
+        self.players = Cache[int, ServerPlayer](sweeper, *players)
+        self.vehicles = KeylessCache[Vehicle](sweeper, *vehicles)
         self.access_logs = KeylessCache[AccessEntry](
-            *access_logs, sort=(lambda e: e.created_at, True)
+            sweeper, *access_logs, sort=(lambda e: e.created_at, True)
         )
 
 
@@ -190,7 +198,7 @@ class Server:
     server_key
         The unique server key used to authenticate requests.
     ephemeral_ttl
-        How long, in seconds, ephemeral results (i.e, cached responses) are kept before expiring. Defaults to `3` seconds.
+        How long, in seconds, ephemeral results (i.e, cached responses) are kept before expiring.
     cache
         An initialized server cache to use. By default, a new instance is created.
     requests
@@ -203,8 +211,8 @@ class Server:
         self,
         client: "PRC",
         server_key: str,
-        ephemeral_ttl: int = 3,
-        cache: ServerCache = ServerCache(),
+        ephemeral_ttl: float,
+        cache: Optional[ServerCache] = None,
         requests: Optional[Requests] = None,
         ignore_global_key: bool = False,
     ):
@@ -214,7 +222,7 @@ class Server:
         self._id = client._get_server_id(server_key)
 
         self._global_cache = client._global_cache
-        self._server_cache = cache
+        self._server_cache = cache or ServerCache(sweeper=client._cache_sweeper)
         self._ephemeral_ttl = ephemeral_ttl
 
         self._global_key = client._global_key
@@ -282,12 +290,18 @@ class Server:
         headers = {"Server-Key": self._server_key}
         if global_key and not self._ignore_global_key:
             headers["Authorization"] = global_key
-        self._requests = Requests(
-            base_url=self._client._base_url,
-            headers=headers,
-            session=self._client._session,
-            invalid_keys=self._global_cache.invalid_keys,
-        )
+
+        if hasattr(self, "_requests"):
+            self._requests._default_headers = headers
+        else:
+            self._requests = Requests(
+                base_url=self._client._base_url,
+                headers=headers,
+                session=self._client._session,
+                invalid_keys=self._global_cache.invalid_keys,
+                sweeper=self._client._cache_sweeper,
+            )
+
         return self._requests
 
     def _parse_api_map(self, map: _APIMap[M]) -> Dict[str, M]:
@@ -388,7 +402,6 @@ class Server:
         emergency_calls: bool = False,
         vehicles: bool = False,
         oldest_first: bool = False,
-        **kwargs,
     ) -> ServerQuery:
         """
         Get information about the server. By default, only the server status is queried. When an option is not queried (i.e, is `False`), its property in the returned `ServerQuery` will be of type `None`.

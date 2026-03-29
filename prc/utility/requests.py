@@ -1,5 +1,5 @@
 from ..exceptions import PRCException, RequestTimeout
-from .cache import Cache, KeylessCache
+from .cache import Cache, CacheSweeper, KeylessCache
 from typing import Dict, Optional
 from time import time
 import asyncio
@@ -26,11 +26,11 @@ class Bucket:
 
 
 class RateLimiter:
-    def __init__(self):
+    def __init__(self, sweeper: CacheSweeper):
         self.route_buckets = Cache[str, str](
-            max_size=50, ttl=(1 * 24 * 60 * 60), unique=False
+            sweeper, max_size=50, ttl=(1 * 24 * 60 * 60), unique=False
         )
-        self.buckets = Cache[str, Bucket](max_size=10)
+        self.buckets = Cache[str, Bucket](sweeper, max_size=10)
 
     def save_bucket(self, route: str, headers: httpx.Headers) -> None:
         bucket_name: str = headers.get("X-RateLimit-Bucket", "Unknown")
@@ -88,13 +88,14 @@ class Requests:
         self,
         base_url: str,
         invalid_keys: KeylessCache[str],
+        sweeper: CacheSweeper,
         headers: Optional[Dict[str, str]] = None,
         session: Optional[CleanAsyncClient] = None,
         max_retries: int = 3,
         max_retry_after: float = 15.0,
         timeout: float = 5.0,
     ):
-        self._rate_limiter = RateLimiter()
+        self._rate_limiter = RateLimiter(sweeper)
         self._session = session if session is not None else CleanAsyncClient()
 
         self._base_url = base_url
