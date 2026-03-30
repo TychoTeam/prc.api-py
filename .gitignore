@@ -1,3 +1,3 @@
-__pycache__
+!__init__
 .python*
-test.py
+_*

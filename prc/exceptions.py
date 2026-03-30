@@ -7,6 +7,7 @@ All exceptions in use by the prc.api package.
 # Base Exception
 
 from typing import Optional
+import httpx
 
 
 class PRCException(Exception):
@@ -19,27 +20,11 @@ class PRCException(Exception):
 class HTTPException(PRCException):
     """Base exception to catch all HTTP response errors."""
 
-    def __init__(self, message: str, status_code: int):
-        self._message = message
-        self._status_code = status_code
+    def __init__(self, message: str, response: httpx.Response):
+        self.message = message
+        self.status_code = response.status_code
 
-        super().__init__(f"[{status_code}] {message}")
-
-    @property
-    def status_code(self) -> int:
-        """The HTTP response status code."""
-
-        return self._status_code
-
-    @status_code.setter
-    def status_code(self, value: int):
-        self._status_code = value
-
-    @property
-    def message(self) -> str:
-        """The generic error message."""
-
-        return self._message
+        super().__init__(f"[{self.status_code}] {message}")
 
     def is_server_error(self) -> bool:
         """Whether the response status is a `5XX`."""
@@ -55,20 +40,20 @@ class HTTPException(PRCException):
         return f"[{self.status_code}] {self.message}"
 
 
-class APIException(HTTPException):
+class APIException(PRCException):
     """Base exception to catch known PRC API error responses."""
 
-    def __init__(self, code: int, message: str, status_code: int = 0):
-        self._code = code
+    def __init__(
+        self, code: int, message: str, response: Optional[httpx.Response] = None
+    ):
+        self.message = message
+        self.code = code
+        self.response = response
 
-        super().__init__(message, status_code)
-
-    @property
-    def code(self):
-        return self._code
+        super().__init__(message)
 
     def __str__(self):
-        return f"[{self.status_code}] ({self.code}) {self.message}"
+        return f"[{self.response.status_code if self.response else 0}] ({self.code}) {self.message}"
 
 
 # Generic Exceptions
@@ -84,17 +69,6 @@ class RequestTimeout(PRCException):
 
         super().__init__(
             f"PRC API took too long to respond. ({retry}/{max_retries} retries) ({timeout}s timeout)"
-        )
-
-
-class BadContentType(HTTPException):
-    """Exception raised when a non-JSON content type is received."""
-
-    def __init__(self, status_code: int, content_type: Optional[str] = None):
-        self.content_type = content_type
-
-        super().__init__(
-            f"Received a non-json content type: '{content_type}'", status_code
         )
 
 

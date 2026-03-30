@@ -3,8 +3,8 @@ from prc.utility import DisplayNameEnum
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
+    from prc.api_types.v2 import v2_ServerInformation
     from prc.server import Server
-    from prc.api_types.v1 import v1_ServerStatusResponse
 
 
 class AccountRequirement(DisplayNameEnum):
@@ -38,7 +38,11 @@ class ServerStatus:
     account_requirement: AccountRequirement
     team_balance: bool
 
-    def __init__(self, server: "Server", data: "v1_ServerStatusResponse"):
+    def __init__(
+        self,
+        server: "Server",
+        data: "v2_ServerInformation",
+    ):
         self.name = data["Name"]
         server.name = self.name
         self.owner = ServerOwner(

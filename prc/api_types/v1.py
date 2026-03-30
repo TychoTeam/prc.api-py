@@ -6,6 +6,17 @@ V = TypeVar("V")
 # but when empty are actually sent as lists
 _APIMap = Union[Dict[str, V], List[None]]
 
+v1_Permission = Literal[
+    "Normal",
+    "Server Helper",
+    "Server Moderator",
+    "Server Administrator",
+    "Server Co-Owner",
+    "Server Owner",
+]
+v1_Team = Literal["Civilian", "Sheriff", "Police", "Fire", "DOT", "Jail"]
+v1_AccVerifiedReq = Literal["Disabled", "Email", "Phone/ID"]
+
 
 class v1_ServerStatusResponse(TypedDict):
     Name: str
@@ -14,22 +25,15 @@ class v1_ServerStatusResponse(TypedDict):
     CurrentPlayers: int
     MaxPlayers: int
     JoinKey: str
-    AccVerifiedReq: Literal["Disabled", "Email", "Phone/ID"]
+    AccVerifiedReq: v1_AccVerifiedReq
     TeamBalance: bool
 
 
 class v1_ServerPlayer(TypedDict):
     Player: str
-    Permission: Literal[
-        "Normal",
-        "Server Helper",
-        "Server Moderator",
-        "Server Administrator",
-        "Server Co-Owner",
-        "Server Owner",
-    ]
+    Permission: v1_Permission
     Callsign: Optional[str]
-    Team: Literal["Civilian", "Sheriff", "Police", "Fire", "DOT", "Jail"]
+    Team: v1_Team
 
 
 v1_ServerPlayersResponse = List[v1_ServerPlayer]

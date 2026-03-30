@@ -4,7 +4,15 @@ if TYPE_CHECKING:
     from prc.client import PRC
 
 
-class Player:
+class BasePlayer:
+    """
+    Base class from which all player classes inherit.
+    """
+
+    pass
+
+
+class Player(BasePlayer):
     """
     Represents a base player.
 

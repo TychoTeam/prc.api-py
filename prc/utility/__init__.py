@@ -4,8 +4,8 @@ Internal prc.api utilities.
 
 """
 
+from .cache import KeylessCache, Cache, CacheConfig, CacheSweeper
 from .enum import InsensitiveEnum, DisplayNameEnum
-from .cache import KeylessCache, Cache, CacheConfig
 from .requests import Requests
 
 __all__ = [
@@ -15,4 +15,5 @@ __all__ = [
     "Cache",
     "CacheConfig",
     "Requests",
+    "CacheSweeper",
 ]

@@ -13,19 +13,26 @@ from typing import (
     overload,
 )
 
-from .utility import KeylessCache, Cache, CacheConfig, Requests, InsensitiveEnum
+from .utility import (
+    KeylessCache,
+    Cache,
+    CacheConfig,
+    Requests,
+    InsensitiveEnum,
+    CacheSweeper,
+)
 from .models import PlayerList, ServerPlayerList, QueuedPlayerList, VehicleList
 from functools import wraps
 from .exceptions import *
 from .models import *
 import hashlib
-import asyncio
 import httpx
 import copy
 import json
 
-from .api_types.v1 import *
-from .api_types.v1 import _APIMap
+from .api_types.v1 import v1_ServerBanResponse
+from .api_types.v2 import *
+from .api_types.v2 import _APIMap
 
 if TYPE_CHECKING:
     from .client import PRC
@@ -42,14 +49,15 @@ class ServerCache:
 
     def __init__(
         self,
+        sweeper: CacheSweeper,
         players: CacheConfig = (50, 0),
-        vehicles: CacheConfig = (100, 1 * 60 * 60),
-        access_logs: CacheConfig = (150, 6 * 60 * 60),
+        vehicles: CacheConfig = (100, 1.0 * 60 * 60),
+        access_logs: CacheConfig = (150, 6.0 * 60 * 60),
     ):
-        self.players = Cache[int, ServerPlayer](*players)
-        self.vehicles = KeylessCache[Vehicle](*vehicles)
+        self.players = Cache[int, ServerPlayer](sweeper, *players)
+        self.vehicles = KeylessCache[Vehicle](sweeper, *vehicles)
         self.access_logs = KeylessCache[AccessEntry](
-            *access_logs, sort=(lambda e: e.created_at, True)
+            sweeper, *access_logs, sort=(lambda e: e.created_at, True)
         )
 
 
@@ -66,29 +74,131 @@ def _refresh_server(func):
 def _ephemeral(func):
     @wraps(func)
     async def wrapper(self: "Server", *args, **kwargs):
-        force_fetch = kwargs.pop("fetch", False)
-        try:
-            args_repr = json.dumps(args, sort_keys=True, default=str)
-            kwargs_repr = json.dumps(kwargs, sort_keys=True, default=str)
-        except (TypeError, ValueError):
-            args_repr = str(args)
-            kwargs_repr = str(kwargs)
+        cache: Optional[Cache] = getattr(self, "_ephemeral_cache", None)
+        if self._ephemeral_ttl > 0:
+            if cache is None:
+                cache = Cache(
+                    self._client._cache_sweeper,
+                    max_size=10,
+                    ttl=self._ephemeral_ttl or 1.0,
+                )
+                setattr(self, "_ephemeral_cache", cache)
+            cache.ttl = self._ephemeral_ttl or 1.0
 
-        hashed_args = hashlib.sha256(f"{args_repr}|{kwargs_repr}".encode()).hexdigest()
-        cache_key = f"{func.__name__}_cache_{hashed_args}"
+            try:
+                args_repr = json.dumps(args, sort_keys=True, default=str)
+                kwargs_repr = json.dumps(kwargs, sort_keys=True, default=str)
+            except (TypeError, ValueError):
+                args_repr = str(args)
+                kwargs_repr = str(kwargs)
 
-        if not force_fetch:
-            if hasattr(self, cache_key):
-                cached_result, timestamp = getattr(self, cache_key)
-                if (asyncio.get_event_loop().time() - timestamp) < self._ephemeral_ttl:
-                    return copy.copy(cached_result)
+            hashed_args = hashlib.sha256(
+                f"{args_repr}|{kwargs_repr}".encode()
+            ).hexdigest()
+            cache_key = f"{func.__name__}_cache_{hashed_args}"
+
+            if entry := cache.get(cache_key):
+                return copy.copy(entry)
+
+            result = await func(self, *args, **kwargs)
+            cache.set(cache_key, result)
+            return copy.copy(result)
+
+        elif cache:
+            delattr(self, "_ephemeral_cache")
+            self._client._cache_sweeper.remove(cache)
 
         result = await func(self, *args, **kwargs)
-
-        setattr(self, cache_key, (result, asyncio.get_event_loop().time()))
         return copy.copy(result)
 
     return wrapper
+
+
+class ServerQuery(ServerStatus):
+    """
+    Represents a server information query result.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    oldest_first
+        Whether to sort logs by oldest first. By default, newer logs come first.
+    data
+        The response data.
+    """
+
+    players: Optional[ServerPlayerList] = None
+    staff: Optional[ServerStaff] = None
+    queue: Optional[QueuedPlayerList] = None
+    access_logs: Optional[List[AccessEntry]] = None
+    kill_logs: Optional[List[KillEntry]] = None
+    command_logs: Optional[List[CommandEntry]] = None
+    mod_calls: Optional[List[ModCallEntry]] = None
+    emergency_calls: Optional[List[EmergencyCallEntry]] = None
+    vehicles: Optional[VehicleList] = None
+
+    def __init__(
+        self,
+        server: "Server",
+        oldest_first: bool,
+        data: v2_FullServerInformation,
+    ):
+        super().__init__(server, data)
+
+        if ((_players := data.get("Players"))) is not None:
+            server._server_cache.players.clear()
+            players = ServerPlayerList(ServerPlayer(server, data=p) for p in _players)
+            server.staff_count = len([p for p in players if p.is_staff()])
+            self.players = players
+
+        if ((staff := data.get("Staff"))) is not None:
+            self.staff = ServerStaff(server, data=staff)
+
+        if ((_queue := data.get("Queue"))) is not None:
+            queue = QueuedPlayerList(
+                QueuedPlayer(server, id=p, index=i) for i, p in enumerate(_queue)
+            )
+            server.queue_count = len(queue)
+            self.queue = queue
+
+        if ((access_logs := data.get("JoinLogs"))) is not None:
+            for e in access_logs:
+                AccessEntry(server, data=e)
+            self.access_logs = server.logs._sort(
+                server._server_cache.access_logs.items(), oldest_first
+            )
+
+        if ((kill_logs := data.get("KillLogs"))) is not None:
+            self.kill_logs = server.logs._sort(
+                [KillEntry(server, data=e) for e in kill_logs],
+                oldest_first,
+            )
+
+        if ((command_logs := data.get("CommandLogs"))) is not None:
+            self.command_logs = server.logs._sort(
+                [CommandEntry(server, data=e) for e in command_logs],
+                oldest_first,
+            )
+
+        if ((mod_calls := data.get("ModCalls"))) is not None:
+            self.mod_calls = server.logs._sort(
+                [ModCallEntry(server, data=e) for e in mod_calls],
+                oldest_first,
+            )
+
+        if ((emergency_calls := data.get("EmergencyCalls"))) is not None:
+            self.emergency_calls = server.logs._sort(
+                [EmergencyCallEntry(server, data=e) for e in emergency_calls],
+                oldest_first,
+            )
+
+        if ((vehicles := data.get("Vehicles"))) is not None:
+            server._server_cache.vehicles.clear()
+            self.vehicles = VehicleList(Vehicle(server, data=v) for v in vehicles)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} name={self.name}, owner={self.owner.id}, join_code={self.join_code}>"
 
 
 class Server:
@@ -102,7 +212,7 @@ class Server:
     server_key
         The unique server key used to authenticate requests.
     ephemeral_ttl
-        How long, in seconds, ephemeral results (i.e, cached responses) are kept before expiring. Defaults to `3` seconds.
+        How long, in seconds, ephemeral results (i.e, cached responses) are kept before expiring. Set to `0` to disable.
     cache
         An initialized server cache to use. By default, a new instance is created.
     requests
@@ -115,8 +225,8 @@ class Server:
         self,
         client: "PRC",
         server_key: str,
-        ephemeral_ttl: int = 3,
-        cache: ServerCache = ServerCache(),
+        ephemeral_ttl: float,
+        cache: Optional[ServerCache] = None,
         requests: Optional[Requests] = None,
         ignore_global_key: bool = False,
     ):
@@ -126,29 +236,13 @@ class Server:
         self._id = client._get_server_id(server_key)
 
         self._global_cache = client._global_cache
-        self._server_cache = cache
+        self._server_cache = cache or ServerCache(sweeper=client._cache_sweeper)
         self._ephemeral_ttl = ephemeral_ttl
 
         self._global_key = client._global_key
         self._server_key = server_key
         self._ignore_global_key = ignore_global_key
-        self._requests: Requests[
-            Literal[
-                "/",
-                "/players",
-                "/queue",
-                "/bans",
-                "/vehicles",
-                "/staff",
-                "/joinlogs",
-                "/killlogs",
-                "/commandlogs",
-                "/modcalls",
-                "/command",
-            ]
-        ] = (
-            requests or self._refresh_requests()
-        )
+        self._requests = requests or self._refresh_requests()
 
         self.logs = ServerLogs(self)
         self.commands = ServerCommands(self)
@@ -158,6 +252,7 @@ class Server:
     co_owners: List[ServerOwner] = []
     admins: List[StaffMember] = []
     mods: List[StaffMember] = []
+    helpers: List[StaffMember] = []
     total_staff_count: Optional[int] = None
     player_count: Optional[int] = None
     staff_count: Optional[int] = None
@@ -209,12 +304,18 @@ class Server:
         headers = {"Server-Key": self._server_key}
         if global_key and not self._ignore_global_key:
             headers["Authorization"] = global_key
-        self._requests = Requests(
-            base_url=self._client._base_url + "/server",
-            headers=headers,
-            session=self._client._session,
-            invalid_keys=self._global_cache.invalid_keys,
-        )
+
+        if hasattr(self, "_requests"):
+            self._requests._default_headers = headers
+        else:
+            self._requests = Requests(
+                base_url=self._client._base_url,
+                headers=headers,
+                session=self._client._session,
+                invalid_keys=self._global_cache.invalid_keys,
+                sweeper=self._client._cache_sweeper,
+            )
+
         return self._requests
 
     def _parse_api_map(self, map: _APIMap[M]) -> Dict[str, M]:
@@ -235,14 +336,14 @@ class Server:
         if not isinstance(content, Dict):
             raise HTTPException(
                 f"Malformed response content was received: '{type(content).__name__ if content else 'None'}'",
-                status_code=response.status_code,
+                response,
             )
 
         error_code = content.get("code")
         if error_code is None:
             raise HTTPException(
                 f"An API error has occurred but no code was received.",
-                status_code=response.status_code,
+                response,
             )
 
         exceptions: List[Callable[..., APIException]] = [
@@ -281,19 +382,19 @@ class Server:
                 if isinstance(exception, (CommunicationError, ServerOffline)):
                     exception = _exception(command_id=content.get("commandId"))
 
-                exception.status_code = response.status_code
+                exception.response = response
                 raise exception
 
         raise APIException(
             error_code,
             f"An unknown API error has occured: {content.get('message') or '...'}",
-            status_code=response.status_code,
+            response,
         )
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
         content_type: Optional[str] = response.headers.get("Content-Type", None)
         if not content_type or not content_type.startswith("application/json"):
-            raise BadContentType(response.status_code, content_type)
+            raise PRCException(f"Received a non-json content type: '{content_type}'")
 
         if not response.is_success:
             self._raise_error_code(response.json(), response)
@@ -301,54 +402,136 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_status(self, **kwargs) -> ServerStatus:
+    async def get_info(
+        self,
+        *,
+        all: Optional[bool] = None,
+        players: bool = False,
+        staff: bool = False,
+        queue: bool = False,
+        access_logs: bool = False,
+        kill_logs: bool = False,
+        command_logs: bool = False,
+        mod_calls: bool = False,
+        emergency_calls: bool = False,
+        vehicles: bool = False,
+        oldest_first: bool = False,
+    ) -> ServerQuery:
+        """
+        Get information about the server. By default, only the server status is queried. When an option is not queried (i.e, is `False`), its property in the returned `ServerQuery` will be of type `None`.
+
+        Parameters
+        ----------
+        all
+            Whether to query all server information. Overrides all other kwargs.
+        players
+            Whether to query server players.
+        staff
+            Whether to query server staff.
+        queue
+            Whether to query the server join queue.
+        access_logs
+            Whether to query server access (join/leave) logs.
+        kill_logs
+            Whether to query server kill logs.
+        command_logs
+            Whether to query server command usage logs.
+        mod_calls
+            Whether to query server mod calls.
+        emergency_calls
+            Whether to query server emergency calls.
+        vehicles
+            Whether to query server vehicles.
+        oldest_first
+            Whether to sort logs by oldest first. By default, newer logs come first.
+        """
+
+        params = {
+            "Players": players,
+            "Staff": staff,
+            "JoinLogs": access_logs,
+            "Queue": queue,
+            "KillLogs": kill_logs,
+            "CommandLogs": command_logs,
+            "ModCalls": mod_calls,
+            "EmergencyCalls": emergency_calls,
+            "Vehicles": vehicles,
+        }
+
+        for k, v in params.copy().items():
+            if all is not None:
+                params[k] = all
+            elif v is False:
+                params.pop(k)
+
+        return ServerQuery(
+            self,
+            oldest_first,
+            data=self._handle(
+                await self._requests.get("/v2/server", params=params),
+                v2_FullServerInformation,
+            ),
+        )
+
+    @_refresh_server
+    @_ephemeral
+    async def get_status(
+        self,
+    ) -> ServerStatus:
         """
         Get the current server status.
         """
 
         return ServerStatus(
             self,
-            data=self._handle(await self._requests.get("/"), v1_ServerStatusResponse),
+            data=self._handle(
+                await self._requests.get("/v2/server"), v2_ServerInformation
+            ),
         )
 
     @_refresh_server
     @_ephemeral
-    async def get_players(self, **kwargs) -> ServerPlayerList:
+    async def get_players(
+        self,
+    ) -> ServerPlayerList:
         """
         Get all online server players.
         """
 
-        self._server_cache.players.clear()
-        players = ServerPlayerList(
-            ServerPlayer(self, data=p)
-            for p in self._handle(
-                await self._requests.get("/players"), v1_ServerPlayersResponse
-            )
-        )
-        self.player_count = len(players)
-        self.staff_count = len([p for p in players if p.is_staff()])
-        return players
+        if ((players := (await self.get_info(players=True)).players)) is not None:
+            return players
+        raise ValueError("Player list unexpectedly not defined")
 
     @overload
     async def get_player(
-        self, *, id: int, name: None = ..., **kwargs
+        self,
+        *,
+        id: int,
+        name: None = ...,
     ) -> Optional[ServerPlayer]: ...
 
     @overload
     async def get_player(
-        self, *, id: None = ..., name: str, **kwargs
+        self,
+        *,
+        id: None = ...,
+        name: str,
     ) -> Optional[ServerPlayer]: ...
 
+    @_refresh_server
     async def get_player(
-        self, *, id: Optional[int] = None, name: Optional[str] = None, **kwargs
+        self,
+        *,
+        id: Optional[int] = None,
+        name: Optional[str] = None,
     ) -> Optional[ServerPlayer]:
         """
         Get an online server player using their player ID or username, if found.
 
-        This is equivalent to `get_players` and using `find_player`.
+        This is equivalent to `get_players.find_player`.
         """
 
-        players = await self.get_players(fetch=kwargs.pop("fetch", False))
+        players = await self.get_players()
 
         if id is not None:
             return players.find_player(id=id)
@@ -357,23 +540,22 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_queue(self, **kwargs) -> QueuedPlayerList:
+    async def get_queue(
+        self,
+    ) -> QueuedPlayerList:
         """
         Get all players in the server join queue.
         """
 
-        players = QueuedPlayerList(
-            QueuedPlayer(self, id=p, index=i)
-            for i, p in enumerate(
-                self._handle(await self._requests.get("/queue"), v1_ServerQueueResponse)
-            )
-        )
-        self.queue_count = len(players)
-        return players
+        if ((queue := (await self.get_info(queue=True)).queue)) is not None:
+            return queue
+        raise ValueError("Queue list unexpectedly not defined")
 
     @_refresh_server
     @_ephemeral
-    async def get_bans(self, **kwargs) -> PlayerList:
+    async def get_bans(
+        self,
+    ) -> PlayerList:
         """
         Get all banned players.
         """
@@ -381,40 +563,37 @@ class Server:
         return PlayerList(
             Player(self._client, data=p, _skip_cache=True)
             for p in self._parse_api_map(
-                self._handle(await self._requests.get("/bans"), v1_ServerBanResponse)
+                self._handle(
+                    await self._requests.get("/v1/server/bans"), v1_ServerBanResponse
+                )
             ).items()
         )
 
     @_refresh_server
     @_ephemeral
-    async def get_vehicles(self, **kwargs) -> VehicleList:
+    async def get_vehicles(
+        self,
+    ) -> VehicleList:
         """
         Get all spawned vehicles in the server. A single server player may have up to 2 spawned vehicles (1 primary + 1 secondary).
         """
 
-        self._server_cache.vehicles.clear()
-        return VehicleList(
-            Vehicle(self, data=v)
-            for v in self._handle(
-                await self._requests.get("/vehicles"), v1_ServerVehiclesResponse
-            )
-        )
+        if ((vehicles := (await self.get_info(vehicles=True)).vehicles)) is not None:
+            return vehicles
+        raise ValueError("Vehicles list unexpectedly not defined")
 
     @_refresh_server
     @_ephemeral
-    async def get_staff(self, **kwargs) -> ServerStaff:
+    async def get_staff(
+        self,
+    ) -> ServerStaff:
         """
         Get all server staff members excluding server owner.
-
-        ⚠️ *This endpoint is deprecated, use at your own risk.*
         """
 
-        return ServerStaff(
-            self,
-            data=self._handle(
-                await self._requests.get("/staff"), v1_ServerStaffResponse
-            ),
-        )
+        if ((staff := (await self.get_info(staff=True)).staff)) is not None:
+            return staff
+        raise ValueError("Staff list unexpectedly not defined")
 
 
 class ServerModule:
@@ -431,6 +610,7 @@ class ServerModule:
 
         self._requests = server._requests
         self._handle = server._handle
+        self._get_info = server.get_info
 
 
 class ServerLogs(ServerModule):
@@ -449,7 +629,9 @@ class ServerLogs(ServerModule):
     @_refresh_server
     @_ephemeral
     async def get_access(
-        self, *, oldest_first: bool = False, **kwargs
+        self,
+        *,
+        oldest_first: bool = False,
     ) -> List[AccessEntry]:
         """
         Get server access (join/leave) logs.
@@ -460,16 +642,20 @@ class ServerLogs(ServerModule):
             Whether to return older logs first. By default, newer logs come first.
         """
 
-        for e in self._handle(
-            await self._requests.get("/joinlogs"), v1_ServerJoinLogsResponse
-        ):
-            AccessEntry(self._server, data=e)
-        return self._sort(self._server_cache.access_logs.items(), oldest_first)
+        if (
+            logs := (
+                await self._get_info(access_logs=True, oldest_first=oldest_first)
+            ).access_logs
+        ) is not None:
+            return logs
+        raise ValueError("Access logs unexpectedly not defined")
 
     @_refresh_server
     @_ephemeral
     async def get_kills(
-        self, *, oldest_first: bool = False, **kwargs
+        self,
+        *,
+        oldest_first: bool = False,
     ) -> List[KillEntry]:
         """
         Get server kill logs.
@@ -480,20 +666,20 @@ class ServerLogs(ServerModule):
             Whether to return older logs first. By default, newer logs come first.
         """
 
-        return self._sort(
-            [
-                KillEntry(self._server, data=e)
-                for e in self._handle(
-                    await self._requests.get("/killlogs"), v1_ServerKillLogsResponse
-                )
-            ],
-            oldest_first,
-        )
+        if (
+            logs := (
+                await self._get_info(kill_logs=True, oldest_first=oldest_first)
+            ).kill_logs
+        ) is not None:
+            return logs
+        raise ValueError("Kill logs unexpectedly not defined")
 
     @_refresh_server
     @_ephemeral
     async def get_commands(
-        self, *, oldest_first: bool = False, **kwargs
+        self,
+        *,
+        oldest_first: bool = False,
     ) -> List[CommandEntry]:
         """
         Get server command usage logs.
@@ -504,21 +690,20 @@ class ServerLogs(ServerModule):
             Whether to return older logs first. By default, newer logs come first.
         """
 
-        return self._sort(
-            [
-                CommandEntry(self._server, data=e)
-                for e in self._handle(
-                    await self._requests.get("/commandlogs"),
-                    v1_ServerCommandLogsResponse,
-                )
-            ],
-            oldest_first,
-        )
+        if (
+            logs := (
+                await self._get_info(command_logs=True, oldest_first=oldest_first)
+            ).command_logs
+        ) is not None:
+            return logs
+        raise ValueError("Command logs unexpectedly not defined")
 
     @_refresh_server
     @_ephemeral
     async def get_mod_calls(
-        self, *, oldest_first: bool = False, **kwargs
+        self,
+        *,
+        oldest_first: bool = False,
     ) -> List[ModCallEntry]:
         """
         Get server mod call logs.
@@ -529,19 +714,41 @@ class ServerLogs(ServerModule):
             Whether to return older logs first. By default, newer logs come first.
         """
 
-        return self._sort(
-            [
-                ModCallEntry(self._server, data=e)
-                for e in self._handle(
-                    await self._requests.get("/modcalls"), v1_ServerModCallsResponse
-                )
-            ],
-            oldest_first,
-        )
+        if (
+            logs := (
+                await self._get_info(mod_calls=True, oldest_first=oldest_first)
+            ).mod_calls
+        ) is not None:
+            return logs
+        raise ValueError("Mod call list unexpectedly not defined")
+
+    @_refresh_server
+    @_ephemeral
+    async def get_emergency_calls(
+        self,
+        *,
+        oldest_first: bool = False,
+    ) -> List[EmergencyCallEntry]:
+        """
+        Get server emergency call logs. Call numbers are NOT unique and may be shared across teams (e.g. major server calls).
+
+        Parameters
+        ----------
+        oldest_first
+            Whether to return older logs first. By default, newer logs come first.
+        """
+
+        if (
+            logs := (
+                await self._get_info(emergency_calls=True, oldest_first=oldest_first)
+            ).emergency_calls
+        ) is not None:
+            return logs
+        raise ValueError("Emergency call list unexpectedly not defined")
 
 
-CommandTargetPlayerName = Union[str, Player]
-CommandTargetPlayerId = Union[int, Player]
+CommandTargetPlayerName = Union[str, Player, VehicleOwner]
+CommandTargetPlayerId = Union[int, Player, QueuedPlayer, ServerOwner]
 CommandTargetPlayerNameOrId = Union[CommandTargetPlayerName, CommandTargetPlayerId]
 
 
@@ -564,16 +771,18 @@ class ServerCommands(ServerModule):
         """
 
         return self._handle(
-            await self._requests.post("/command", json={"command": command}),
-            v1_ServerCommandExecutionResponse,
+            await self._requests.post("/v2/server/command", json={"command": command}),
+            v2_ServerCommandExecutionResponse,
         )
 
     async def run(
         self,
         name: CommandName,
         *,
-        targets: Optional[Sequence[CommandTargetPlayerNameOrId]] = None,
-        args: Optional[Sequence[Union[CommandArg, Player]]] = None,
+        targets: Optional[
+            Union[Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId]
+        ] = None,
+        args: Optional[Sequence[Union[CommandArg, CommandTargetPlayerNameOrId]]] = None,
         text: Optional[str] = None,
         _max_retries: int = 3,
         _prefer_player_id: bool = False,
@@ -600,17 +809,30 @@ class ServerCommands(ServerModule):
                 return str(target.name)
             return str(target)
 
-        def parse_arg(arg: Union[CommandArg, Player]):
+        def parse_arg(arg: Union[CommandArg, CommandTargetPlayerNameOrId]):
             if isinstance(arg, Player):
                 if _prefer_player_id:
                     return str(arg.id)
+                return str(arg.name)
+            if isinstance(arg, (QueuedPlayer, ServerOwner)):
+                return str(arg.id)
+            if isinstance(arg, VehicleOwner):
                 return str(arg.name)
             if isinstance(arg, InsensitiveEnum):
                 return arg.value
             return str(arg)
 
         if targets:
-            command += ",".join([parse_target(t) for t in targets]) + " "
+            if isinstance(targets, (str, int)):
+                command += str(targets) + " "
+            elif isinstance(targets, Player):
+                command += Player.name + " "
+            elif isinstance(targets, (QueuedPlayer, ServerOwner)):
+                command += str(Player.id) + " "
+            elif isinstance(targets, VehicleOwner):
+                command += str(Player.name) + " "
+            else:
+                command += ",".join([parse_target(t) for t in targets]) + " "
 
         if args:
             command += " ".join([parse_arg(a) for a in args]) + " "
@@ -632,104 +854,123 @@ class ServerCommands(ServerModule):
                 f"Command execution has unexpectedly failed: '{message}'"
             )
 
-    async def kill(self, targets: Sequence[CommandTargetPlayerName]):
+    async def kill(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Kill players in the server.
 
         Parameters
         ----------
         targets
-            The players to kill. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to kill. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("kill", targets=targets)
 
-    async def heal(self, targets: Sequence[CommandTargetPlayerName]):
+    async def heal(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Heal players in the server.
 
         Parameters
         ----------
         targets
-            The players to heal. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to heal. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("heal", targets=targets)
 
-    async def make_wanted(self, targets: Sequence[CommandTargetPlayerName]):
+    async def make_wanted(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Make players wanted in the server.
 
         Parameters
         ----------
         targets
-            The players to make wanted. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to make wanted. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("wanted", targets=targets)
 
-    async def remove_wanted(self, targets: Sequence[CommandTargetPlayerName]):
+    async def remove_wanted(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Remove wanted status from players in the server.
 
         Parameters
         ----------
         targets
-            The players to remove wanted status from. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to remove wanted status from. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("unwanted", targets=targets)
 
-    async def make_jailed(self, targets: Sequence[CommandTargetPlayerName]):
+    async def make_jailed(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Make players jailed in the server. Teleports them to a prison cell and changes the server player's team.
 
         Parameters
         ----------
         targets
-            The players to make jailed. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to make jailed. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("jail", targets=targets)
 
-    async def remove_jailed(self, targets: Sequence[CommandTargetPlayerName]):
+    async def remove_jailed(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Remove jailed status from players in the server.
 
         Parameters
         ----------
         targets
-            The players to remove jail status from. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to remove jail status from. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("unjail", targets=targets)
 
-    async def refresh(self, targets: Sequence[CommandTargetPlayerName]):
+    async def refresh(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Respawn players in the server and return them to their last positions.
 
         Parameters
         ----------
         targets
-            The players to refresh. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to refresh. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("refresh", targets=targets)
 
-    async def respawn(self, targets: Sequence[CommandTargetPlayerName]):
+    async def respawn(
+        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
+    ):
         """
         Respawn players in the server and return them to their set spawn location.
 
         Parameters
         ----------
         targets
-            The players to respawn. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to respawn. A player can be a username, partial username or a player (and any of its subclasses).
         """
 
         await self.run("load", targets=targets)
 
     async def teleport(
-        self, targets: Sequence[CommandTargetPlayerName], *, to: CommandTargetPlayerName
+        self,
+        targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName],
+        *,
+        to: CommandTargetPlayerName,
     ):
         """
         Teleport players to another player in the server.
@@ -737,7 +978,7 @@ class ServerCommands(ServerModule):
         Parameters
         ----------
         targets
-            The players to teleport. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to teleport. A player can be a username, partial username or a player (and any of its subclasses).
         to
             The player to be teleported to. A player can be a username, partial username or a player (and any of its subclasses).
         """
@@ -746,7 +987,7 @@ class ServerCommands(ServerModule):
 
     async def kick(
         self,
-        targets: Sequence[CommandTargetPlayerName],
+        targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName],
         *,
         reason: Optional[str] = None,
     ):
@@ -756,112 +997,152 @@ class ServerCommands(ServerModule):
         Parameters
         ----------
         targets
-            The players to kick. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to kick. A player can be a username, partial username or a player (and any of its subclasses).
         reason
             The reason for the kick, if any.
         """
 
         await self.run("kick", targets=targets, text=reason)
 
-    async def ban(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def ban(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Ban players from the server.
 
         Parameters
         ----------
         targets
-            The players to ban. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to ban. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("ban", targets=targets, _prefer_player_id=True)
 
-    async def unban(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def unban(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Unban players from the server.
 
         Parameters
         ----------
         targets
-            The players to unban. A player can be a username, ID or a player (and any of its subclasses).
+            The player(s) to unban. A player can be a username, ID or a player (and any of its subclasses).
         """
 
         await self.run("unban", targets=targets, _prefer_player_id=True)
 
     async def shutdown(self):
         """
-        Shutdown the server. Kicks all players in-game.
+        Shutdown the server. Kicks all players in-game, including players with elevated permissions.
         """
 
         await self.run("shutdown")
 
-    async def grant_helper(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def grant_helper(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Grant helper permissions to players in the server.
 
         Parameters
         ----------
         targets
-            The players to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("helper", targets=targets, _prefer_player_id=True)
 
-    async def revoke_helper(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def revoke_helper(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Revoke helper permissions to players in the server.
 
         Parameters
         ----------
         targets
-            The players to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("unhelper", targets=targets, _prefer_player_id=True)
 
-    async def grant_mod(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def grant_mod(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Grant moderator permissions to players in the server.
 
         Parameters
         ----------
         targets
-            The players to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("mod", targets=targets, _prefer_player_id=True)
 
-    async def revoke_mod(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def revoke_mod(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Revoke moderator permissions from players in the server.
 
         Parameters
         ----------
         targets
-            The players to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("unmod", targets=targets, _prefer_player_id=True)
 
-    async def grant_admin(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def grant_admin(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Grant admin permissions to players in the server.
 
         Parameters
         ----------
         targets
-            The players to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to grant permissions to. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("admin", targets=targets, _prefer_player_id=True)
 
-    async def revoke_admin(self, targets: Sequence[CommandTargetPlayerNameOrId]):
+    async def revoke_admin(
+        self,
+        targets: Union[
+            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
+        ],
+    ):
         """
         Revoke admin permissions from players in the server.
 
         Parameters
         ----------
         targets
-            The players to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
+            The player(s) to revoke permissions from. A player can be a username, partial username, ID or a player (and any of its subclasses).
         """
 
         await self.run("unadmin", targets=targets, _prefer_player_id=True)
@@ -890,14 +1171,18 @@ class ServerCommands(ServerModule):
 
         await self.run("m", text=text)
 
-    async def send_pm(self, targets: Sequence[CommandTargetPlayerName], text: str):
+    async def send_pm(
+        self,
+        targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName],
+        text: str,
+    ):
         """
         Send a private message to players in the server (dismissable popup).
 
         Parameters
         ----------
         targets
-            The players to message. A player can be a username, partial username or a player (and any of its subclasses).
+            The player(s) to message. A player can be a username, partial username or a player (and any of its subclasses).
         text
             The private message content.
         """
@@ -983,7 +1268,7 @@ class ServerCommands(ServerModule):
         Parameters
         ----------
         dumpster
-            Whether to stop dumpster fires only. Otherwise, **all non-dumpster fires** will be stopped.
+            Whether to stop dumpster fires only. Otherwise, **only non-dumpster fires** will be stopped.
         """
 
         if dumpster:

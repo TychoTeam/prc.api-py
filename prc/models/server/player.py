@@ -1,10 +1,11 @@
-from typing import List, Optional, Tuple, TYPE_CHECKING, Union, overload
+from typing import List, Literal, Optional, Tuple, TYPE_CHECKING, Union, cast, overload
+from .shared import Location, ServerTeam
 from prc.utility import DisplayNameEnum
-from ..player import Player
+from ..player import BasePlayer, Player
 
 if TYPE_CHECKING:
+    from prc.api_types.v2 import v2_ServerPlayer, v2_ServerPlayerLocation
     from prc.server import Server
-    from prc.api_types.v1 import v1_ServerPlayer
     from .vehicle import Vehicle
 
 
@@ -41,17 +42,71 @@ class PlayerPermission(DisplayNameEnum):
         return self.__lt__(other) or self.__eq__(other)
 
 
-class PlayerTeam(DisplayNameEnum):
+class PlayerLocation(Location):
     """
-    Enum that represents a server player team.
+    Represents a player's location in a server.
+
+    Parameters
+    ----------
+    data
+        The player location data.
     """
 
-    CIVILIAN = (0, "Civilian")
-    SHERIFF = (1, "Sheriff")
-    POLICE = (2, "Police")
-    FIRE = (3, "Fire")
-    DOT = (4, "DOT")
-    JAIL = (5, "Jail")
+    street_name: "StreetName"
+    postal_code: Optional[int]
+    building_number: Optional[int]
+
+    def __init__(self, data: "v2_ServerPlayerLocation"):
+        self.street_name = cast(StreetName, str(data["StreetName"]))
+        postal_code = data.get("PostalCode", None)
+        self.postal_code = int(postal_code) if postal_code else None
+        building_number = data.get("BuildingNumber", None)
+        self.building_number = int(building_number) if building_number else None
+
+        super().__init__(x=data["LocationX"], z=data["LocationZ"])
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} coordinates={self.coordinates}, street_name={self.street_name}, postal_code={self.postal_code}>"
+
+
+class PartialServerPlayer(BasePlayer):
+    """
+    Represents a partial server player with either a name or an ID.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    value
+        The player data value. Either a name or an ID.
+    """
+
+    def __init__(self, server: "Server", value: Union[str, int]):
+        self._server = server
+        self._value = value
+
+    @property
+    def player(self) -> Optional["ServerPlayer"]:
+        """
+        The full server player, if found.
+        """
+
+        if isinstance(self._value, int):
+            return self._server._get_player(id=self._value)
+        return self._server._get_player(name=self._value)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, PartialServerPlayer):
+            return self._value == other._value
+        elif isinstance(other, Player):
+            if isinstance(self._value, int):
+                return self._value == other.id
+            return self._value == other.name
+
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
 
 
 class ServerPlayer(Player):
@@ -68,14 +123,18 @@ class ServerPlayer(Player):
 
     permission: PlayerPermission
     callsign: Optional[str]
-    team: PlayerTeam
+    team: ServerTeam
+    location: PlayerLocation
+    wanted_stars: int
 
-    def __init__(self, server: "Server", data: "v1_ServerPlayer"):
+    def __init__(self, server: "Server", data: "v2_ServerPlayer"):
         self._server = server
 
         self.permission = PlayerPermission.parse(data["Permission"])
         self.callsign = data.get("Callsign", None)
-        self.team = PlayerTeam.parse(data["Team"])
+        self.team = ServerTeam.parse(data["Team"])
+        self.location = PlayerLocation(data["Location"])
+        self.wanted_stars = int(data["WantedStars"])
 
         super().__init__(server._client, data=data["Player"])
 
@@ -149,17 +208,24 @@ class ServerPlayer(Player):
         Whether this player is jailed.
         """
 
-        return self.team == PlayerTeam.JAIL
+        return self.team == ServerTeam.JAIL
 
     def is_leo(self) -> bool:
         """
         Whether this player is on a law enforcement team.
         """
 
-        return self.team in (PlayerTeam.SHERIFF, PlayerTeam.POLICE)
+        return self.team in (ServerTeam.SHERIFF, ServerTeam.POLICE)
+
+    def is_wanted(self) -> bool:
+        """
+        Whether this player is wanted.
+        """
+
+        return self.wanted_stars > 0
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} name={self.name}, id={self.id}, permission={self.permission.name}, team={self.team.name}>"
+        return f"<{self.__class__.__name__} name={self.name}, id={self.id}, permission={self.permission.name}, team={self.team.name}, coordinates={self.location.coordinates}, street_name={self.location.street_name}>"
 
 
 class ServerPlayerList(List[ServerPlayer]):
@@ -187,7 +253,7 @@ class ServerPlayerList(List[ServerPlayer]):
                 (p for p in self if p.name.lower() == name.lower().strip()), None
             )
 
-    def get_team(self, team: PlayerTeam):
+    def get_team(self, team: ServerTeam):
         """
         Get all players in a team.
         """
@@ -252,7 +318,7 @@ class ServerPlayerList(List[ServerPlayer]):
         )
 
 
-class QueuedPlayer:
+class QueuedPlayer(BasePlayer):
     """
     Represents a partial player in the server join queue.
 
@@ -299,7 +365,7 @@ class QueuedPlayerList(List[QueuedPlayer]):
         return next((p for p in self if p.id == id), None)
 
 
-class ServerOwner:
+class ServerOwner(PartialServerPlayer):
     """
     Represents a server [co-]owner partial player.
 
@@ -323,21 +389,7 @@ class ServerOwner:
         if not server.owner:
             server.owner = self
 
-    @property
-    def player(self) -> Optional["ServerPlayer"]:
-        """
-        The full server player, if found.
-        """
-
-        return self._server._get_player(id=self.id)
-
-    def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, ServerOwner) or isinstance(other, Player)
-        ) and self.id == other.id
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+        super().__init__(server, value=self.id)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id}, permission={self.permission}>"
@@ -378,3 +430,51 @@ class StaffMember(Player):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={self.name}, id={self.id}, permission={self.permission}>"
+
+
+# All street names
+StreetName = Literal[
+    "Gibson Lane",
+    "Fairfax Road",
+    "Highway 55 South",
+    "Elm Street",
+    "Iron Road",
+    "Highway 55 North",
+    "Madison Court",
+    "Medical Way",
+    "Riverside Drive",
+    "Durham Road",
+    "Southern Avenue",
+    "Highway 55",
+    "Main Street",
+    "Academy Place",
+    "Grand Street",
+    "Oak Valley Drive",
+    "Hillview Road",
+    "Maple Street",
+    "Liberty Way",
+    "Sandstone Road",
+    "Freedom Avenue",
+    "Georgia Avenue",
+    "Emerson Drive",
+    "Fairfax Avenue",
+    "Lakeview Court",
+    "Valley Drive",
+    "Northern Way",
+    "Cedar Street",
+    "Park Street",
+    "Cline Street",
+    "Cross Street",
+    "Grand Avenue",
+    "Franklin Court",
+    "Industrial Road",
+    "Spring Creek Road",
+    "Arbor Lane",
+    "Vine Street",
+    "Pineview Circle",
+    "Colonial Drive",
+    "Terrace Drive",
+    "Orchard Boulevard",
+    "Independence Parkway",
+    "Lee Street",
+]

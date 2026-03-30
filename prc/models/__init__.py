@@ -9,6 +9,7 @@ from .server.player import *
 from .server.vehicle import *
 from .server.logs import *
 from .server.staff import *
+from .server.shared import *
 
 from .player import *
 from .commands import *
@@ -24,12 +25,14 @@ __all__ = [
     "ServerOwner",
     "StaffMember",
     "PlayerPermission",
-    "PlayerTeam",
+    "ServerTeam",
+    "PlayerLocation",
     "Vehicle",
     "VehicleName",
     "VehicleModel",
     "VehicleOwner",
     "VehicleTexture",
+    "VehicleColor",
     "LogEntry",
     "LogPlayer",
     "AccessType",
@@ -49,4 +52,10 @@ __all__ = [
     "WebhookType",
     "WebhookMessage",
     "WebhookVersion",
+    "BasePlayer",
+    "PartialServerPlayer",
+    "CallPlayer",
+    "CallLocation",
+    "EmergencyCallEntry",
+    "Location",
 ]

@@ -1,19 +1,23 @@
-from typing import TYPE_CHECKING, Optional, Union
-from enum import Enum
+from typing import TYPE_CHECKING, List, Optional, Union
 from datetime import datetime
-from ..player import Player
+from enum import Enum
+
+
+from .player import PartialServerPlayer, ServerTeam
+from .shared import Location
 from ..commands import Command
+from ..player import Player
 
 if TYPE_CHECKING:
     from prc.server import Server
     from prc.utility import KeylessCache
-    from prc.api_types.v1 import (
-        v1_ServerJoinLog,
-        v1_ServerKillLog,
-        v1_ServerCommandLog,
-        v1_ServerModCall,
+    from prc.api_types.v2 import (
+        v2_ServerJoinLog,
+        v2_ServerKillLog,
+        v2_ServerCommandLog,
+        v2_ServerModCall,
+        v2_ServerEmergencyCall,
     )
-    from .player import ServerPlayer
 
 
 class LogEntry:
@@ -33,14 +37,21 @@ class LogEntry:
     def __init__(
         self,
         data: Union[
-            "v1_ServerJoinLog",
-            "v1_ServerKillLog",
-            "v1_ServerCommandLog",
-            "v1_ServerModCall",
+            "v2_ServerJoinLog",
+            "v2_ServerKillLog",
+            "v2_ServerCommandLog",
+            "v2_ServerModCall",
+            "v2_ServerEmergencyCall",
         ],
         cache: Optional["KeylessCache"] = None,
     ):
-        self.created_at = datetime.fromtimestamp(data["Timestamp"])
+        time = data.get("Timestamp", data.get("StartedAt", None))
+        if not time:
+            raise ValueError(
+                "Log entry unexpectedly has neither a timestamp nor a start time"
+            )
+
+        self.created_at = datetime.fromtimestamp(time)
 
         if cache is not None:
             for entry in cache.items():
@@ -68,7 +79,7 @@ class LogEntry:
         return self.__lt__(other) or self.__eq__(other)
 
 
-class LogPlayer(Player):
+class LogPlayer(Player, PartialServerPlayer):
     """
     Represents a player referenced in a log entry.
 
@@ -83,15 +94,77 @@ class LogPlayer(Player):
     def __init__(self, server: "Server", data: str):
         self._server = server
 
-        super().__init__(server._client, data=data)
+        super().__init__(client=server._client, data=data)
+        self._value = self.id
 
-    @property
-    def player(self) -> Optional["ServerPlayer"]:
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} id={self.id}, name={self.name}>"
+
+
+class CallPlayer(PartialServerPlayer):
+    """
+    Represents a server partial player referenced in a call entry.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    id
+        The player ID.
+    """
+
+    id: int
+
+    def __init__(self, server: "Server", id: int):
+        self._server = server
+
+        self.id = int(id)
+
+        super().__init__(server, value=self.id)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} id={self.id}>"
+
+
+class CallPlayerList(List[CallPlayer]):
+    def copy(self):
+        return CallPlayerList(self)
+
+    def find_player(self, *, id: int) -> Optional[CallPlayer]:
         """
-        The full server player, if found.
+        Find a call player using their player ID.
         """
 
-        return self._server._get_player(id=self.id)
+        return next((p for p in self if p.id == id), None)
+
+    def has_player(self, *, id: int) -> bool:
+        """
+        Determine whether a player exists in this call player list using their player ID.
+        """
+
+        return bool(self.find_player(id=id))
+
+
+class CallLocation(Location):
+    """
+    Represents a call's location in a server.
+
+    Parameters
+    ----------
+    data
+        The call data.
+    """
+
+    descriptor: Optional[str]
+
+    def __init__(self, data: "v2_ServerEmergencyCall"):
+        descriptor = data.get("PositionDescriptor", None)
+        self.descriptor = str(descriptor) if descriptor else None
+
+        super().__init__(x=data["Position"][0], z=data["Position"][1])
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} coordinates={self.coordinates}, descriptor={self.descriptor}>"
 
 
 class AccessType(Enum):
@@ -122,7 +195,7 @@ class AccessEntry(LogEntry):
     type: AccessType
     subject: LogPlayer
 
-    def __init__(self, server: "Server", data: "v1_ServerJoinLog"):
+    def __init__(self, server: "Server", data: "v2_ServerJoinLog"):
         self._server = server
 
         self.type = AccessType.parse(bool(data["Join"]))
@@ -163,7 +236,7 @@ class KillEntry(LogEntry):
     killer: LogPlayer
     killed: LogPlayer
 
-    def __init__(self, server: "Server", data: "v1_ServerKillLog"):
+    def __init__(self, server: "Server", data: "v2_ServerKillLog"):
         self._server = server
 
         self.killer = LogPlayer(server, data=data["Killer"])
@@ -190,7 +263,7 @@ class CommandEntry(LogEntry):
     author: LogPlayer
     command: Command
 
-    def __init__(self, server: "Server", data: "v1_ServerCommandLog"):
+    def __init__(self, server: "Server", data: "v2_ServerCommandLog"):
         self._server = server
 
         self.author = LogPlayer(server, data=data["Player"])
@@ -217,7 +290,7 @@ class ModCallEntry(LogEntry):
     caller: LogPlayer
     responder: Optional[LogPlayer]
 
-    def __init__(self, server: "Server", data: "v1_ServerModCall"):
+    def __init__(self, server: "Server", data: "v2_ServerModCall"):
         self._server = server
 
         self.caller = LogPlayer(server, data=data["Caller"])
@@ -235,3 +308,56 @@ class ModCallEntry(LogEntry):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} caller={self.caller.name, self.caller.id} acknowledged={self.is_acknowledged()}>"
+
+
+class EmergencyCallEntry(LogEntry):
+    """
+    Represents a server emergency call log entry.
+
+    Parameters
+    ----------
+    server
+        The server handler.
+    data
+        The response data.
+    """
+
+    team: ServerTeam
+    caller: Optional[CallPlayer]
+    responders: List[CallPlayer]
+    location: CallLocation
+    call_number: int
+    description: Optional[str]
+
+    def __init__(self, server: "Server", data: "v2_ServerEmergencyCall"):
+        self._server = server
+
+        self.team = ServerTeam.parse(data["Team"])
+        caller = data.get("Caller", None)
+        self.caller = CallPlayer(server, id=int(caller)) if caller else None
+        self.responders = CallPlayerList(
+            CallPlayer(server, id=int(id)) for id in data["Players"]
+        )
+        self.location = CallLocation(data)
+        self.call_number = int(data["CallNumber"])
+        description = data.get("Description", None)
+        self.description = str(description) if description else None
+
+        super().__init__(data)
+
+    def is_911(self) -> bool:
+        """
+        Whether this emergency call is a player 911 call and not a server call.
+        """
+
+        return bool(self.caller)
+
+    def is_server(self) -> bool:
+        """
+        Whether this emergency call is an automatic server call and not a 911 call.
+        """
+
+        return not self.is_911()
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} call_number={self.call_number}, team={self.team}, caller={self.caller.id if self.caller else None}, description={self.description}, responders={len(self.responders)}>"
