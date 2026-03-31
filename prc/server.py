@@ -557,7 +557,9 @@ class Server:
         self,
     ) -> PlayerList:
         """
-        Get all banned players.
+        Get all banned players.  
+        
+        ⚠️ This method uses a v1 API endpoint. v1 is now in maintenance mode and may be discontinued.
         """
 
         return PlayerList(
@@ -588,7 +590,7 @@ class Server:
         self,
     ) -> ServerStaff:
         """
-        Get all server staff members excluding server owner.
+        Get all server staff members.
         """
 
         if ((staff := (await self.get_info(staff=True)).staff)) is not None:

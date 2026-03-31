@@ -9,12 +9,12 @@ CallTeam = Literal["Police", "Fire", "DOT", "ALL"]
 
 
 class BaseWebhookEvent(TypedDict):
-    event: EventName
     origin: str
     timestamp: int
 
 
 class ProbeWebhookEvent(BaseWebhookEvent):
+    event: Literal["WebhookProbe"]
     data: Dict
 
 
@@ -24,6 +24,7 @@ class CustomCommandEventData(TypedDict):
 
 
 class CustomCommandWebhookEvent(BaseWebhookEvent):
+    event: Literal["CustomCommand"]
     data: CustomCommandEventData
 
 
@@ -39,10 +40,12 @@ class EmergencyCallEventData(TypedDict):
 
 
 class EmergencyCallStartedWebhookEvent(BaseWebhookEvent):
+    event: Literal["EmergencyCallStarted"]
     data: EmergencyCallEventData
 
 
 class EmergencyCallEndedWebhookEvent(BaseWebhookEvent):
+    event: Literal["EmergencyCallEnded"]
     data: EmergencyCallEventData
 
 
