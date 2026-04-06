@@ -402,7 +402,7 @@ class Server:
 
     @_refresh_server
     @_ephemeral
-    async def get_info(
+    async def query(
         self,
         *,
         all: Optional[bool] = None,
@@ -498,7 +498,7 @@ class Server:
         Get all online server players.
         """
 
-        if ((players := (await self.get_info(players=True)).players)) is not None:
+        if ((players := (await self.query(players=True)).players)) is not None:
             return players
         raise ValueError("Player list unexpectedly not defined")
 
@@ -547,7 +547,7 @@ class Server:
         Get all players in the server join queue.
         """
 
-        if ((queue := (await self.get_info(queue=True)).queue)) is not None:
+        if ((queue := (await self.query(queue=True)).queue)) is not None:
             return queue
         raise ValueError("Queue list unexpectedly not defined")
 
@@ -557,8 +557,8 @@ class Server:
         self,
     ) -> PlayerList:
         """
-        Get all banned players.  
-        
+        Get all banned players.
+
         ⚠️ This method uses a v1 API endpoint. v1 is now in maintenance mode and may be discontinued.
         """
 
@@ -580,7 +580,7 @@ class Server:
         Get all spawned vehicles in the server. A single server player may have up to 2 spawned vehicles (1 primary + 1 secondary).
         """
 
-        if ((vehicles := (await self.get_info(vehicles=True)).vehicles)) is not None:
+        if ((vehicles := (await self.query(vehicles=True)).vehicles)) is not None:
             return vehicles
         raise ValueError("Vehicles list unexpectedly not defined")
 
@@ -593,7 +593,7 @@ class Server:
         Get all server staff members.
         """
 
-        if ((staff := (await self.get_info(staff=True)).staff)) is not None:
+        if ((staff := (await self.query(staff=True)).staff)) is not None:
             return staff
         raise ValueError("Staff list unexpectedly not defined")
 
@@ -604,6 +604,7 @@ class ServerModule:
     """
 
     def __init__(self, server: Server):
+        self._client = server._client
         self._server = server
 
         self._global_cache = server._global_cache
@@ -612,7 +613,7 @@ class ServerModule:
 
         self._requests = server._requests
         self._handle = server._handle
-        self._get_info = server.get_info
+        self._query = server.query
 
 
 class ServerLogs(ServerModule):
@@ -646,7 +647,7 @@ class ServerLogs(ServerModule):
 
         if (
             logs := (
-                await self._get_info(access_logs=True, oldest_first=oldest_first)
+                await self._query(access_logs=True, oldest_first=oldest_first)
             ).access_logs
         ) is not None:
             return logs
@@ -670,7 +671,7 @@ class ServerLogs(ServerModule):
 
         if (
             logs := (
-                await self._get_info(kill_logs=True, oldest_first=oldest_first)
+                await self._query(kill_logs=True, oldest_first=oldest_first)
             ).kill_logs
         ) is not None:
             return logs
@@ -694,7 +695,7 @@ class ServerLogs(ServerModule):
 
         if (
             logs := (
-                await self._get_info(command_logs=True, oldest_first=oldest_first)
+                await self._query(command_logs=True, oldest_first=oldest_first)
             ).command_logs
         ) is not None:
             return logs
@@ -718,7 +719,7 @@ class ServerLogs(ServerModule):
 
         if (
             logs := (
-                await self._get_info(mod_calls=True, oldest_first=oldest_first)
+                await self._query(mod_calls=True, oldest_first=oldest_first)
             ).mod_calls
         ) is not None:
             return logs
@@ -742,7 +743,7 @@ class ServerLogs(ServerModule):
 
         if (
             logs := (
-                await self._get_info(emergency_calls=True, oldest_first=oldest_first)
+                await self._query(emergency_calls=True, oldest_first=oldest_first)
             ).emergency_calls
         ) is not None:
             return logs
