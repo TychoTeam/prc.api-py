@@ -51,7 +51,7 @@ class PRC:
         self,
         global_key: Optional[str] = None,
         default_server_key: Optional[str] = None,
-        _base_url: str = "https://api.policeroleplay.community",
+        _base_url: str = "https://api.erlc.gg",
         _cache: Optional[GlobalCache] = None,
     ):
         self._global_key = global_key
@@ -186,5 +186,3 @@ class PRC:
     def _get_server_id(self, server_key: str):
         parsed_key = server_key.split("-")
         return parsed_key[1]
-
-    
