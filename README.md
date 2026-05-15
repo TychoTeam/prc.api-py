@@ -1,4 +1,4 @@
-`prc.api` is an asynchronous Python wrapper for the Police Roleplay Community (PRC) API.  
+`prc.api` is an asynchronous Python wrapper for the Police Roleplay Community (PRC) API / ERLC API.  
 It provides a convenient way to interact with PRC APIs, including the [private server APIs](https://apidocs.erlc.gg/) for ER:LC (aka. ERLC API), webhook handlers and more.
 
 ### 📖 [Documentation](https://github.com/TychoTeam/prc.api-py/wiki) | [PyPI](https://pypi.org/project/prc.api)
@@ -8,7 +8,7 @@ It provides a convenient way to interact with PRC APIs, including the [private s
 - 🧩 **Developer Friendly**  
   Functions and responses are wrapped and categorized for ease of use.
 - 💫 **Full Coverage**  
-  Supports ALL features from both API v1 and v2 as of _April 2026_.
+  Supports ALL features from both API v1 and v2 as of _May 2026_.
 - 🛡️ **Maintained**  
   One of the only actively maintained and fully open source (OSS) PRC API libraries.
 - 💪 **Robust**  
@@ -26,8 +26,8 @@ It provides a convenient way to interact with PRC APIs, including the [private s
   Along with rate limit parsing and handling, you never have to worry about invalid secrets resulting in IP bans.
 - **Webhook Events**  
   Included are also types for all ER:LC Webhook Event payloads.
-- **New API Domain Support**  
-  By default, the package uses the new API domain (`api.erlc.gg`) for all outgoing requests.
+- **New API Domain**  
+  By default, the package uses the new API domain (`api.erlc.gg`) for all outgoing requests and quick join links.
 
 #### Check out the documentation for all details.
 

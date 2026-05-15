@@ -270,11 +270,7 @@ class Server:
         ⚠️ *May not function properly on mobile devices.*
         """
 
-        return (
-            ("https://policeroleplay.community/join/" + self.join_code)
-            if self.join_code
-            else None
-        )
+        return ("https://erlc.gg/join/" + self.join_code) if self.join_code else None
 
     def is_online(self) -> Optional[bool]:
         """

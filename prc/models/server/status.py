@@ -74,7 +74,7 @@ class ServerStatus:
         ⚠️ *May not function properly on mobile devices.*
         """
 
-        return "https://policeroleplay.community/join/" + self.join_code
+        return "https://erlc.gg/join/" + self.join_code
 
     def is_online(self) -> bool:
         """

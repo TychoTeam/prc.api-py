@@ -28,7 +28,7 @@ class Bucket:
 class RateLimiter:
     def __init__(self, sweeper: CacheSweeper):
         self.route_buckets = Cache[str, str](
-            sweeper, max_size=50, ttl=(1.0* 24 * 60 * 60), unique=False
+            sweeper, max_size=50, ttl=(1.0 * 24 * 60 * 60), unique=False
         )
         self.buckets = Cache[str, Bucket](sweeper, max_size=10)
 
