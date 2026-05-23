@@ -109,8 +109,8 @@ class v2_ServerVehicle(TypedDict):
     Owner: str
     Texture: Optional[str]
     Plate: str
-    ColorHex: str
-    ColorName: str
+    ColorHex: Optional[str]
+    ColorName: Optional[str]
 
 
 class v2_ServerVehiclesResponse(v2_ServerInformation):
