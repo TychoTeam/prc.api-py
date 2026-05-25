@@ -1,5 +1,8 @@
+from pathlib import Path
 import setuptools
 
+BASE_DIR = Path(__file__).resolve().parent
+long_description = (BASE_DIR / "README.md").read_text(encoding="utf-8")
 
 setuptools.setup(
     # info
@@ -8,7 +11,7 @@ setuptools.setup(
     license="MIT",
     url="https://github.com/TychoTeam/prc.api-py",
     # README
-    long_description=open("README.md").read(),
+    long_description=long_description,
     long_description_content_type="text/markdown",
     # SCM versioning (git tags)
     use_scm_version=True,

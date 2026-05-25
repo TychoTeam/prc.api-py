@@ -25,6 +25,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
 
+      - name: Install package
+        run: |
+          python install -e .
+
       - name: Run vehicle tests
         run: |
           python tests/vehicles.py
