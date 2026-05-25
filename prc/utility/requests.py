@@ -1,5 +1,6 @@
 from ..exceptions import PRCException, RequestTimeout
 from .cache import Cache, CacheSweeper, KeylessCache
+from dataclasses import dataclass
 from typing import Dict, Optional
 from time import time
 import asyncio
@@ -17,12 +18,12 @@ class CleanAsyncClient(httpx.AsyncClient):
             pass
 
 
+@dataclass
 class Bucket:
-    def __init__(self, name: str, limit: int, remaining: int, reset_at: float):
-        self.name = name
-        self.limit = limit
-        self.remaining = remaining
-        self.reset_at = reset_at
+    name: str
+    limit: int
+    remaining: int
+    reset_at: float
 
 
 class RateLimiter:
@@ -33,24 +34,32 @@ class RateLimiter:
         self.buckets = Cache[str, Bucket](sweeper, max_size=10)
 
     def save_bucket(self, route: str, headers: httpx.Headers) -> None:
-        bucket_name: str = headers.get("X-RateLimit-Bucket", "Unknown")
-        limit = int(headers.get("X-RateLimit-Limit", 0))
-        remaining = int(headers.get("X-RateLimit-Remaining", 0))
-        reset_at = float(headers.get("X-RateLimit-Reset", time()))
+        bucket_name = headers.get("X-RateLimit-Bucket")
+        limit = headers.get("X-RateLimit-Limit")
+        remaining = headers.get("X-RateLimit-Remaining")
+        reset = headers.get("X-RateLimit-Reset")
 
-        if bucket_name:
-            self.route_buckets.set(route, bucket_name)
-            self.buckets.set(
-                bucket_name, Bucket(bucket_name, limit, remaining, reset_at)
+        if (
+            bucket_name is not None
+            and limit is not None
+            and remaining is not None
+            and reset is not None
+        ):
+            bucket = Bucket(
+                name=bucket_name,
+                limit=int(limit),
+                remaining=int(remaining),
+                reset_at=float(reset),
             )
+
+            self.route_buckets.set(route, bucket_name)
+            self.buckets.set(bucket_name, bucket)
 
     def check_bucket(self, route: str) -> Optional[Bucket]:
         bucket_name = self.route_buckets.get(route)
         if bucket_name:
             bucket = self.buckets.get(bucket_name)
-            if bucket:
-                if bucket.remaining <= 0:
-                    return bucket
+            return bucket if bucket and bucket.remaining <= 0 else None
 
     async def avoid_limit(self, route: str, max_retry_after: float) -> None:
         bucket = self.check_bucket(route)
