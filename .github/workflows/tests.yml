@@ -1,4 +1,4 @@
-name: Run Tests
+name: Package Tests
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   test:
-    name: Runs all tests on Python 3.8
+    name: Runs tests (Python 3.8)
     runs-on: ubuntu-latest
 
     steps:
