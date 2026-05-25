@@ -27,7 +27,7 @@ jobs:
 
       - name: Install package
         run: |
-          python install -e .
+          pip install -e .
 
       - name: Run vehicle tests
         run: |
