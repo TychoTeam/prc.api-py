@@ -750,6 +750,9 @@ CommandTargetPlayerName = Union[str, Player, VehicleOwner]
 CommandTargetPlayerId = Union[int, Player, QueuedPlayer, ServerOwner]
 CommandTargetPlayerNameOrId = Union[CommandTargetPlayerName, CommandTargetPlayerId]
 
+T = TypeVar("T")
+OneOrMany = Union[T, Sequence[T]]
+
 
 class ServerCommands(ServerModule):
     """
@@ -799,49 +802,58 @@ class ServerCommands(ServerModule):
             Any text to be sent along the command (e.g. reason, announcement message content).
         """
 
-        command = f":{name} "
+        parts = [f":{name}"]
 
         def parse_target(target: CommandTargetPlayerNameOrId):
             if isinstance(target, Player):
                 if _prefer_player_id:
                     return str(target.id)
                 return str(target.name)
+
+            elif isinstance(targets, (QueuedPlayer, ServerOwner)):
+                return str(targets.id)
+            elif isinstance(targets, VehicleOwner):
+                return str(targets.name)
+
+            elif isinstance(targets, (str, int)):
+                return str(targets)
+
             return str(target)
+
+        if targets:
+            if isinstance(targets, Sequence) and not isinstance(targets, str):
+                parts.append(",".join([parse_target(t) for t in targets]))
+            else:
+                parts.append(parse_target(targets))
 
         def parse_arg(arg: Union[CommandArg, CommandTargetPlayerNameOrId]):
             if isinstance(arg, Player):
                 if _prefer_player_id:
                     return str(arg.id)
                 return str(arg.name)
+
             if isinstance(arg, (QueuedPlayer, ServerOwner)):
                 return str(arg.id)
             if isinstance(arg, VehicleOwner):
                 return str(arg.name)
             if isinstance(arg, InsensitiveEnum):
                 return arg.value
+
             return str(arg)
 
-        if targets:
-            if isinstance(targets, (str, int)):
-                command += str(targets) + " "
-            elif isinstance(targets, Player):
-                command += Player.name + " "
-            elif isinstance(targets, (QueuedPlayer, ServerOwner)):
-                command += str(Player.id) + " "
-            elif isinstance(targets, VehicleOwner):
-                command += str(Player.name) + " "
-            else:
-                command += ",".join([parse_target(t) for t in targets]) + " "
-
         if args:
-            command += " ".join([parse_arg(a) for a in args]) + " "
+            parts.append(" ".join([parse_arg(a) for a in args]))
 
         if text:
-            command += text
+            parts.append(text)
 
-        message = "..."
+        command: str = " ".join(parts)
+        message = None
         success = False
         retry = 0
+
+        print(command)
+        return
 
         while success == False and retry < _max_retries:
             message = (await self._raw(command.strip())).get("message")
@@ -853,9 +865,7 @@ class ServerCommands(ServerModule):
                 f"Command execution has unexpectedly failed: '{message}'"
             )
 
-    async def kill(
-        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
-    ):
+    async def kill(self, targets: OneOrMany[CommandTargetPlayerName]):
         """
         Kill players in the server.
 
@@ -867,9 +877,7 @@ class ServerCommands(ServerModule):
 
         await self.run("kill", targets=targets)
 
-    async def heal(
-        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
-    ):
+    async def heal(self, targets: OneOrMany[CommandTargetPlayerName]):
         """
         Heal players in the server.
 
@@ -881,9 +889,7 @@ class ServerCommands(ServerModule):
 
         await self.run("heal", targets=targets)
 
-    async def make_wanted(
-        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
-    ):
+    async def make_wanted(self, targets: OneOrMany[CommandTargetPlayerName]):
         """
         Make players wanted in the server.
 
@@ -895,9 +901,7 @@ class ServerCommands(ServerModule):
 
         await self.run("wanted", targets=targets)
 
-    async def remove_wanted(
-        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
-    ):
+    async def remove_wanted(self, targets: OneOrMany[CommandTargetPlayerName]):
         """
         Remove wanted status from players in the server.
 
@@ -909,9 +913,7 @@ class ServerCommands(ServerModule):
 
         await self.run("unwanted", targets=targets)
 
-    async def make_jailed(
-        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
-    ):
+    async def make_jailed(self, targets: OneOrMany[CommandTargetPlayerName]):
         """
         Make players jailed in the server. Teleports them to a prison cell and changes the server player's team.
 
@@ -923,9 +925,7 @@ class ServerCommands(ServerModule):
 
         await self.run("jail", targets=targets)
 
-    async def remove_jailed(
-        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
-    ):
+    async def remove_jailed(self, targets: OneOrMany[CommandTargetPlayerName]):
         """
         Remove jailed status from players in the server.
 
@@ -937,9 +937,7 @@ class ServerCommands(ServerModule):
 
         await self.run("unjail", targets=targets)
 
-    async def refresh(
-        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
-    ):
+    async def refresh(self, targets: OneOrMany[CommandTargetPlayerName]):
         """
         Respawn players in the server and return them to their last positions.
 
@@ -951,9 +949,7 @@ class ServerCommands(ServerModule):
 
         await self.run("refresh", targets=targets)
 
-    async def respawn(
-        self, targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName]
-    ):
+    async def respawn(self, targets: OneOrMany[CommandTargetPlayerName]):
         """
         Respawn players in the server and return them to their set spawn location.
 
@@ -967,7 +963,7 @@ class ServerCommands(ServerModule):
 
     async def teleport(
         self,
-        targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName],
+        targets: OneOrMany[CommandTargetPlayerName],
         *,
         to: CommandTargetPlayerName,
     ):
@@ -986,7 +982,7 @@ class ServerCommands(ServerModule):
 
     async def kick(
         self,
-        targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName],
+        targets: OneOrMany[CommandTargetPlayerName],
         *,
         reason: Optional[str] = None,
     ):
@@ -1005,9 +1001,7 @@ class ServerCommands(ServerModule):
 
     async def ban(
         self,
-        targets: Union[
-            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
-        ],
+        targets: OneOrMany[CommandTargetPlayerNameOrId],
     ):
         """
         Ban players from the server.
@@ -1022,9 +1016,7 @@ class ServerCommands(ServerModule):
 
     async def unban(
         self,
-        targets: Union[
-            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
-        ],
+        targets: OneOrMany[CommandTargetPlayerNameOrId],
     ):
         """
         Unban players from the server.
@@ -1046,9 +1038,7 @@ class ServerCommands(ServerModule):
 
     async def grant_helper(
         self,
-        targets: Union[
-            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
-        ],
+        targets: OneOrMany[CommandTargetPlayerNameOrId],
     ):
         """
         Grant helper permissions to players in the server.
@@ -1063,9 +1053,7 @@ class ServerCommands(ServerModule):
 
     async def revoke_helper(
         self,
-        targets: Union[
-            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
-        ],
+        targets: OneOrMany[CommandTargetPlayerNameOrId],
     ):
         """
         Revoke helper permissions to players in the server.
@@ -1080,9 +1068,7 @@ class ServerCommands(ServerModule):
 
     async def grant_mod(
         self,
-        targets: Union[
-            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
-        ],
+        targets: OneOrMany[CommandTargetPlayerNameOrId],
     ):
         """
         Grant moderator permissions to players in the server.
@@ -1095,12 +1081,7 @@ class ServerCommands(ServerModule):
 
         await self.run("mod", targets=targets, _prefer_player_id=True)
 
-    async def revoke_mod(
-        self,
-        targets: Union[
-            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
-        ],
-    ):
+    async def revoke_mod(self, targets: OneOrMany[CommandTargetPlayerNameOrId]):
         """
         Revoke moderator permissions from players in the server.
 
@@ -1112,12 +1093,7 @@ class ServerCommands(ServerModule):
 
         await self.run("unmod", targets=targets, _prefer_player_id=True)
 
-    async def grant_admin(
-        self,
-        targets: Union[
-            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
-        ],
-    ):
+    async def grant_admin(self, targets: OneOrMany[CommandTargetPlayerNameOrId]):
         """
         Grant admin permissions to players in the server.
 
@@ -1129,12 +1105,7 @@ class ServerCommands(ServerModule):
 
         await self.run("admin", targets=targets, _prefer_player_id=True)
 
-    async def revoke_admin(
-        self,
-        targets: Union[
-            Sequence[CommandTargetPlayerNameOrId], CommandTargetPlayerNameOrId
-        ],
-    ):
+    async def revoke_admin(self, targets: OneOrMany[CommandTargetPlayerNameOrId]):
         """
         Revoke admin permissions from players in the server.
 
@@ -1172,7 +1143,7 @@ class ServerCommands(ServerModule):
 
     async def send_pm(
         self,
-        targets: Union[Sequence[CommandTargetPlayerName], CommandTargetPlayerName],
+        targets: OneOrMany[CommandTargetPlayerName],
         text: str,
     ):
         """
