@@ -852,9 +852,6 @@ class ServerCommands(ServerModule):
         success = False
         retry = 0
 
-        print(command)
-        return
-
         while success == False and retry < _max_retries:
             message = (await self._raw(command.strip())).get("message")
             success = message == "Success"
