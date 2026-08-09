@@ -126,6 +126,8 @@ class ServerQuery(ServerStatus):
         Whether to sort logs by oldest first. By default, newer logs come first.
     data
         The response data.
+    queried
+        The query parameters sent to the API.
     """
 
     players: Optional[ServerPlayerList] = None
@@ -143,57 +145,67 @@ class ServerQuery(ServerStatus):
         server: "Server",
         oldest_first: bool,
         data: v2_FullServerInformation,
+        queried: Dict[v2_ServerQueryParams, bool],
     ):
         super().__init__(server, data)
 
-        if ((_players := data.get("Players"))) is not None:
+        if queried.get("Players") is True:
+            _players = data.get("Players", [])
             server._server_cache.players.clear()
             players = ServerPlayerList(ServerPlayer(server, data=p) for p in _players)
             server.staff_count = len([p for p in players if p.is_staff()])
             self.players = players
 
-        if ((staff := data.get("Staff"))) is not None:
+        if queried.get("Staff"):
+            staff = data["Staff"]
             self.staff = ServerStaff(server, data=staff)
 
-        if ((_queue := data.get("Queue"))) is not None:
+        if queried.get("Queue"):
+            _queue = data.get("Queue", [])
             queue = QueuedPlayerList(
                 QueuedPlayer(server, id=p, index=i) for i, p in enumerate(_queue)
             )
             server.queue_count = len(queue)
             self.queue = queue
 
-        if ((access_logs := data.get("JoinLogs"))) is not None:
+        if queried.get("JoinLogs"):
+            access_logs = data.get("JoinLogs", [])
             for e in access_logs:
                 AccessEntry(server, data=e)
             self.access_logs = server.logs._sort(
                 server._server_cache.access_logs.items(), oldest_first
             )
 
-        if ((kill_logs := data.get("KillLogs"))) is not None:
+        if queried.get("KillLogs"):
+            kill_logs = data.get("KillLogs", [])
             self.kill_logs = server.logs._sort(
                 [KillEntry(server, data=e) for e in kill_logs],
                 oldest_first,
             )
 
-        if ((command_logs := data.get("CommandLogs"))) is not None:
+        if queried.get("CommandLogs"):
+            command_logs = data.get("CommandLogs", [])
             self.command_logs = server.logs._sort(
                 [CommandEntry(server, data=e) for e in command_logs],
                 oldest_first,
             )
 
-        if ((mod_calls := data.get("ModCalls"))) is not None:
+        if queried.get("ModCalls"):
+            mod_calls = data.get("ModCalls", [])
             self.mod_calls = server.logs._sort(
                 [ModCallEntry(server, data=e) for e in mod_calls],
                 oldest_first,
             )
 
-        if ((emergency_calls := data.get("EmergencyCalls"))) is not None:
+        if queried.get("EmergencyCalls"):
+            emergency_calls = data.get("EmergencyCalls", [])
             self.emergency_calls = server.logs._sort(
                 [EmergencyCallEntry(server, data=e) for e in emergency_calls],
                 oldest_first,
             )
 
-        if ((vehicles := data.get("Vehicles"))) is not None:
+        if queried.get("Vehicles"):
+            vehicles = data.get("Vehicles", [])
             server._server_cache.vehicles.clear()
             self.vehicles = VehicleList(Vehicle(server, data=v) for v in vehicles)
 
@@ -414,7 +426,7 @@ class Server:
         oldest_first: bool = False,
     ) -> ServerQuery:
         """
-        Get information about the server. By default, only the server status is queried. When an option is not queried (i.e, is `False`), its property in the returned `ServerQuery` will be of type `None`.
+        Bulk fetch information about the server. The server status is always queried. When an option is not queried (i.e, is `False`), its property in the returned `ServerQuery` will be of type `None`.
 
         Parameters
         ----------
@@ -442,7 +454,7 @@ class Server:
             Whether to sort logs by oldest first. By default, newer logs come first.
         """
 
-        params = {
+        params: Dict[v2_ServerQueryParams, bool] = {
             "Players": players,
             "Staff": staff,
             "JoinLogs": access_logs,
@@ -454,10 +466,10 @@ class Server:
             "Vehicles": vehicles,
         }
 
-        for k, v in params.copy().items():
+        for k in params.copy():
             if all is not None:
                 params[k] = all
-            elif v is False:
+            if not params[k]:
                 params.pop(k)
 
         return ServerQuery(
@@ -467,6 +479,7 @@ class Server:
                 await self._requests.get("/v2/server", params=params),
                 v2_FullServerInformation,
             ),
+            queried=params,
         )
 
     @_refresh_server
