@@ -132,6 +132,19 @@ class v2_ServerEmergencyCallsResponse(v2_ServerInformation):
     EmergencyCalls: List[v2_ServerEmergencyCall]
 
 
+v2_ServerQueryParams = Literal[
+    "Players",
+    "Staff",
+    "JoinLogs",
+    "Queue",
+    "KillLogs",
+    "CommandLogs",
+    "ModCalls",
+    "EmergencyCalls",
+    "Vehicles",
+]
+
+
 class v2_FullServerInformation(
     v2_ServerPlayersResponse,
     v2_ServerStaffResponse,
