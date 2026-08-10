@@ -383,6 +383,9 @@ class Server:
         raise exception
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
+        if return_type == None:
+            return None
+
         content_type: Optional[str] = response.headers.get("Content-Type")
         json_content = None
         try:
@@ -777,7 +780,7 @@ class ServerCommands(ServerModule):
             await self._requests.post("/v2/server/command", json={"command": command}),
             v2_ServerCommandExecutionResponse,
         )
- 
+
     async def run(
         self,
         name: CommandName,
