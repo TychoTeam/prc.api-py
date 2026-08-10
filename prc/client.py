@@ -87,7 +87,7 @@ class PRC:
         self,
         server_key: Optional[str] = None,
         *,
-        ephemeral_ttl: float = 1.0,
+        ephemeral_ttl: Optional[float] = None,
         ignore_global_key: bool = False,
     ) -> Server:
         """
@@ -99,6 +99,8 @@ class PRC:
             The unique server key used to authenticate requests. Defaults to `default_server_key`, if any.
         ephemeral_ttl
             How long, in seconds, ephemeral results (i.e, cached responses) are kept before expiring. Defaults to `1` second. Set to `0` to disable.
+
+            ⚠️ ALL existing server instances with the same server ID will be use the new value.
         ignore_global_key
             Whether to ignore the client's global authentication key (if set). By default, it is not ignored.
         """
@@ -114,7 +116,8 @@ class PRC:
 
         existing_server = self._global_cache.servers.get(server_id)
         if existing_server:
-            existing_server._ephemeral_ttl = ephemeral_ttl
+            if ephemeral_ttl:
+                existing_server._ephemeral_ttl = ephemeral_ttl
 
             if existing_server._ignore_global_key != ignore_global_key:
                 existing_server._ignore_global_key = ignore_global_key
@@ -138,7 +141,7 @@ class PRC:
                 Server(
                     client=self,
                     server_key=server_key,
-                    ephemeral_ttl=ephemeral_ttl,
+                    ephemeral_ttl=ephemeral_ttl or 1.0,
                     ignore_global_key=ignore_global_key,
                 ),
             )
