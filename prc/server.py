@@ -3,7 +3,6 @@ from typing import (
     Optional,
     List,
     TYPE_CHECKING,
-    Callable,
     Type,
     TypeVar,
     Dict,
@@ -343,70 +342,59 @@ class Server:
     def _raise_error_code(self, content: Any, response: httpx.Response) -> NoReturn:
         if not isinstance(content, Dict):
             raise HTTPException(
-                f"Malformed response content was received: '{type(content).__name__ if content else 'None'}'",
+                f"Malformed response content was received: '{type(content).__name__}'",
                 response,
             )
 
-        error_code = content.get("code")
-        if error_code is None:
-            raise HTTPException(
-                f"An API error has occurred but no code was received.",
-                response,
-            )
-
-        exceptions: List[Callable[..., APIException]] = [
-            UnknownError,
-            CommunicationError,
-            InternalError,
-            InvalidServerKey,
-            InvalidGlobalKey,
-            BannedServerKey,
-            InvalidCommand,
-            ServerOffline,
-            RateLimited,
-            RestrictedCommand,
-            ProhibitedMessage,
-            RestrictedResource,
-            OutOfDateModule,
-        ]
-
-        for _exception in exceptions:
-            exception = _exception()
-            if error_code == exception.code:
-                invalid_key = None
-                if isinstance(exception, InvalidGlobalKey):
-                    invalid_key = self._global_key
-                elif isinstance(exception, (InvalidServerKey, BannedServerKey)):
-                    invalid_key = self._server_key
-
-                if invalid_key:
-                    self._global_cache.invalid_keys.add(invalid_key)
-
-                if isinstance(exception, RateLimited):
-                    exception = RateLimited(
-                        content.get("bucket"), content.get("retry_after")
-                    )
-
-                if isinstance(exception, (CommunicationError, ServerOffline)):
-                    exception = _exception(command_id=content.get("commandId"))
-
-                exception.response = response
-                raise exception
-
-        raise APIException(
-            error_code,
-            f"An unknown API error has occured: {content.get('message') or '...'}",
-            response,
+        _error_message = content.get("message")
+        error_message = (
+            _error_message if isinstance(_error_message, str) else "<No Msg>"
         )
 
+        error_code = content.get("code")
+        if not isinstance(error_code, int):
+            raise APIException(
+                code=-1,
+                message=f"An API error has occurred but no valid code was received: {error_message}",
+                response=response,
+            )
+
+        _exc = ERROR_CODE_MAP.get(error_code)
+        if not _exc:
+            raise APIException(
+                code=error_code,
+                message=f"An unknown API error has occurred: {error_message}",
+                response=response,
+            )
+
+        exception = _exc(
+            code=error_code, message=error_message, response=response, body=content
+        )
+
+        invalid_key = None
+        if isinstance(exception, InvalidGlobalKey):
+            invalid_key = self._global_key
+        elif isinstance(exception, (InvalidServerKey, BannedServerKey)):
+            invalid_key = self._server_key
+
+        if invalid_key:
+            self._global_cache.invalid_keys.add(invalid_key)
+
+        raise exception
+
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
-        content_type: Optional[str] = response.headers.get("Content-Type", None)
-        if not content_type or not content_type.startswith("application/json"):
-            raise PRCException(f"Received a non-json content type: '{content_type}'")
+        content_type: Optional[str] = response.headers.get("Content-Type")
+        json_content = None
+        try:
+            json_content = response.json()
+        except Exception:
+            raise PRCException(
+                f"Received invalid JSON content with type: '{content_type}'"
+            )
 
         if not response.is_success:
-            self._raise_error_code(response.json(), response)
-        return response.json()
+            self._raise_error_code(json_content, response)
+        return json_content
 
     @_refresh_server
     @_ephemeral
@@ -775,7 +763,7 @@ class ServerCommands(ServerModule):
     def __init__(self, server: Server):
         super().__init__(server)
 
-    async def _raw(self, command: str):
+    async def _execute_command(self, command: str):
         """
         Send an **UNSANITIZED** command string to the remote command execution API.
 
@@ -789,7 +777,7 @@ class ServerCommands(ServerModule):
             await self._requests.post("/v2/server/command", json={"command": command}),
             v2_ServerCommandExecutionResponse,
         )
-
+ 
     async def run(
         self,
         name: CommandName,
@@ -866,7 +854,7 @@ class ServerCommands(ServerModule):
         retry = 0
 
         while success == False and retry < _max_retries:
-            message = (await self._raw(command.strip())).get("message")
+            message = (await self._execute_command(command.strip())).get("message")
             success = message == "Success"
             retry += 1
 

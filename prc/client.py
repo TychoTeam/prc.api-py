@@ -70,8 +70,6 @@ class PRC:
 
         self.webhooks = Webhooks(self)
 
-        self._key_expression = re.compile(r"^[a-z0-9]+\-[a-z0-9]+$", re.IGNORECASE)
-
     def _refresh_key_requests(self):
         if self._global_key:
             headers = {"Authorization": self._global_key}
@@ -187,6 +185,8 @@ class PRC:
             for _, player in self._global_cache.players.items():
                 if player.name == name:
                     return player
+
+    _key_expression = re.compile(r"^[a-z0-9]+\-[a-z0-9]+$", re.IGNORECASE)
 
     def _validate_server_key(self, server_key: str):
         if not self._key_expression.match(server_key):
