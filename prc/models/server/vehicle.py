@@ -130,7 +130,7 @@ class Vehicle:
 
     owner: VehicleOwner
     texture: VehicleTexture
-    color: Optional[VehicleColor]
+    color: Optional[VehicleColor] = None
     model: "VehicleModel"
     year: Optional[int] = None
     plate: str
@@ -142,7 +142,6 @@ class Vehicle:
         self.texture = VehicleTexture(name=data.get("Texture", None) or "Standard")
         self.plate = data["Plate"]
 
-        self.color = None
         if (color_name := data.get("ColorName")) and (
             color_hex := data.get("ColorHex")
         ):

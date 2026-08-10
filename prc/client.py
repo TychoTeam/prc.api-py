@@ -64,19 +64,26 @@ class PRC:
             _cache if _cache is not None else GlobalCache(sweeper=self._cache_sweeper)
         )
         self._session = CleanAsyncClient()
-        self._key_requests = (
-            Requests(
+
+        self._key_requests = None
+        self._refresh_key_requests()
+
+        self.webhooks = Webhooks(self)
+
+        self._key_expression = re.compile(r"^[a-z0-9]+\-[a-z0-9]+$", re.IGNORECASE)
+
+    def _refresh_key_requests(self):
+        if self._global_key:
+            headers = {"Authorization": self._global_key}
+            self._key_requests = Requests(
                 base_url=self._base_url + "/v1/api-key",
-                headers={"Authorization": self._global_key},
+                headers=headers,
                 session=self._session,
                 invalid_keys=self._global_cache.invalid_keys,
                 sweeper=self._cache_sweeper,
             )
-            if self._global_key is not None
-            else None
-        )
 
-        self.webhooks = Webhooks(self)
+            return self._key_requests
 
     def get_server(
         self,
@@ -158,11 +165,12 @@ class PRC:
                 self._global_cache.servers.set(server_id, server)
 
             self._global_key = new_key
+            self._refresh_key_requests()
             return self._global_key
         elif response.status_code == 403:
             self._global_cache.invalid_keys.add(self._global_key)
             raise HTTPException(
-                f"The global key provided is invalid and cannot be reset.",
+                f"The global key provided is invalid and could not be reset.",
                 response,
             )
         else:
@@ -172,17 +180,18 @@ class PRC:
             )
 
     def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):
-        for _, player in self._global_cache.players.items():
-            if id and player.id == id:
-                return player
-            if name and player.name == name:
-                return player
+        if id is not None:
+            return self._global_cache.players.get(id)
+
+        if name is not None:
+            for _, player in self._global_cache.players.items():
+                if player.name == name:
+                    return player
 
     def _validate_server_key(self, server_key: str):
-        expression = r"^[a-z0-9]+\-[a-z0-9]+$"
-        if not re.match(expression, server_key, re.IGNORECASE):
-            raise ValueError(f"Invalid server-key format: {server_key}")
+        if not self._key_expression.match(server_key):
+            raise ValueError(f"Invalid server-key provided.")
 
     def _get_server_id(self, server_key: str):
-        parsed_key = server_key.split("-")
-        return parsed_key[1]
+        elements = server_key.split("-")
+        return elements[1]

@@ -2,8 +2,8 @@ from typing import TypedDict, List, Optional, Literal, Dict, Union, TypeVar
 
 V = TypeVar("V")
 
-# since the API STILL uses "maps", which are supposed to be dicts
-# but when empty are actually sent as lists
+# Since the API STILL uses "maps", which are supposed to be dicts
+# but when empty are actually sent as lists.
 _APIMap = Union[Dict[str, V], List[None]]
 
 v2_Permission = Literal[
@@ -40,6 +40,7 @@ class v2_ServerPlayerLocation(TypedDict):
 class v2_ServerPlayer(TypedDict):
     Player: str
     Permission: v2_Permission
+    # All non-emergency teams (i.e, civilians) do not have callsigns.
     Callsign: Optional[str]
     Team: v2_Team
     Location: v2_ServerPlayerLocation
@@ -96,6 +97,7 @@ class v2_ServerCommandLogsResponse(TypedDict):
 
 class v2_ServerModCall(TypedDict):
     Caller: str
+    # Only given if mod call has been responded to.
     Moderator: Optional[str]
     Timestamp: int
 
@@ -107,8 +109,13 @@ class v2_ServerModCallsResponse(v2_ServerInformation):
 class v2_ServerVehicle(TypedDict):
     Name: str
     Owner: str
+    # Most civilian vehicles and certain others do not have a texture.
     Texture: Optional[str]
     Plate: str
+    # Color properties are supposed to be always present,
+    # however they are missing from some vehicles due to
+    # API bugs that have been left unaddressed for months.
+    # Hence, the decision has been made to mark them optional.
     ColorHex: Optional[str]
     ColorName: Optional[str]
 
@@ -119,11 +126,17 @@ class v2_ServerVehiclesResponse(v2_ServerInformation):
 
 class v2_ServerEmergencyCall(TypedDict):
     Team: v2_Team
+    # Automated server calls do not have a caller set.
     Caller: Optional[int]
     Players: List[int]
+    # Position is an array of 2 integers [X, Z]
     Position: List[int]
     StartedAt: int
     CallNumber: int
+    # Call descriptions are sometimes not received due to
+    # a bug in the in-game calling system. Players can make a 'broken'
+    # call with an empty space string " " which causes the call validation
+    # to think there is no string provided. This bug has been left unaddressed.
     Description: Optional[str]
     PositionDescriptor: Optional[str]
 

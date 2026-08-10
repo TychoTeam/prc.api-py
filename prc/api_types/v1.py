@@ -2,8 +2,8 @@ from typing import TypedDict, List, Optional, Literal, Dict, Union, TypeVar
 
 V = TypeVar("V")
 
-# since the API uses "maps", which are supposed to be dicts
-# but when empty are actually sent as lists
+# Since the API uses "maps", which are supposed to be dicts
+# but when empty are actually sent as lists.
 _APIMap = Union[Dict[str, V], List[None]]
 
 v1_Permission = Literal[
@@ -32,6 +32,7 @@ class v1_ServerStatusResponse(TypedDict):
 class v1_ServerPlayer(TypedDict):
     Player: str
     Permission: v1_Permission
+    # All non-emergency teams (i.e, civilians) do not have callsigns.
     Callsign: Optional[str]
     Team: v1_Team
 
@@ -68,6 +69,7 @@ v1_ServerCommandLogsResponse = List[v1_ServerCommandLog]
 
 class v1_ServerModCall(TypedDict):
     Caller: str
+    # Only given if mod call has been responded to.
     Moderator: Optional[str]
     Timestamp: int
 
@@ -78,6 +80,7 @@ v1_ServerBanResponse = _APIMap[str]
 
 
 class v1_ServerVehicle(TypedDict):
+    # Most civilian vehicles and certain others do not have a texture.
     Texture: Optional[str]
     Name: str
     Owner: str
