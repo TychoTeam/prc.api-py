@@ -96,7 +96,8 @@ def _ephemeral(func):
             ).hexdigest()
             cache_key = f"{func.__name__}_cache_{hashed_args}"
 
-            if entry := cache.get(cache_key):
+            entry = cache.get(cache_key)
+            if entry is not None:
                 return copy.copy(entry)
 
             result = await func(self, *args, **kwargs)
@@ -258,16 +259,24 @@ class Server:
         self.logs = ServerLogs(self)
         self.commands = ServerCommands(self)
 
+        self.co_owners = []
+        self.admins = []
+        self.mods = []
+        self.helpers = []
+
     name: Optional[str] = None
+
     owner: Optional[ServerOwner] = None
-    co_owners: List[ServerOwner] = []
-    admins: List[StaffMember] = []
-    mods: List[StaffMember] = []
-    helpers: List[StaffMember] = []
+    co_owners: List[ServerOwner]
+    admins: List[StaffMember]
+    mods: List[StaffMember]
+    helpers: List[StaffMember]
+
     total_staff_count: Optional[int] = None
     player_count: Optional[int] = None
     staff_count: Optional[int] = None
     queue_count: Optional[int] = None
+
     max_players: Optional[int] = None
     join_code: Optional[str] = None
     account_requirement: Optional[AccountRequirement] = None
@@ -288,7 +297,10 @@ class Server:
         Whether the server is online (i.e, has any online players). Server status or players must be fetched separately.
         """
 
-        return self.player_count > 0 if self.player_count else None
+        if self.player_count is None:
+            return None
+
+        return self.player_count > 0
 
     def is_full(self, *, include_reserved: bool = False) -> Optional[bool]:
         """
@@ -300,11 +312,10 @@ class Server:
             Whether to include the owner-reserved spot. By default, it is excluded (`max_players - 1`).
         """
 
-        return (
-            (self.player_count >= self.max_players - (0 if include_reserved else 1))
-            if self.player_count and self.max_players
-            else None
-        )
+        if self.player_count is None or self.max_players is None:
+            return None
+
+        return self.player_count >= self.max_players - (0 if include_reserved else 1)
 
     def _refresh_requests(self):
         global_key = self._global_key
@@ -325,19 +336,21 @@ class Server:
 
         return self._requests
 
-    def _parse_api_map(self, map: _APIMap[M]) -> Dict[str, M]:
-        if not isinstance(map, Dict):
+    def _parse_api_map(self, m: _APIMap[M]) -> Dict[str, M]:
+        if not isinstance(m, dict):
             return {}
-        return map
+        return m
 
     def _get_player(
         self, *, id: Optional[int] = None, name: Optional[str] = None
     ) -> Optional[ServerPlayer]:
-        for _, player in self._server_cache.players.items():
-            if id and player.id == id:
-                return player
-            if name and player.name == name:
-                return player
+        if id is not None:
+            return self._server_cache.players.get(id)
+
+        if name is not None:
+            for _, player in self._server_cache.players.items():
+                if player.name.lower() == name.lower():
+                    return player
 
     def _raise_error_code(self, content: Any, response: httpx.Response) -> NoReturn:
         if not isinstance(content, Dict):
@@ -383,20 +396,21 @@ class Server:
         raise exception
 
     def _handle(self, response: httpx.Response, return_type: Type[R]) -> R:
-        if return_type == None:
+        if response.is_success and return_type is None:
             return None
 
         content_type: Optional[str] = response.headers.get("Content-Type")
         json_content = None
         try:
             json_content = response.json()
-        except Exception:
+        except Exception as exc:
             raise PRCException(
                 f"Received invalid JSON content with type: '{content_type}'"
-            )
+            ) from exc
 
         if not response.is_success:
             self._raise_error_code(json_content, response)
+
         return json_content
 
     @_refresh_server
@@ -531,6 +545,9 @@ class Server:
         This is equivalent to `get_players.find_player`.
         """
 
+        if id is None and name is None:
+            raise ValueError("Either id or name must be provided.")
+
         players = await self.get_players()
 
         if id is not None:
@@ -609,11 +626,17 @@ class ServerModule:
 
         self._global_cache = server._global_cache
         self._server_cache = server._server_cache
-        self._ephemeral_ttl = server._ephemeral_ttl
 
-        self._requests = server._requests
         self._handle = server._handle
         self._query = server.query
+
+    @property
+    def _ephemeral_ttl(self):
+        return self._server._ephemeral_ttl
+
+    @property
+    def _requests(self):
+        return self._server._requests
 
 
 class ServerLogs(ServerModule):
@@ -781,6 +804,44 @@ class ServerCommands(ServerModule):
             v2_ServerCommandExecutionResponse,
         )
 
+    def _parse_target(
+        self, target: CommandTargetPlayerNameOrId, *, prefer_player_id: bool
+    ):
+        if isinstance(target, Player):
+            if prefer_player_id:
+                return str(target.id)
+            return str(target.name)
+
+        elif isinstance(target, (QueuedPlayer, ServerOwner)):
+            return str(target.id)
+        elif isinstance(target, VehicleOwner):
+            return str(target.name)
+
+        elif isinstance(target, (str, int)):
+            return str(target)
+
+        return str(target)
+
+    def _parse_arg(
+        self,
+        arg: Union[CommandArg, CommandTargetPlayerNameOrId],
+        *,
+        prefer_player_id: bool,
+    ):
+        if isinstance(arg, Player):
+            if prefer_player_id:
+                return str(arg.id)
+            return str(arg.name)
+
+        if isinstance(arg, (QueuedPlayer, ServerOwner)):
+            return str(arg.id)
+        if isinstance(arg, VehicleOwner):
+            return str(arg.name)
+        if isinstance(arg, InsensitiveEnum):
+            return arg.value
+
+        return str(arg)
+
     async def run(
         self,
         name: CommandName,
@@ -808,45 +869,31 @@ class ServerCommands(ServerModule):
 
         parts = [f":{name}"]
 
-        def parse_target(target: CommandTargetPlayerNameOrId):
-            if isinstance(target, Player):
-                if _prefer_player_id:
-                    return str(target.id)
-                return str(target.name)
-
-            elif isinstance(targets, (QueuedPlayer, ServerOwner)):
-                return str(targets.id)
-            elif isinstance(targets, VehicleOwner):
-                return str(targets.name)
-
-            elif isinstance(targets, (str, int)):
-                return str(targets)
-
-            return str(target)
-
         if targets:
-            if isinstance(targets, Sequence) and not isinstance(targets, str):
-                parts.append(",".join([parse_target(t) for t in targets]))
+            # handle strings being considered sequences
+            if isinstance(targets, Sequence) and not isinstance(targets, (str)):
+                parts.append(
+                    ",".join(
+                        [
+                            self._parse_target(t, prefer_player_id=_prefer_player_id)
+                            for t in targets
+                        ]
+                    )
+                )
             else:
-                parts.append(parse_target(targets))
-
-        def parse_arg(arg: Union[CommandArg, CommandTargetPlayerNameOrId]):
-            if isinstance(arg, Player):
-                if _prefer_player_id:
-                    return str(arg.id)
-                return str(arg.name)
-
-            if isinstance(arg, (QueuedPlayer, ServerOwner)):
-                return str(arg.id)
-            if isinstance(arg, VehicleOwner):
-                return str(arg.name)
-            if isinstance(arg, InsensitiveEnum):
-                return arg.value
-
-            return str(arg)
+                parts.append(
+                    self._parse_target(targets, prefer_player_id=_prefer_player_id)
+                )
 
         if args:
-            parts.append(" ".join([parse_arg(a) for a in args]))
+            parts.append(
+                " ".join(
+                    [
+                        self._parse_arg(a, prefer_player_id=_prefer_player_id)
+                        for a in args
+                    ]
+                )
+            )
 
         if text:
             parts.append(text)
@@ -856,7 +903,7 @@ class ServerCommands(ServerModule):
         success = False
         retry = 0
 
-        while success == False and retry < _max_retries:
+        while success == False and retry <= _max_retries:
             message = (await self._execute_command(command.strip())).get("message")
             success = message == "Success"
             retry += 1

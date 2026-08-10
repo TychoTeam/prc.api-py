@@ -180,13 +180,15 @@ class PRC:
                 response,
             )
 
-    def _get_player(self, id: Optional[int] = None, name: Optional[str] = None):
+    def _get_player(
+        self, id: Optional[int] = None, name: Optional[str] = None
+    ) -> Optional["Player"]:
         if id is not None:
             return self._global_cache.players.get(id)
 
         if name is not None:
             for _, player in self._global_cache.players.items():
-                if player.name == name:
+                if player.name.lower() == name.lower():
                     return player
 
     _key_expression = re.compile(r"^[a-z0-9]+\-[a-z0-9]+$", re.IGNORECASE)
