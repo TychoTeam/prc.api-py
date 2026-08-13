@@ -36,20 +36,23 @@ class Webhooks:
             The used command's name.
         """
 
-        if title.title() == "Kick/Ban Command Usage":
+        if title == "Kick/Ban Command Usage":
             if command_name == "kick":
                 return WebhookType.KICK
             if command_name == "ban":
                 return WebhookType.BAN
+
             if not command_name:
                 raise ValueError(
                     "A v1 kick/ban webhook must have a command name to determine its type."
                 )
-            else:
-                raise ValueError(
-                    f"Malformed v1 kick/ban webhook command: {command_name}"
-                )
+            raise ValueError(f"Malformed v1 kick/ban webhook command: '{command_name}'")
+
         return WebhookType.parse(title.replace("Player ", "Players "))
+
+    _author_expression = re.compile(
+        r"^\[([^\]:]+)(?::(\d+))?]\(\S+\/users\/(\d+)/\S+\)"
+    )
 
     def get_author(
         self, *, description: str, server: Optional["Server"] = None
@@ -65,16 +68,14 @@ class Webhooks:
             The server handler, if any.
         """
 
-        if matched := re.search(
-            r"^\[([^\]:]+)(?::(\d+))?]\(.+/users/(\d+)/profile\)", description
-        ):
+        if matched := self._author_expression.search(description):
             return WebhookPlayer(
                 self._client,
                 (str(matched.group(2) or matched.group(3)), str(matched.group(1))),
                 server,
             )
         raise ValueError(
-            f"Malformed description, could not determine author: {description}"
+            f"Malformed description, could not determine author: '{description}'"
         )
 
     def get_command(
@@ -96,39 +97,37 @@ class Webhooks:
         content: str
         version = self._get_version(description=description)
         if version == 1:
-            if matched := re.search(r"\"(.+)\"$", description, flags=re.S):
-                content = matched.group(1)
-            else:
+            start = description.find('"')
+            end = description.rfind('"')
+
+            if start == -1 or end <= start:
                 raise ValueError(
-                    f"Malformed description, could not determine command (v1): {description}"
+                    f"Malformed description, could not determine command (v1): '{description}'"
                 )
+
+            content = description[start + 1 : end]
 
         elif version == 2:
-            if matched := re.search(
-                r"(kicked|banned|) `(.+)`$", description, flags=re.S
-            ):
-                keyword = matched.group(1)
-                content = matched.group(2)
+            end = description.rfind("`")
+            start = description.rfind("`", 0, end)
 
-                if keyword == "kicked":
-                    content = ":kick " + content
-                if keyword == "banned":
-                    content = ":ban " + content
-
-                content = content.replace(" - Player Not In Game", "", 1)
-
-            else:
+            if start == -1 or end <= start:
                 raise ValueError(
-                    f"Malformed description, could not determine command (v2): {description}"
+                    f"Malformed description, could not determine command (v2): '{description}'"
                 )
 
-        else:
-            raise ValueError(f"Unknown webhook version: {version}")
+            content = description[start + 1 : end]
+            prefix = description[:start].rstrip()
 
-        parts = content.split(" ")
-        if len(parts) > 1:
-            targets = content.split(" ")[1]
-            content = content.replace(targets, targets.replace(",", ", ").strip())
+            if prefix.endswith("kicked"):
+                content = ":kick " + content
+            elif prefix.endswith("banned"):
+                content = ":ban " + content
+
+            content = content.replace(" - Player Not In Game", "", 1)
+
+        else:
+            raise ValueError(f"Unknown webhook version: '{version}'")
 
         return Command(
             content,
@@ -148,9 +147,17 @@ class Webhooks:
             The webhook message embed footer.
         """
 
-        if not footer.startswith("Private Server: "):
-            raise ValueError(f"Invalid footer format: {footer}")
-        return footer.split(" ")[-1]
+        prefix = "Private Server: "
+
+        if not footer.startswith(prefix):
+            raise ValueError(f"Invalid footer format: '{footer}'")
+
+        join_code = footer[len(prefix) :]
+
+        if not join_code or " " in join_code:
+            raise ValueError(f"Invalid footer format: '{footer}'")
+
+        return join_code
 
     @overload
     def is_valid(self, *, embed: object) -> bool: ...
@@ -182,15 +189,22 @@ class Webhooks:
         """
 
         try:
-            if embed:
+            if embed is not None:
                 self.parse(embed=embed)
-            else:
-                assert title and description and footer
-                self.parse(title=title, description=description, footer=footer)
-        except Exception:
+                return True
+
+            if title is not None and description is not None and footer is not None:
+                self.parse(
+                    title=title,
+                    description=description,
+                    footer=footer,
+                )
+                return True
+
+        except (ValueError, PRCException):
             return False
 
-        return True
+        return False
 
     @overload
     def parse(self, *, embed: object) -> WebhookMessage: ...
@@ -221,6 +235,11 @@ class Webhooks:
             The webhook message embed footer.
         """
 
+        if any(value is not None for value in (title, description, footer)):
+            raise ValueError(
+                "Cannot provide embed together with title, description, or footer."
+            )
+
         if hasattr(embed, "title"):
             title = getattr(embed, "title", None)
             description = getattr(embed, "description", None)
@@ -228,13 +247,13 @@ class Webhooks:
             footer = getattr(footer_obj, "text", None) if footer_obj else None
 
         if not isinstance(title, str):
-            raise ValueError(f"Invalid or missing title: {title}")
+            raise ValueError(f"Invalid or missing title: '{title}'")
 
         if not isinstance(description, str):
-            raise ValueError(f"Invalid or missing title: {description}")
+            raise ValueError(f"Invalid or missing description: '{description}'")
 
         if not isinstance(footer, str):
-            raise ValueError(f"Invalid or missing title: {footer}")
+            raise ValueError(f"Invalid or missing footer: '{footer}'")
 
         server = self._get_server(footer=footer)
         version = self._get_version(description=description)
@@ -263,7 +282,7 @@ class Webhooks:
         footer: Optional[str] = None,
     ) -> Optional[WebhookMessage]:
         """
-        Safely parse a webhook message without raising any exceptions.
+        Safely parse a webhook message without raising any parsing exceptions.
 
         Parameters
         ----------
@@ -277,13 +296,25 @@ class Webhooks:
             The webhook message embed footer.
         """
 
+        if any(value is not None for value in (title, description, footer)):
+            raise ValueError(
+                "Cannot provide embed together with title, description, or footer."
+            )
+
         try:
-            if embed:
+            if embed is not None:
                 return self.parse(embed=embed)
-            else:
-                assert title and description and footer
-                return self.parse(title=title, description=description, footer=footer)
-        except Exception:
+
+            if title is not None and description is not None and footer is not None:
+                return self.parse(
+                    title=title,
+                    description=description,
+                    footer=footer,
+                )
+
+            return None
+
+        except (ValueError, PRCException):
             return None
 
     def _get_server(self, *, footer: str) -> Optional["Server"]:
@@ -293,25 +324,31 @@ class Webhooks:
             return self._client._global_cache.servers.get(server_id)
 
     def _get_version(self, *, description: str) -> WebhookVersion:
+        if not description:
+            raise PRCException(
+                f"Cannot get version of empty description: '{description}'"
+            )
+
         if description[-1] == '"':
             return 1
         if description[-1] == "`":
             return 2
         raise PRCException(f"Unknown webhook message version: '{description}'")
 
-        # 'Command Usage' - 17/01/2022 - v1 + v2
 
-        # 'Kick/Ban Command Usage' - 17/01/2022 - v1
+# 'Command Usage' - 17/01/2022 - v1 + v2
 
-        # 'Player Banned' - 09/03/2023 - v2
-        # aka. 'Players Banned'
+# 'Kick/Ban Command Usage' - 17/01/2022 - v1
 
-        # 'Player Kicked' - 09/03/2023 - v2
-        # aka. 'Players Kicked'
+# 'Player Banned' - 09/03/2023 - v2
+# aka. 'Players Banned'
 
-        # ==========
-        # v1 release
-        # 17/01/2022
+# 'Player Kicked' - 09/03/2023 - v2
+# aka. 'Players Kicked'
 
-        # v2 release
-        # 09/03/2023 3:45 AM
+# ==========
+# v1 release
+# 17/01/2022
+
+# v2 release
+# 09/03/2023 3:45 AM
