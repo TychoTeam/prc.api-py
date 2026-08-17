@@ -27,7 +27,8 @@ class ServerStaff:
     def __init__(self, server: "Server", data: "v2_ServerStaff"):
         self._server = server
 
-        assert server.owner
+        if server.owner is None:
+            raise ValueError("Expected server.owner")
         self.owner = server.owner
 
         self.co_owners = server.co_owners
@@ -58,8 +59,7 @@ class ServerStaff:
         Server owner and all co-owners.
         """
 
-        assert self._server.owner
-        return self._server.co_owners + [self._server.owner]
+        return self.co_owners + [self.owner]
 
     @property
     def members(self):
@@ -75,7 +75,6 @@ class ServerStaff:
         All server staff, including server owner. Some players may have multiple permissions set, hence may be present multiple times.
         """
 
-        assert self._server.owner
         return self.owners + self.members
 
     @property
