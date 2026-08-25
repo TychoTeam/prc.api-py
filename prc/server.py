@@ -207,7 +207,9 @@ class ServerQuery(ServerStatus):
         if queried.get("Vehicles"):
             vehicles = data.get("Vehicles", [])
             server._server_cache.vehicles.clear()
-            self.vehicles = VehicleList(Vehicle(server, data=v) for v in vehicles)
+            self.vehicles = VehicleList(
+                Vehicle(server, data=v) for v in vehicles if v.get("Owner")
+            )
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={self.name}, owner={self.owner.id}, join_code={self.join_code}>"
