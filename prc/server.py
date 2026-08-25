@@ -207,6 +207,10 @@ class ServerQuery(ServerStatus):
         if queried.get("Vehicles"):
             vehicles = data.get("Vehicles", [])
             server._server_cache.vehicles.clear()
+            # We exclude vehicles with an empty/missing owner.
+            # This is a breaking bug in ER:LC caused by stale vehicle
+            # data after a player is forcefully removed from a game
+            # server (i.e, kicked/banned).
             self.vehicles = VehicleList(
                 Vehicle(server, data=v) for v in vehicles if v.get("Owner")
             )
