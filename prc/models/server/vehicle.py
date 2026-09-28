@@ -1,5 +1,4 @@
-from typing import Optional, Literal, TYPE_CHECKING, cast, List
-
+from typing import Dict, Optional, Literal, TYPE_CHECKING, cast, List, get_args
 from .player import PartialServerPlayer
 
 if TYPE_CHECKING:
@@ -132,6 +131,7 @@ class Vehicle:
     texture: VehicleTexture
     color: Optional[VehicleColor] = None
     model: "VehicleModel"
+    brand: Optional["VehicleBrand"] = None
     year: Optional[int] = None
     plate: str
 
@@ -153,9 +153,17 @@ class Vehicle:
         for i in [0, -1]:
             if parsed_name[i].isdigit() and len(parsed_name[i]) == 4:
                 year = int(parsed_name.pop(i))
-                if 2100 >= year >= 1900:
+                if 2999 >= year >= 1000:
                     self.year = year
                     self.model = cast(VehicleModel, " ".join(parsed_name))
+
+        if brand_override := _vehicle_model_brand_overrides.get(self.model):
+            self.brand = brand_override
+        else:
+            for b in _vehicle_brands:
+                if self.model.startswith(b):
+                    self.brand = b
+                    break
 
         for i, v in enumerate(server._server_cache.vehicles.items()):
             if v.owner == self.owner and v.is_secondary() == self.is_secondary():
@@ -260,6 +268,13 @@ class VehicleList(List[Vehicle]):
 
         return VehicleList(v for v in self if v.model == model)
 
+    def by_brand(self, brand: "VehicleBrand", /) -> "VehicleList":
+        """
+        Find all spawned vehicles of this brand.
+        """
+
+        return VehicleList(v for v in self if v.brand == brand)
+
     def by_owner(self, *, name: str) -> "VehicleList":
         """
         Find all spawned vehicles owned by a player using their username. A player may have up to 2 vehicles (1 primary, 1 secondary).
@@ -297,6 +312,11 @@ VehicleName = Literal[
     "2010 Averon S5",
     "2020 BKM Munich",
     "2020 BKM Risen Roadster",
+    "2020 BKM Hofmeister Estate",
+    "2021 BKM Hofmeister F",
+    "2020 BKM Hofmeister",
+    "2024 Brawnson Revver EV SUV",
+    "2024 Brawnson Revver EV Pickup",
     "2009 Bullhorn BH15",
     "2022 Bullhorn Determinator SFP Fury Blackjack Widebody",
     "2022 Bullhorn Determinator SFP Fury",
@@ -320,12 +340,13 @@ VehicleName = Literal[
     "2011 Chevlon Amigo ZL1",
     "2011 Chevlon Amigo S",
     "1994 Chevlon Antelope",
+    "2021 Chevlon Camion High Rock",
     "2002 Chevlon Camion GMT 800 LTS",
     "2002 Chevlon Camion GMT 800 LT",
     "2002 Chevlon Camion GMT 800 S",
+    "2021 Chevlon Camion X15",
     "2008 Chevlon Camion",
     "2018 Chevlon Camion",
-    "2021 Chevlon Camion",
     "1992 Chevlon Captain",
     "2009 Chevlon Captain",
     "1994 Chevlon Captain LTZ",
@@ -344,6 +365,10 @@ VehicleName = Literal[
     "2005 Chevlon Revver",
     "2005 Chryslus Champion",
     "2014 Elysion Slick",
+    "2017 Falcon Advance Beast",
+    "2022 Falcon Advance Standard Cab",
+    "2022 Falcon Advance Royal Ranch",
+    "2022 Falcon Advance XET",
     "1956 Falcon Advance 100 Holiday Edition",
     "1956 Falcon Advance 100",
     "2020 Falcon Advance 350 Royal Ranch",
@@ -354,6 +379,8 @@ VehicleName = Literal[
     "1934 Falcon Coupe",
     "1934 Falcon Coupe Hotrod",
     "2024 Falcon eStallion",
+    "2013 Falcon Global 350 Extended",
+    "2013 Falcon Global 350",
     "2021 Falcon Heritage",
     "2022 Falcon Heritage Track",
     "2003 Falcon Prime Eques",
@@ -367,6 +394,7 @@ VehicleName = Literal[
     "2015 Falcon Stallion 350",
     "2003 Falcon Traveller",
     "2022 Ferdinand Jalapeno Turbo",
+    "2022 Ferdinand Rapido S",
     "2020 Ferrari F8 Tributo",
     "2023 Kovac Heladera",
     "1995 Leland Birchwood Hearse",
@@ -399,6 +427,9 @@ VehicleName = Literal[
     "2019 Vellfire Pioneer",
     "2022 Vellfire Prairie",
     "2009 Vellfire Prima",
+    "2025 Vellfire Puremia XLE",
+    "2025 Vellfire Puremia XSE",
+    "2025 Vellfire Puremia",
     "2020 Vellfire Riptide",
     "1984 Vellfire Runabout",
     # CIV JOBS
@@ -516,8 +547,13 @@ VehicleModel = Literal[
     "Averon Q8",
     "Averon RS3",
     "Averon S5",
+    "BKM Hofmeister Estate",
+    "BKM Hofmeister F",
+    "BKM Hofmeister",
     "BKM Munich",
     "BKM Risen Roadster",
+    "Brawnson Revver EV SUV",
+    "Brawnson Revver EV Pickup",
     "Bank Truck",
     "Brush Falcon Advance+",
     "Bullhorn BH15",
@@ -550,10 +586,12 @@ VehicleModel = Literal[
     "Chevlon Antelope",
     "Chevlon Antelope SS",
     "Chevlon Camion",
+    "Chevlon Camion High Rock",
     "Chevlon Camion GMT 800 LT",
     "Chevlon Camion GMT 800 LTS",
     "Chevlon Camion GMT 800 S",
     "Chevlon Camion PPV",
+    "Chevlon Camion X15",
     "Chevlon Captain",
     "Chevlon Captain LTZ",
     "Chevlon Captain PPV",
@@ -580,6 +618,9 @@ VehicleModel = Literal[
     "Explorer Flatbed Tow Truck",
     "Explorer Salt Truck",
     "Explorer Transport Truck",
+    "Falcon Advance Beast",
+    "Falcon Advance Standard Cab",
+    "Falcon Advance Royal Ranch",
     "Falcon Advance 100",
     "Falcon Advance 100 Holiday Edition",
     "Falcon Advance 350",
@@ -599,6 +640,7 @@ VehicleModel = Literal[
     "Falcon Global 450 Ambulance",
     "Falcon Global 450 Utility",
     "Falcon Global 350",
+    "Falcon Global 350 Extended",
     "Falcon Heritage",
     "Falcon Heritage Track",
     "Falcon Interceptor Sedan",
@@ -619,6 +661,7 @@ VehicleModel = Literal[
     "Falcon Traveller",
     "Farm Tractor 5100M",
     "Ferdinand Jalapeno Turbo",
+    "Ferdinand Rapido S",
     "Ferrari F8 Tributo",
     "Forklift",
     "Front-Loader Garbage Truck",
@@ -680,10 +723,54 @@ VehicleModel = Literal[
     "Vellfire Prairie",
     "Vellfire Prima",
     "Vellfire Riptide",
+    "Vellfire Puremia",
+    "Vellfire Puremia XLE",
+    "Vellfire Puremia XSE",
     "Vellfire Runabout",
     "Vinnimade Heavy Rotator",
     "Vinnimade Heavy Wrecker",
 ]
+
+# Vehicle Brands
+VehicleBrand = Literal[
+    "Aikawa",
+    "Arrow",
+    "Averon",
+    "BKM",
+    "Brawnson",
+    "Bullhorn",
+    "Canyon",
+    "Celestial",
+    "Chevlon",
+    "Chryslus",
+    "Elysion",
+    "Explorer",
+    "Falcon",
+    "Ferdinand",
+    "Ferrari",
+    "Kovac",
+    "Leland",
+    "Navara",
+    "Overland",
+    "Redline",
+    "Sentinel",
+    "Silhouette",
+    "Strugatti",
+    "Stuttgart",
+    "Sumo",
+    "Surrey",
+    "Takeo",
+    "Terrain",
+    "Vellfire",
+    "Vinnimade",
+]
+
+_vehicle_brands: List[VehicleBrand] = list(get_args(VehicleBrand))
+_vehicle_model_brand_overrides: Dict[VehicleModel, VehicleBrand] = {
+    "Brush Falcon Advance+": "Falcon",
+    "Squad Falcon Advance+": "Falcon",
+    "Emergency Services Falcon Advance+": "Falcon",
+}
 
 _secondary_vehicles: List[VehicleName] = [
     "4-Wheeler",
@@ -693,24 +780,27 @@ _secondary_vehicles: List[VehicleName] = [
 ]
 
 _prestige_vehicles: List[VehicleModel] = [
-    "Averon LM R",
     "Averon LM",
+    "Averon LM R",
     "Averon Q8",
     "Averon RS3",
     "Averon S5",
+    "BKM Hofmeister F",
     "BKM Munich",
     "Chevlon Corbeta 1M Edition",
     "Chevlon Corbeta 8",
     "Chevlon Corbeta RZR",
     "Chevlon Corbeta X08",
-    "Falcon Heritage Track",
     "Falcon Heritage",
+    "Falcon Heritage Track",
     "Ferdinand Jalapeno Turbo",
+    "Ferdinand Rapido S",
     "Ferrari F8 Tributo",
     "Leland LTS5-V Blackwing",
     "Leland Vault",
     "Silhouette Carbon",
     "Strugatti Ettore",
+    "Stuttgart Executive",
     "Stuttgart Vierturig",
     "Surrey 650S",
     "Takeo Experience",
