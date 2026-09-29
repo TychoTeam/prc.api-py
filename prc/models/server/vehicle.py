@@ -149,7 +149,9 @@ class Vehicle:
 
         self.model = cast(VehicleModel, data["Name"])
 
-        parsed_name = self.model.split(" ")
+        parts = self.model.split(" ")
+
+        parsed_name = parts.copy()
         for i in [0, -1]:
             if parsed_name[i].isdigit() and len(parsed_name[i]) == 4:
                 year = int(parsed_name.pop(i))
@@ -160,10 +162,8 @@ class Vehicle:
         if brand_override := _vehicle_model_brand_overrides.get(self.model):
             self.brand = brand_override
         else:
-            for b in _vehicle_brands:
-                if self.model.startswith(b):
-                    self.brand = b
-                    break
+            if parts[0] in _vehicle_brands:
+                self.brand = parts[0]
 
         for i, v in enumerate(server._server_cache.vehicles.items()):
             if v.owner == self.owner and v.is_secondary() == self.is_secondary():
