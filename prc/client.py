@@ -68,7 +68,15 @@ class PRC:
         self._key_requests = None
         self._refresh_key_requests()
 
-        self.webhooks = Webhooks(self)
+        self._webhooks = Webhooks(self)
+
+    @property
+    def webhooks(self):
+        """
+        Handlers for private server log messages (Discord webhooks).
+        """
+
+        return self._webhooks
 
     def _refresh_key_requests(self):
         if self._global_key:

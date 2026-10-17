@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 class Webhooks:
     """
-    The main class to interface with the PRC ER:LC server log webhook message parsers.
+    The main class to interface with the PRC ER:LC server log parsers (Discord webhooks).
 
     Parameters
     ----------
