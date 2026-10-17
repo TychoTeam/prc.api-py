@@ -250,8 +250,8 @@ class Server:
     ):
         self._client = client
 
-        client._validate_server_key(server_key)
-        self._id = client._get_server_id(server_key)
+        client._validate_server_key(server_key=server_key)
+        self._id = client._get_server_id(server_key=server_key)
 
         self._global_cache = client._global_cache
         self._server_cache = cache or ServerCache(sweeper=client._cache_sweeper)
@@ -487,7 +487,7 @@ class Server:
             self,
             oldest_first,
             data=self._handle(
-                await self._requests.get("/v2/server", params=params),
+                await self._requests.get("v2/server", params=params),
                 v2_FullServerInformation,
             ),
             queried=params,
@@ -505,7 +505,7 @@ class Server:
         return ServerStatus(
             self,
             data=self._handle(
-                await self._requests.get("/v2/server"), v2_ServerInformation
+                await self._requests.get("v2/server"), v2_ServerInformation
             ),
         )
 
@@ -589,7 +589,7 @@ class Server:
             Player(self._client, data=p, _skip_cache=True)
             for p in self._parse_api_map(
                 self._handle(
-                    await self._requests.get("/v1/server/bans"), v1_ServerBanResponse
+                    await self._requests.get("v1/server/bans"), v1_ServerBanResponse
                 )
             ).items()
         )
@@ -806,7 +806,7 @@ class ServerCommands(ServerModule):
         """
 
         return self._handle(
-            await self._requests.post("/v2/server/command", json={"command": command}),
+            await self._requests.post("v2/server/command", json={"command": command}),
             v2_ServerCommandExecutionResponse,
         )
 
