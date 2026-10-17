@@ -1,10 +1,6 @@
-from typing import TypedDict, List, Optional, Literal, Dict, Union, TypeVar
+from typing import TypedDict, List, Optional, Literal
+from .common import _APIMap
 
-V = TypeVar("V")
-
-# Since the API STILL uses "maps", which are supposed to be dicts
-# but when empty are actually sent as lists.
-_APIMap = Union[Dict[str, V], List[None]]
 
 v2_Permission = Literal[
     "Normal",
