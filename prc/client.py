@@ -4,13 +4,15 @@ The main prc.api client.
 
 """
 
+from typing import Optional, TYPE_CHECKING, Union
+from httpx import URL
+import re
+
 from .utility import KeylessCache, Cache, CacheConfig, Requests, CacheSweeper
 from .utility.requests import CleanAsyncClient
-from typing import Optional, TYPE_CHECKING
 from .exceptions import HTTPException
 from .webhooks import Webhooks
 from .server import Server
-import re
 
 if TYPE_CHECKING:
     from prc import Player
@@ -37,59 +39,69 @@ class GlobalCache:
 
 class PRC:
     """
-    The main PRC API client. Controls servers and global cache.
+    The main PRC API client.
 
     Parameters
     ----------
     global_key
-        The global authentication key (large scale apps), if any.
+        The [global authentication key](https://apidocs.erlc.gg/large-applications) (for public & large scale apps).
     default_server_key
-        The default unique server key to use. This will allow you to use `get_server` without needing to pass a key.
+        The default unique server key to use. This will allow you to use `.get_server()` and access `.default_server` without needing to pass a key.
+    application_id
+        The developer application ID (for public apps). [Learn More](https://apidocs.erlc.gg/creating-public-applications)
+    base_url
+        The base URL this client will use to send requests. Can be modified to use a proxy with support for custom paths (trailing slash required). **The URI scheme must be set (i.e, `http[s]`).**
     """
 
     def __init__(
         self,
         global_key: Optional[str] = None,
         default_server_key: Optional[str] = None,
-        _base_url: str = "https://api.erlc.gg",
+        application_id: Optional[Union[str, int]] = None,
+        base_url: str = "https://api.erlc.gg",
         _cache: Optional[GlobalCache] = None,
     ):
+        self._base_url = URL(url=base_url)
         self._global_key = global_key
-        if default_server_key:
-            self._validate_server_key(default_server_key)
-        self._default_server_key = default_server_key
-        self._base_url = _base_url
+
+        self._default_server_key = None
+        if default_server_key is not None:
+            self._validate_server_key(server_key=default_server_key)
+            self._default_server_key = default_server_key
+
+        self.application_id = None
+        if application_id is not None:
+            application_id = str(application_id)
+            self._validate_application_id(application_id=application_id)
+            self.application_id = application_id
+
+        self._session = CleanAsyncClient()
+
         self._cache_sweeper = CacheSweeper()
         self._global_cache = (
             _cache if _cache is not None else GlobalCache(sweeper=self._cache_sweeper)
         )
-        self._session = CleanAsyncClient()
 
-        self._key_requests = None
-        self._refresh_key_requests()
+        self._key_requests = self._refresh_key_requests()
 
         self._webhooks = Webhooks(self)
 
     @property
-    def webhooks(self):
+    def webhooks(self) -> Webhooks:
         """
         Handlers for private server log messages (Discord webhooks).
         """
 
         return self._webhooks
 
-    def _refresh_key_requests(self):
-        if self._global_key:
-            headers = {"Authorization": self._global_key}
-            self._key_requests = Requests(
-                base_url=self._base_url + "/v1/api-key",
-                headers=headers,
-                session=self._session,
-                invalid_keys=self._global_cache.invalid_keys,
-                sweeper=self._cache_sweeper,
-            )
+    @property
+    def default_server(self) -> Optional[Server]:
+        """
+        The default server handler (only if `default_server_key` is set). To customize the server handler arguments, use `.get_server()`
+        """
 
-            return self._key_requests
+        if self._default_server_key is not None:
+            return self.get_server(server_key=self._default_server_key)
 
     def get_server(
         self,
@@ -99,7 +111,7 @@ class PRC:
         ignore_global_key: bool = False,
     ) -> Server:
         """
-        Get a server handler using a key. Servers are cached and data is synced across the client.
+        Get a server handler using a key. Servers are cached and synced across the client.
 
         Parameters
         ----------
@@ -108,9 +120,11 @@ class PRC:
         ephemeral_ttl
             How long, in seconds, ephemeral results (i.e, cached responses) are kept before expiring. Defaults to `1` second. Set to `0` to disable.
 
-            ⚠️ ALL existing server instances with the same server ID will be use the new value.
+            ⚠️ ALL existing `Server` instances with the same server ID will use the new TTL.
         ignore_global_key
             Whether to ignore the client's global authentication key (if set). By default, it is not ignored.
+
+            ⚠️ This will apply to ALL existing `Server` instances with the same server ID.
         """
 
         if not server_key:
@@ -119,12 +133,12 @@ class PRC:
         if not server_key:
             raise ValueError("No [default] server-key provided but is required")
 
-        self._validate_server_key(server_key)
-        server_id = self._get_server_id(server_key)
+        self._validate_server_key(server_key=server_key)
+        server_id = self._get_server_id(server_key=server_key)
 
         existing_server = self._global_cache.servers.get(server_id)
         if existing_server:
-            if ephemeral_ttl:
+            if ephemeral_ttl is not None:
                 existing_server._ephemeral_ttl = ephemeral_ttl
 
             if existing_server._ignore_global_key != ignore_global_key:
@@ -157,13 +171,14 @@ class PRC:
     async def reset_key(self) -> str:
         """
         Reset the global key and generate a new one. The new key will be applied automatically and will be returned.
+
         ⚠️ You **MUST** securely save the newly generated key. If you reset your key and the process is exited without saving it somewhere, your key will be **LOST** and you must contact PRC.
         """
 
         if not self._key_requests or self._global_key is None:
             raise ValueError("No global key is set but is required")
 
-        response = await self._key_requests.post("/reset")
+        response = await self._key_requests.post("reset")
 
         if response.is_success:
             new_key: str = response.json()["new"]
@@ -199,12 +214,42 @@ class PRC:
                 if player.name.lower() == name.lower():
                     return player
 
+    def _refresh_key_requests(self):
+        if self._global_key:
+            headers = {"Authorization": self._global_key}
+
+            self._key_requests = Requests(
+                base_url=self._base_url.join("/v1/api-key/"),
+                headers=headers,
+                session=self._session,
+                invalid_keys=self._global_cache.invalid_keys,
+                sweeper=self._cache_sweeper,
+            )
+
+            return self._key_requests
+
+    _id_expression = re.compile(r"^\w+$")
     _key_expression = re.compile(r"^[a-z0-9]+\-[a-z0-9]+$", re.IGNORECASE)
 
-    def _validate_server_key(self, server_key: str):
-        if not self._key_expression.match(server_key):
+    @classmethod
+    def _validate_application_id(cls, *, application_id: str):
+        if not cls._id_expression.match(application_id):
+            raise ValueError(f"Invalid application ID provided: {application_id}")
+
+    @classmethod
+    def _validate_server_key(cls, *, server_key: str):
+        if not cls._key_expression.match(server_key):
             raise ValueError(f"Invalid server-key provided.")
 
-    def _get_server_id(self, server_key: str):
+    @classmethod
+    def _get_server_id(cls, *, server_key: str) -> str:
         elements = server_key.split("-")
+        if not elements[1]:
+            raise ValueError(f"Invalid server-key provided.")
         return elements[1]
+
+    @classmethod
+    def _make_authorization_url(
+        cls, *, application_id: Union[str, int], server_id: str
+    ):
+        return f"https://api.erlc.gg/server-owners/server/{server_id}/authorize/{application_id}"

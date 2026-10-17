@@ -1,10 +1,11 @@
-from ..exceptions import PRCException, RequestTimeout
-from .cache import Cache, CacheSweeper, KeylessCache
 from typing import Dict, Optional
 from dataclasses import dataclass
 from time import time
 import asyncio
 import httpx
+
+from ..exceptions import PRCException, RequestTimeout
+from .cache import Cache, CacheSweeper, KeylessCache
 
 
 class CleanAsyncClient(httpx.AsyncClient):
@@ -120,7 +121,7 @@ class Requests:
     __slots__ = (
         "_rate_limiter",
         "_session",
-        "_base_url",
+        "_url",
         "_default_headers",
         "_max_retries",
         "_max_retry_after",
@@ -131,7 +132,7 @@ class Requests:
 
     def __init__(
         self,
-        base_url: str,
+        base_url: httpx.URL,
         invalid_keys: KeylessCache[str],
         sweeper: CacheSweeper,
         headers: Optional[Dict[str, str]] = None,
@@ -143,7 +144,7 @@ class Requests:
         self._rate_limiter = RateLimiter(sweeper)
         self._session = session or CleanAsyncClient()
 
-        self._base_url = base_url
+        self._url = base_url
         self._default_headers = headers or {}
         self._max_retries = max_retries
         self._max_retry_after = max_retry_after
@@ -191,7 +192,7 @@ class Requests:
         else:
             headers = self._default_headers
 
-        url = f"{self._base_url}{route}"
+        url = self._url.join(route)
 
         try:
             response = await self._session.request(
