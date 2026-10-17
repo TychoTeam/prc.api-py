@@ -37,7 +37,7 @@ class HTTPException(PRCException):
         return self.status_code >= 400 and self.status_code <= 499
 
     def __str__(self):
-        return f"[HTTP {self.status_code}] {self.message}\n"
+        return f"[HTTP {self.status_code}] {self.message}"
 
 
 class APIException(PRCException):

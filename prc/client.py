@@ -14,6 +14,8 @@ from .exceptions import HTTPException
 from .webhooks import Webhooks
 from .server import Server
 
+from .api_types.v1 import v1_ApiKeyResetResponse
+
 if TYPE_CHECKING:
     from prc import Player
 
@@ -45,12 +47,14 @@ class PRC:
     ----------
     global_key
         The [global authentication key](https://apidocs.erlc.gg/large-applications) (for public & large scale apps).
+
+        Each client is designed to work with a **single** global key for one or multiple *server* keys. It is recommended to use multiple clients for different *global* keys.
     default_server_key
         The default unique server key to use. This will allow you to use `.get_server()` and access `.default_server` without needing to pass a key.
     application_id
         The developer application ID (for public apps). [Learn More](https://apidocs.erlc.gg/creating-public-applications)
     base_url
-        The base URL this client will use to send requests. Can be modified to use a proxy with support for custom paths (trailing slash required). **The URI scheme must be set (i.e, `http[s]`).**
+        The base URL this client will use to send requests. Can be modified to use a proxy. **The URI scheme must be set (i.e, `http[s]`).**
     """
 
     def __init__(
@@ -170,18 +174,21 @@ class PRC:
 
     async def reset_key(self) -> str:
         """
-        Reset the global key and generate a new one. The new key will be applied automatically and will be returned.
+        Reset the global key and generate a new one. The new key will be applied automatically to the client and will be returned.
 
-        ⚠️ You **MUST** securely save the newly generated key. If you reset your key and the process is exited without saving it somewhere, your key will be **LOST** and you must contact PRC.
+        ⚠️ You **MUST** securely save the newly generated key outside the running process.
+
+        For large scale apps: if you reset your key and the process exits without saving the key somewhere, your key will be **LOST** and you must contact PRC.
         """
 
         if not self._key_requests or self._global_key is None:
-            raise ValueError("No global key is set but is required")
+            raise ValueError("No global key is set but is required.")
 
         response = await self._key_requests.post("reset")
 
         if response.is_success:
-            new_key: str = response.json()["new"]
+            body: v1_ApiKeyResetResponse = response.json()
+            new_key = body["new"]
 
             for server_id, server in self._global_cache.servers.items():
                 server._global_key = new_key
@@ -219,7 +226,7 @@ class PRC:
             headers = {"Authorization": self._global_key}
 
             self._key_requests = Requests(
-                base_url=self._base_url.join("/v1/api-key/"),
+                base_url=self._base_url.join("v1/api-key/"),
                 headers=headers,
                 session=self._session,
                 invalid_keys=self._global_cache.invalid_keys,
@@ -251,5 +258,5 @@ class PRC:
     @classmethod
     def _make_authorization_url(
         cls, *, application_id: Union[str, int], server_id: str
-    ):
+    ) -> str:
         return f"https://api.erlc.gg/server-owners/server/{server_id}/authorize/{application_id}"
