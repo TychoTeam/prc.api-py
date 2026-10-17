@@ -55,7 +55,7 @@ class VehicleColor:
         self.value = int(self.hex.replace("#", ""), 16)
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, VehicleTexture) and self.name == other.name
+        return isinstance(other, VehicleColor) and self.value == other.value
 
     def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
@@ -64,7 +64,7 @@ class VehicleColor:
         return self.hex
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} name={self.name}>"
+        return f"<{self.__class__.__name__} {self.hex} name={self.name}>"
 
 
 class VehicleTexture:
@@ -94,7 +94,7 @@ class VehicleTexture:
         Whether this texture is **LIKELY** a custom livery.
         """
 
-        return not self.is_default
+        return not self.is_default()
 
     def is_fictional(self) -> bool:
         """
