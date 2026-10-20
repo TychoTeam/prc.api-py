@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable
 from dataclasses import dataclass
 from time import time
 import asyncio
@@ -113,6 +113,9 @@ class RateLimiter:
         return True
 
 
+HeaderType = Dict[str, str]
+
+
 class Requests:
     """
     Handles outgoing API requests while respecting rate limits.
@@ -122,7 +125,7 @@ class Requests:
         "_rate_limiter",
         "_session",
         "_url",
-        "_default_headers",
+        "_dynamic_headers",
         "_max_retries",
         "_max_retry_after",
         "_timeout",
@@ -135,7 +138,7 @@ class Requests:
         base_url: httpx.URL,
         invalid_keys: KeylessCache[str],
         sweeper: CacheSweeper,
-        headers: Optional[Dict[str, str]] = None,
+        dynamic_headers: Callable[[], HeaderType] = lambda: {},
         session: Optional[CleanAsyncClient] = None,
         max_retries: int = 3,
         max_retry_after: float = 15.0,
@@ -145,7 +148,7 @@ class Requests:
         self._session = session or CleanAsyncClient()
 
         self._url = base_url
-        self._default_headers = headers or {}
+        self._dynamic_headers = dynamic_headers
         self._max_retries = max_retries
         self._max_retry_after = max_retry_after
         self._timeout = timeout
@@ -157,10 +160,13 @@ class Requests:
     def _can_retry(self, status_code: int, retry: int) -> bool:
         return retry < self._max_retries and (status_code == 429 or status_code >= 500)
 
+    def _get_default_headers(self) -> HeaderType:
+        return self._dynamic_headers()
+
     def _check_default_headers(self) -> None:
         invalid_keys = self._invalid_keys
 
-        for header, value in self._default_headers.items():
+        for header, value in self._get_default_headers().items():
             if value in invalid_keys:
                 raise PRCException(
                     f"Cannot reuse an invalid API key from default header: "
@@ -186,11 +192,11 @@ class Requests:
 
         if request_headers:
             headers = {
-                **self._default_headers,
+                **self._get_default_headers(),
                 **request_headers,
             }
         else:
-            headers = self._default_headers
+            headers = self._get_default_headers()
 
         url = self._url.join(route)
 
@@ -220,18 +226,16 @@ class Requests:
                 **kwargs,
             )
 
-        self._rate_limiter.save_bucket(
-            route,
-            response.headers,
-        )
+        self._rate_limiter.save_bucket(route, response.headers)
 
         if not self._can_retry(response.status_code, _retry):
             return response
 
-        if await self._rate_limiter.wait_to_retry(
+        did_wait = await self._rate_limiter.wait_to_retry(
             response.headers,
             self._max_retry_after,
-        ):
+        )
+        if did_wait:
             return await self._make_request(
                 method,
                 route,
@@ -239,6 +243,8 @@ class Requests:
                 _retry=_retry + 1,
                 **kwargs,
             )
+
+        # If for some reason we couldn't wait, use fallback retry logic.
 
         await asyncio.sleep(_retry * 1.5)
 

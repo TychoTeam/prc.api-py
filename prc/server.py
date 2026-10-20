@@ -17,6 +17,7 @@ from .utility import (
     Cache,
     CacheConfig,
     Requests,
+    HeaderType,
     InsensitiveEnum,
     CacheSweeper,
 )
@@ -257,10 +258,16 @@ class Server:
         self._server_cache = cache or ServerCache(sweeper=client._cache_sweeper)
         self._ephemeral_ttl = ephemeral_ttl
 
-        self._global_key = client._global_key
         self._server_key = server_key
         self._ignore_global_key = ignore_global_key
-        self._requests = requests or self._refresh_requests()
+
+        self._requests = Requests(
+            base_url=self._client._base_url,
+            dynamic_headers=self._get_headers,
+            session=self._client._session,
+            invalid_keys=self._global_cache.invalid_keys,
+            sweeper=self._client._cache_sweeper,
+        )
 
         self.logs = ServerLogs(self)
         self.commands = ServerCommands(self)
@@ -323,24 +330,14 @@ class Server:
 
         return self.player_count >= self.max_players - (0 if include_reserved else 1)
 
-    def _refresh_requests(self):
-        global_key = self._global_key
+    def _get_headers(self) -> HeaderType:
         headers = {"Server-Key": self._server_key}
+
+        global_key = self._client._global_key
         if global_key and not self._ignore_global_key:
             headers["Authorization"] = global_key
 
-        if hasattr(self, "_requests"):
-            self._requests._default_headers = headers
-        else:
-            self._requests = Requests(
-                base_url=self._client._base_url,
-                headers=headers,
-                session=self._client._session,
-                invalid_keys=self._global_cache.invalid_keys,
-                sweeper=self._client._cache_sweeper,
-            )
-
-        return self._requests
+        return headers
 
     def _parse_api_map(self, m: _APIMap[M]) -> Dict[str, M]:
         if not isinstance(m, dict):
@@ -392,7 +389,7 @@ class Server:
 
         invalid_key = None
         if isinstance(exception, InvalidGlobalKey):
-            invalid_key = self._global_key
+            invalid_key = self._client._global_key
         elif isinstance(exception, (InvalidServerKey, BannedServerKey)):
             invalid_key = self._server_key
 

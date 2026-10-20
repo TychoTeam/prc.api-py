@@ -67,7 +67,7 @@ class APIException(PRCException):
 
 
 class RequestTimeout(PRCException):
-    """Exception raised when a HTTP request times out and is not fulfilledd."""
+    """Exception raised when a HTTP request times out and is not fulfilled."""
 
     def __init__(self, retry: int, max_retries: int, timeout: float):
         self.retry = retry

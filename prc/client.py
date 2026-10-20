@@ -8,7 +8,14 @@ from typing import Optional, TYPE_CHECKING, Union
 from httpx import URL
 import re
 
-from .utility import KeylessCache, Cache, CacheConfig, Requests, CacheSweeper
+from .utility import (
+    KeylessCache,
+    Cache,
+    CacheConfig,
+    Requests,
+    HeaderType,
+    CacheSweeper,
+)
 from .utility.requests import CleanAsyncClient
 from .exceptions import HTTPException
 from .webhooks import Webhooks
@@ -86,7 +93,15 @@ class PRC:
             _cache if _cache is not None else GlobalCache(sweeper=self._cache_sweeper)
         )
 
-        self._key_requests = self._refresh_key_requests()
+        self._key_requests = None
+        if self._global_key:
+            self._key_requests = Requests(
+                base_url=self._base_url.join("v1/api-key/"),
+                dynamic_headers=self._get_key_headers,
+                session=self._session,
+                invalid_keys=self._global_cache.invalid_keys,
+                sweeper=self._cache_sweeper,
+            )
 
         self._webhooks = Webhooks(self)
 
@@ -142,24 +157,16 @@ class PRC:
 
         existing_server = self._global_cache.servers.get(server_id)
         if existing_server:
+            existing_server._ignore_global_key = ignore_global_key
+
             if ephemeral_ttl is not None:
                 existing_server._ephemeral_ttl = ephemeral_ttl
 
-            if existing_server._ignore_global_key != ignore_global_key:
-                existing_server._ignore_global_key = ignore_global_key
-                existing_server._refresh_requests()
-
-            if (
-                existing_server._global_key != self._global_key
-                or existing_server._server_key != server_key
-            ):
-                existing_server._global_key = self._global_key
+            # It is possible that the server secret has rotated, hence the cached key could be out of date.
+            if existing_server._server_key != server_key:
                 existing_server._server_key = server_key
-                existing_server._refresh_requests()
 
-                return self._global_cache.servers.set(server_id, existing_server)
-            else:
-                return existing_server
+            return existing_server
 
         else:
             return self._global_cache.servers.set(
@@ -189,26 +196,21 @@ class PRC:
         if response.is_success:
             body: v1_ApiKeyResetResponse = response.json()
             new_key = body["new"]
-
-            for server_id, server in self._global_cache.servers.items():
-                server._global_key = new_key
-                server._refresh_requests()
-                self._global_cache.servers.set(server_id, server)
-
             self._global_key = new_key
-            self._refresh_key_requests()
-            return self._global_key
+
+            return new_key
+
         elif response.status_code == 403:
             self._global_cache.invalid_keys.add(self._global_key)
             raise HTTPException(
                 f"The global key provided is invalid and could not be reset.",
                 response,
             )
-        else:
-            raise HTTPException(
-                f"An unknown error has occured while resetting the global key.",
-                response,
-            )
+
+        raise HTTPException(
+            f"An unknown error has occured while resetting the global key.",
+            response,
+        )
 
     def _get_player(
         self, id: Optional[int] = None, name: Optional[str] = None
@@ -221,19 +223,12 @@ class PRC:
                 if player.name.lower() == name.lower():
                     return player
 
-    def _refresh_key_requests(self):
+    def _get_key_headers(self) -> HeaderType:
+        headers = {}
         if self._global_key:
-            headers = {"Authorization": self._global_key}
+            headers["Authorization"] = self._global_key
 
-            self._key_requests = Requests(
-                base_url=self._base_url.join("v1/api-key/"),
-                headers=headers,
-                session=self._session,
-                invalid_keys=self._global_cache.invalid_keys,
-                sweeper=self._cache_sweeper,
-            )
-
-            return self._key_requests
+        return headers
 
     _id_expression = re.compile(r"^\w+$")
     _key_expression = re.compile(r"^[a-z0-9]+\-[a-z0-9]+$", re.IGNORECASE)

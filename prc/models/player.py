@@ -14,7 +14,7 @@ class BasePlayer:
 
 class Player(BasePlayer):
     """
-    Represents a base player.
+    Represents a basic player with a name and ID.
 
     Parameters
     ----------

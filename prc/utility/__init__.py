@@ -6,7 +6,7 @@ Internal prc.api utilities.
 
 from .cache import KeylessCache, Cache, CacheConfig, CacheSweeper
 from .enum import InsensitiveEnum, DisplayNameEnum
-from .requests import Requests
+from .requests import Requests, HeaderType
 
 __all__ = [
     "InsensitiveEnum",
@@ -15,5 +15,6 @@ __all__ = [
     "Cache",
     "CacheConfig",
     "Requests",
+    "HeaderType",
     "CacheSweeper",
 ]
