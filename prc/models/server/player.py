@@ -408,7 +408,7 @@ class StaffMember(Player):
     server
         The server handler.
     data
-        The player name and ID.
+        The player name and ID. A tuple _(name, ID)_.
     permission
         The player permission.
     """

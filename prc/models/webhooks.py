@@ -23,7 +23,7 @@ class WebhookPlayer(Player):
     client
         The global/shared PRC client.
     data
-        The player name and ID.
+        The player name and ID. A tuple _(name, ID)_.
     server
         The server handler, if any.
     """

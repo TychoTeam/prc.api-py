@@ -21,7 +21,7 @@ class Player(BasePlayer):
     client
         The global/shared PRC client.
     data
-        The player name and ID. Either a tuple or default response format (`PlayerName:123`).
+        The player name and ID. Either a tuple _(name, ID)_ or default response format (`PlayerName:123`).
     """
 
     id: int
