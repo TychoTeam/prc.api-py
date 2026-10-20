@@ -212,6 +212,9 @@ class PRC:
             response,
         )
 
+    async def _close(self):
+        await self._session.aclose()
+
     def _get_player(
         self, id: Optional[int] = None, name: Optional[str] = None
     ) -> Optional["Player"]:

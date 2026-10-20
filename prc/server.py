@@ -339,7 +339,8 @@ class Server:
 
         return headers
 
-    def _parse_api_map(self, m: _APIMap[M]) -> Dict[str, M]:
+    @staticmethod
+    def _parse_api_map(m: _APIMap[M]) -> Dict[str, M]:
         if not isinstance(m, dict):
             return {}
         return m
@@ -517,7 +518,7 @@ class Server:
 
         if ((players := (await self.query(players=True)).players)) is not None:
             return players
-        raise ValueError("Player list unexpectedly not defined")
+        raise ValueError("Player list unexpectedly not defined.")
 
     @overload
     async def get_player(
@@ -545,7 +546,7 @@ class Server:
         """
         Get an online server player using their player ID or username, if found.
 
-        This is equivalent to `get_players.find_player`.
+        This is equivalent to `.get_players().find_player()`.
         """
 
         if id is None and name is None:
@@ -569,7 +570,7 @@ class Server:
 
         if ((queue := (await self.query(queue=True)).queue)) is not None:
             return queue
-        raise ValueError("Queue list unexpectedly not defined")
+        raise ValueError("Queue list unexpectedly not defined.")
 
     @_refresh_server
     @_ephemeral
@@ -579,7 +580,7 @@ class Server:
         """
         Get all banned players.
 
-        ⚠️ This method uses a v1 API endpoint. v1 is now in maintenance mode and may be discontinued.
+        ⚠️ This method relies on a v1 API endpoint. v1 is now in maintenance mode and may be discontinued.
         """
 
         return PlayerList(
@@ -602,7 +603,7 @@ class Server:
 
         if ((vehicles := (await self.query(vehicles=True)).vehicles)) is not None:
             return vehicles
-        raise ValueError("Vehicles list unexpectedly not defined")
+        raise ValueError("Vehicles list unexpectedly not defined.")
 
     @_refresh_server
     @_ephemeral
@@ -615,7 +616,7 @@ class Server:
 
         if ((staff := (await self.query(staff=True)).staff)) is not None:
             return staff
-        raise ValueError("Staff list unexpectedly not defined")
+        raise ValueError("Staff list unexpectedly not defined.")
 
 
 class ServerModule:
@@ -677,7 +678,7 @@ class ServerLogs(ServerModule):
             ).access_logs
         ) is not None:
             return logs
-        raise ValueError("Access logs unexpectedly not defined")
+        raise ValueError("Access logs unexpectedly not defined.")
 
     @_refresh_server
     @_ephemeral
@@ -701,7 +702,7 @@ class ServerLogs(ServerModule):
             ).kill_logs
         ) is not None:
             return logs
-        raise ValueError("Kill logs unexpectedly not defined")
+        raise ValueError("Kill logs unexpectedly not defined.")
 
     @_refresh_server
     @_ephemeral
@@ -725,7 +726,7 @@ class ServerLogs(ServerModule):
             ).command_logs
         ) is not None:
             return logs
-        raise ValueError("Command logs unexpectedly not defined")
+        raise ValueError("Command logs unexpectedly not defined.")
 
     @_refresh_server
     @_ephemeral
@@ -749,7 +750,7 @@ class ServerLogs(ServerModule):
             ).mod_calls
         ) is not None:
             return logs
-        raise ValueError("Mod call list unexpectedly not defined")
+        raise ValueError("Mod call list unexpectedly not defined.")
 
     @_refresh_server
     @_ephemeral
@@ -773,7 +774,7 @@ class ServerLogs(ServerModule):
             ).emergency_calls
         ) is not None:
             return logs
-        raise ValueError("Emergency call list unexpectedly not defined")
+        raise ValueError("Emergency call list unexpectedly not defined.")
 
 
 CommandTargetPlayerName = Union[str, Player, VehicleOwner]
