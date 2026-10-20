@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Literal, Optional, Tuple
-from prc.utility import DisplayNameEnum
+from enum import Enum
+
 from .player import Player
 
 if TYPE_CHECKING:
@@ -52,14 +53,14 @@ class WebhookPlayer(Player):
         return f"<{self.__class__.__name__} id={self.id}, name={self.name}>"
 
 
-class WebhookType(DisplayNameEnum):
+class WebhookType(str, Enum):
     """
     Enum that represents webhook message type.
     """
 
-    COMMAND = (0, "Command Usage")
-    KICK = (1, "Players Kicked")
-    BAN = (2, "Players Banned")
+    COMMAND = "Command Usage"
+    KICK = "Players Kicked"
+    BAN = "Players Banned"
 
 
 class WebhookMessage:

@@ -1,20 +1,21 @@
-from .player import PlayerPermission, ServerOwner
-from prc.utility import DisplayNameEnum
 from typing import TYPE_CHECKING, List
+from enum import Enum
+
+from .player import PlayerPermission, ServerOwner
 
 if TYPE_CHECKING:
     from prc.api_types.v2 import v2_ServerInformation
     from prc.server import Server
 
 
-class AccountRequirement(DisplayNameEnum):
+class AccountRequirement(str, Enum):
     """
     Enum that represents a server account verification requirements that players must fulfill in order to join.
     """
 
-    DISABLED = (0, "Disabled")
-    EMAIL = (1, "Email")
-    PHONE_OR_ID = (2, "Phone/ID")
+    DISABLED = "Disabled"
+    EMAIL = "Email"
+    PHONE_OR_ID = "Phone/ID"
 
 
 class ServerStatus:
@@ -61,7 +62,7 @@ class ServerStatus:
         self.join_code = str(data["JoinKey"])
         server.join_code = self.join_code
         server._client._global_cache.join_codes.set(self.join_code, server._id)
-        self.account_requirement = AccountRequirement.parse(data["AccVerifiedReq"])
+        self.account_requirement = AccountRequirement(data["AccVerifiedReq"])
         server.account_requirement = self.account_requirement
         self.team_balance = bool(data["TeamBalance"])
         server.team_balance = self.team_balance

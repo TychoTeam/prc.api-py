@@ -1,5 +1,5 @@
-from prc.utility import DisplayNameEnum
 from typing import Tuple
+from enum import Enum
 import math
 
 
@@ -54,14 +54,14 @@ class Location:
         return f"<{self.__class__.__name__} coordinates={self.coordinates}>"
 
 
-class ServerTeam(DisplayNameEnum):
+class ServerTeam(str, Enum):
     """
     Enum that represents a server team.
     """
 
-    CIVILIAN = (0, "Civilian")
-    SHERIFF = (1, "Sheriff")
-    POLICE = (2, "Police")
-    FIRE = (3, "Fire")
-    DOT = (4, "DOT")
-    JAIL = (5, "Jail")
+    CIVILIAN = "Civilian"
+    SHERIFF = "Sheriff"
+    POLICE = "Police"
+    FIRE = "Fire"
+    DOT = "DOT"
+    JAIL = "Jail"

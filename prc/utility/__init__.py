@@ -5,12 +5,11 @@ Internal prc.api utilities.
 """
 
 from .cache import KeylessCache, Cache, CacheConfig, CacheSweeper
-from .enum import InsensitiveEnum, DisplayNameEnum
 from .requests import Requests, HeaderType
+from .enum import InsensitiveEnum
 
 __all__ = [
     "InsensitiveEnum",
-    "DisplayNameEnum",
     "KeylessCache",
     "Cache",
     "CacheConfig",

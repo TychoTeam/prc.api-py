@@ -1,7 +1,9 @@
 from typing import List, Literal, Optional, Tuple, TYPE_CHECKING, Union, cast, overload
+from enum import Enum
+
 from .shared import Location, ServerTeam
-from prc.utility import DisplayNameEnum
 from ..player import BasePlayer, Player
+
 
 if TYPE_CHECKING:
     from prc.api_types.v2 import v2_ServerPlayer, v2_ServerPlayerLocation
@@ -9,36 +11,38 @@ if TYPE_CHECKING:
     from .vehicle import Vehicle
 
 
-class PlayerPermission(DisplayNameEnum):
+class PlayerPermission(str, Enum):
     """
     Enum that represents a server player permission level.
     """
 
-    NORMAL = (0, "Normal")
-    HELPER = (5, "Server Helper")
-    MOD = (1, "Server Moderator")
-    ADMIN = (2, "Server Administrator")
-    CO_OWNER = (3, "Server Co-Owner")
-    OWNER = (4, "Server Owner")
+    NORMAL = "Normal"
+    HELPER = "Server Helper"
+    MOD = "Server Moderator"
+    ADMIN = "Server Administrator"
+    CO_OWNER = "Server Co-Owner"
+    OWNER = "Server Owner"
 
-    __hierarchy__: List[int] = [
+    __hierarchy__: List[str] = [
         p[0] for p in [NORMAL, HELPER, MOD, ADMIN, CO_OWNER, OWNER]
     ]
 
-    def __gt__(self, other: Union[int, "PlayerPermission"]) -> bool:
+    def __gt__(self, other: Union[str, "PlayerPermission"]) -> bool:
+        v = other
         if isinstance(other, PlayerPermission):
-            other = other.value
-        return other in self.__hierarchy__ and (
-            self.__hierarchy__.index(self.value) > self.__hierarchy__.index(other)
+            v = other.value
+
+        return v in self.__hierarchy__ and (
+            self.__hierarchy__.index(self.value) > self.__hierarchy__.index(v)
         )
 
-    def __ge__(self, other: Union[int, "PlayerPermission"]) -> bool:
+    def __ge__(self, other: Union[str, "PlayerPermission"]) -> bool:
         return self.__gt__(other) or self.__eq__(other)
 
-    def __lt__(self, other: Union[int, "PlayerPermission"]) -> bool:
+    def __lt__(self, other: Union[str, "PlayerPermission"]) -> bool:
         return not self.__gt__(other)
 
-    def __le__(self, other: Union[int, "PlayerPermission"]) -> bool:
+    def __le__(self, other: Union[str, "PlayerPermission"]) -> bool:
         return self.__lt__(other) or self.__eq__(other)
 
 
@@ -130,9 +134,9 @@ class ServerPlayer(Player):
     def __init__(self, server: "Server", data: "v2_ServerPlayer"):
         self._server = server
 
-        self.permission = PlayerPermission.parse(data["Permission"])
+        self.permission = PlayerPermission(data["Permission"])
         self.callsign = data.get("Callsign", None)
-        self.team = ServerTeam.parse(data["Team"])
+        self.team = ServerTeam(data["Team"])
         self.location = PlayerLocation(data["Location"])
         self.wanted_stars = int(data["WantedStars"])
 
