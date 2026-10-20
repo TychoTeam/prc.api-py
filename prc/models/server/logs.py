@@ -4,7 +4,7 @@ from enum import Enum
 
 
 from .player import PartialServerPlayer, ServerTeam
-from .shared import Location
+from .common import Location
 from ..commands import Command
 from ..player import Player
 

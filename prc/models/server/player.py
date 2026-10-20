@@ -1,7 +1,7 @@
 from typing import List, Literal, Optional, Tuple, TYPE_CHECKING, Union, cast, overload
 from enum import Enum
 
-from .shared import Location, ServerTeam
+from .common import Location, ServerTeam
 from ..player import BasePlayer, Player
 
 

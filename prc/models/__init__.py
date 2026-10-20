@@ -9,7 +9,7 @@ from .server.player import *
 from .server.vehicle import *
 from .server.logs import *
 from .server.staff import *
-from .server.shared import *
+from .server.common import *
 
 from .player import *
 from .commands import *
