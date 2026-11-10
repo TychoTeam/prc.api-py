@@ -15,6 +15,7 @@ from .player import *
 from .commands import *
 
 from .webhooks import *
+from .events import *
 
 
 __all__ = [
@@ -52,6 +53,17 @@ __all__ = [
     "WebhookType",
     "WebhookMessage",
     "WebhookVersion",
+    "EventSource",
+    "EventType",
+    "EventPlayer",
+    "Event",
+    "ProbeEvent",
+    "CustomCommandEvent",
+    "CallEvent",
+    "CallStartEvent",
+    "CallEndEvent",
+    "EventMessage",
+    "AnyEvent",
     "BasePlayer",
     "PartialServerPlayer",
     "CallPlayer",

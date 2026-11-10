@@ -7,8 +7,7 @@ if TYPE_CHECKING:
     from prc.client import PRC
     from prc.server import Server
     from prc.webhooks import Webhooks
-    from prc.models import ServerPlayer
-    from .commands import Command
+    from prc.models import ServerPlayer, Command
 
 
 WebhookVersion = Literal[1, 2]
@@ -47,7 +46,6 @@ class WebhookPlayer(Player):
 
         if self._server:
             return self._server._get_player(id=self.id)
-        return None
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id}, name={self.name}>"
@@ -58,6 +56,10 @@ class WebhookType(str, Enum):
     Enum that represents webhook message type.
     """
 
+    @staticmethod
+    def parse(value: str) -> "WebhookType":
+        return WebhookType(value.replace("Player ", "Players "))
+
     COMMAND = "Command Usage"
     KICK = "Players Kicked"
     BAN = "Players Banned"
@@ -65,7 +67,7 @@ class WebhookType(str, Enum):
 
 class WebhookMessage:
     """
-    Represents a webhook message.
+    Represents a Discord webhook log message.
 
     Parameters
     ----------

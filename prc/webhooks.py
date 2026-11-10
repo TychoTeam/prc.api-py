@@ -48,7 +48,7 @@ class Webhooks:
                 )
             raise ValueError(f"Malformed v1 kick/ban webhook command: '{command_name}'")
 
-        return WebhookType.parse(title.replace("Player ", "Players "))
+        return WebhookType.parse(title)
 
     _author_expression = re.compile(
         r"^\[([^\]:]+)(?::(\d+))?]\(\S+\/users\/(\d+)/\S+\)"

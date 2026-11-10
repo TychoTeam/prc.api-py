@@ -99,3 +99,28 @@ class v1_ServerCommandExecutionResponse(TypedDict):
 
 class v1_ApiKeyResetResponse(TypedDict):
     new: str
+
+
+__all__ = [
+    "v1_Permission",
+    "v1_Team",
+    "v1_AccVerifiedReq",
+    "v1_ServerStatusResponse",
+    "v1_ServerPlayer",
+    "v1_ServerPlayersResponse",
+    "v1_ServerJoinLog",
+    "v1_ServerJoinLogsResponse",
+    "v1_ServerKillLog",
+    "v1_ServerKillLogsResponse",
+    "v1_ServerCommandLog",
+    "v1_ServerCommandLogsResponse",
+    "v1_ServerModCall",
+    "v1_ServerModCallsResponse",
+    "v1_ServerBanResponse",
+    "v1_ServerVehicle",
+    "v1_ServerVehiclesResponse",
+    "v1_ServerQueueResponse",
+    "v1_ServerStaffResponse",
+    "v1_ServerCommandExecutionResponse",
+    "v1_ApiKeyResetResponse",
+]

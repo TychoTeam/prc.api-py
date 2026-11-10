@@ -9,3 +9,6 @@ _APIMap = Union[Dict[str, V], List[None]]
 
 class C_MapsResponse(TypedDict):
     maps: List[str]
+
+
+__all__ = ["_APIMap", "C_MapsResponse"]
