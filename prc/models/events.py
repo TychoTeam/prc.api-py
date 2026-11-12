@@ -43,8 +43,6 @@ class EventPlayer(BasePlayer):
         The global/shared PRC client.
     player_id
         The player ID.
-    server
-        The server handler, if any.
 
     Attributes
     ----------
@@ -121,6 +119,8 @@ class CustomCommandEvent(Event):
 
     Parameters
     ----------
+    client
+        The global/shared PRC client.
     event_data
         The event data.
 
@@ -160,6 +160,8 @@ class CallEvent(EmergencyCall, Event):
 
     Parameters
     ----------
+    client
+        The global/shared PRC client.
     event_data
         The event data.
     """
@@ -248,8 +250,8 @@ class EventMessage:
 
     Parameters
     ----------
-    client
-        The global/shared PRC client.
+    events
+        An initialized events handler.
     data
         The full event webhook payload.
 
@@ -260,9 +262,10 @@ class EventMessage:
         - Global messages are occasionally sent for health and safety checks.
         - Server messages are game-initiated, either by players or automatically by a game server.
     server
-        The server handler. Only set when the source is a private server **and** the handler is cached (i.e, the full server key has been loaded into the global client).
+        The server handler. Only set when the message source is a private server **and** the server handler is cached (i.e, the full server key has been loaded into the global client).
     server_id
-        The ER:LC internal server ID the message was sent from. Only included when the source is a private server.
+        The ER:LC internal server ID the message was sent from. Only included when the message source is a private server.
+
         Server IDs can be used to identify the private server -only if the full server key is known- as IDs are the non-secret part of the full key. [Learn More](https://apidocs.erlc.gg/how-to-obtain-your-server-key#anatomy-of-your-server-key)
     events
         A list of all new events sent in the message. Your handling logic must accept multiple events in a single message.
@@ -297,6 +300,6 @@ __all__ = [
     "CallEvent",
     "CallStartEvent",
     "CallEndEvent",
-    "EventMessage",
     "AnyEvent",
+    "EventMessage",
 ]

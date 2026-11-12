@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING, Any, Optional
-from .exceptions import PRCException
 from .models import *
 
 
@@ -22,7 +21,7 @@ class Events:
 
     def parse(self, /, event_payload: Any) -> EventMessage:
         """
-        Parse an event payload.
+        Parse an event message payload.
 
         Parameters
         ----------
@@ -34,7 +33,7 @@ class Events:
 
     def safe_parse(self, /, event_payload: Any) -> Optional[EventMessage]:
         """
-        Safely parse an event payload.
+        Safely parse an event message payload.
 
         Parameters
         ----------
@@ -44,12 +43,13 @@ class Events:
 
         try:
             return EventMessage(self, event_payload)
-        except (ValueError, PRCException, KeyError):
+        # It is bad practice to catch all Exceptions, should be improved.
+        except Exception:
             return None
 
     def parse_event(self, /, event_data: Any) -> AnyEvent:
         """
-        Parse a single event.
+        Parse a single event payload.
 
         Parameters
         ----------
@@ -76,7 +76,7 @@ class Events:
 
     def safe_parse_event(self, /, event_data: Any) -> Optional[AnyEvent]:
         """
-        Safely parse a single event.
+        Safely parse a single event payload.
 
         Parameters
         ----------
@@ -86,5 +86,6 @@ class Events:
 
         try:
             return self.parse_event(event_data)
-        except (ValueError, PRCException, KeyError):
+        # Refer to note in .safe_parse().
+        except Exception:
             return None

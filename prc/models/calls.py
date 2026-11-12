@@ -72,7 +72,7 @@ class CallLocation(Location):
     Parameters
     ----------
     position
-        The call location (x,y) position.
+        The call location coordinates/position `[x,z]`.
     descriptor
         The call location descriptor.
     """
@@ -92,13 +92,6 @@ class EmergencyCall:
     """
     Represents an emergency call (shared class).
 
-    Parameters
-    ----------
-    server
-        The server handler.
-    data
-        The response data.
-
     Attributes
     ----------
     responders
@@ -110,7 +103,7 @@ class EmergencyCall:
     call_number
         The call number. Unqiue per team. Different calls in different teams may share the same number.
     call_description
-        The call description. May not be set in some cases, mostly 911 calls.
+        The call description. May not be set in some cases (e.g. player-initiated 911 calls).
     location
         The call location (x, z) and area descriptor (if any).
     started_at
