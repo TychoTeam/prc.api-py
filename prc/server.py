@@ -298,12 +298,28 @@ class Server:
     @property
     def join_link(self) -> Optional[str]:
         """
-        Web URL that allows users to join the game and queue automatically for the private server. Hosted by PRC. Server status must be fetched separately.
+        Web URL that allows users to join the game and queue automatically for the private server. Hosted by PRC. Server status must be fetched separately to get the latest join code.
 
         ⚠️ *May not function properly on mobile devices.*
         """
 
         return ("https://erlc.gg/join/" + self.join_code) if self.join_code else None
+
+    @property
+    def authorization_url(self) -> Optional[str]:
+        """
+        Web URL that prompts the private server owner to authorize your application so that it can execute remote commands on their behalf (for public apps). [Learn More](https://apidocs.erlc.gg/creating-authorization-links)
+
+        The application ID (`application_id`) must be set in the global client, otherwise nothing is returned.
+        """
+
+        return (
+            self._client._make_authorization_url(
+                application_id=self._client.application_id, server_id=self._id
+            )
+            if self._client.application_id
+            else None
+        )
 
     def is_online(self) -> Optional[bool]:
         """
