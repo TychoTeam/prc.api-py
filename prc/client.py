@@ -233,12 +233,12 @@ class PRC:
 
         return headers
 
-    _id_expression = re.compile(r"^\w+$")
+    _app_id_expression = re.compile(r"^\w+$")
     _key_expression = re.compile(r"^[a-z0-9]+\-[a-z0-9]+$", re.IGNORECASE)
 
     @classmethod
     def _validate_application_id(cls, *, application_id: str):
-        if not cls._id_expression.match(application_id):
+        if not cls._app_id_expression.match(application_id):
             raise ValueError(f"Invalid application ID provided: {application_id}")
 
     @classmethod
