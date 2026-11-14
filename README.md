@@ -25,7 +25,7 @@ It provides a convenient way to interact with PRC APIs, including the [private s
 - **Utilities**  
   Useful utilities and helper methods are spread across the package to make your life easier.
 - **By Humans**  
-  While many slop ER:LC libraries keep popping up, prc.api is made and maintained by humans. You can even [talk to us](https://discord.tycho.team).
+  While many slop ER:LC libraries keep popping up, this is made and maintained by humans. You can even [talk to us](https://discord.tycho.team).
 
 #### Check out the documentation for details.
 
