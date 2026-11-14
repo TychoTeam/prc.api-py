@@ -18,3 +18,5 @@ from prc.models import *
 from prc.client import PRC
 from prc.server import Server
 from prc.webhooks import Webhooks
+
+from prc.api_types.events import PUBLIC_KEY

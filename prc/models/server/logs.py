@@ -1,10 +1,10 @@
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 from datetime import datetime
 from enum import Enum
 
 
-from .player import PartialServerPlayer, ServerTeam
-from .common import Location
+from ..calls import EmergencyCall, CallLocation, CallPlayer, CallPlayerList, CallTeam
+from .player import PartialServerPlayer
 from ..commands import Command
 from ..player import Player
 
@@ -99,72 +99,6 @@ class LogPlayer(Player, PartialServerPlayer):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id}, name={self.name}>"
-
-
-class CallPlayer(PartialServerPlayer):
-    """
-    Represents a server partial player referenced in a call entry.
-
-    Parameters
-    ----------
-    server
-        The server handler.
-    id
-        The player ID.
-    """
-
-    id: int
-
-    def __init__(self, server: "Server", id: int):
-        self._server = server
-
-        self.id = int(id)
-
-        super().__init__(server, value=self.id)
-
-    def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} id={self.id}>"
-
-
-class CallPlayerList(List[CallPlayer]):
-    def copy(self):
-        return CallPlayerList(self)
-
-    def find_player(self, *, id: int) -> Optional[CallPlayer]:
-        """
-        Find a call player using their player ID.
-        """
-
-        return next((p for p in self if p.id == id), None)
-
-    def has_player(self, *, id: int) -> bool:
-        """
-        Determine whether a player exists in this call player list using their player ID.
-        """
-
-        return bool(self.find_player(id=id))
-
-
-class CallLocation(Location):
-    """
-    Represents a call's location in a server.
-
-    Parameters
-    ----------
-    data
-        The call data.
-    """
-
-    descriptor: Optional[str]
-
-    def __init__(self, data: "v2_ServerEmergencyCall"):
-        descriptor = data.get("PositionDescriptor", None)
-        self.descriptor = str(descriptor) if descriptor else None
-
-        super().__init__(x=data["Position"][0], z=data["Position"][1])
-
-    def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} coordinates={self.coordinates}, descriptor={self.descriptor}>"
 
 
 class AccessType(Enum):
@@ -310,7 +244,7 @@ class ModCallEntry(LogEntry):
         return f"<{self.__class__.__name__} caller={self.caller.name, self.caller.id} acknowledged={self.is_acknowledged()}>"
 
 
-class EmergencyCallEntry(LogEntry):
+class EmergencyCallEntry(EmergencyCall, LogEntry):
     """
     Represents a server emergency call log entry.
 
@@ -322,42 +256,22 @@ class EmergencyCallEntry(LogEntry):
         The response data.
     """
 
-    team: ServerTeam
-    caller: Optional[CallPlayer]
-    responders: List[CallPlayer]
-    location: CallLocation
-    call_number: int
-    description: Optional[str]
-
     def __init__(self, server: "Server", data: "v2_ServerEmergencyCall"):
         self._server = server
 
-        self.team = ServerTeam.parse(data["Team"])
-        caller = data.get("Caller", None)
-        self.caller = CallPlayer(server, id=int(caller)) if caller else None
         self.responders = CallPlayerList(
             CallPlayer(server, id=int(id)) for id in data["Players"]
         )
-        self.location = CallLocation(data)
+        self.team = CallTeam(data["Team"])
+        caller = data.get("Caller", None)
+        self.caller = CallPlayer(server, id=int(caller)) if caller else None
         self.call_number = int(data["CallNumber"])
+
         description = data.get("Description", None)
-        self.description = str(description) if description else None
+        self.call_description = str(description) if description else None
+
+        self.location = CallLocation(
+            position=data["Position"], descriptor=data.get("PositionDescriptor", None)
+        )
 
         super().__init__(data)
-
-    def is_911(self) -> bool:
-        """
-        Whether this emergency call is a player 911 call and not a server call.
-        """
-
-        return bool(self.caller)
-
-    def is_server(self) -> bool:
-        """
-        Whether this emergency call is an automatic server call and not a 911 call.
-        """
-
-        return not self.is_911()
-
-    def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} call_number={self.call_number}, team={self.team}, caller={self.caller.id if self.caller else None}, description={self.description}, responders={len(self.responders)}>"

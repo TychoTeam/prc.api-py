@@ -5,7 +5,10 @@ PUBLIC_KEY = "MCowBQYDK2VwAyEAjSICb9pp0kHizGQtdG8ySWsDChfGqi+gyFCttigBNOA="
 EventName = Literal[
     "WebhookProbe", "CustomCommand", "EmergencyCallStarted", "EmergencyCallEnded"
 ]
-CallTeam = Literal["Police", "Fire", "DOT", "ALL"]
+CallTeamName = Literal["Police", "Fire", "DOT", "ALL"]
+
+
+# Event data
 
 
 class BaseWebhookEvent(TypedDict):
@@ -33,7 +36,7 @@ class EmergencyCallEventData(TypedDict):
     caller: Optional[int]
     description: Optional[str]
     callNumber: int
-    team: CallTeam
+    team: CallTeamName
     position: List[int]
     positionDescriptor: Optional[str]
     startedAt: int
@@ -49,6 +52,8 @@ class EmergencyCallEndedWebhookEvent(BaseWebhookEvent):
     data: EmergencyCallEventData
 
 
+# Event data union
+
 WebhookEvent = Union[
     ProbeWebhookEvent,
     CustomCommandWebhookEvent,
@@ -56,7 +61,23 @@ WebhookEvent = Union[
     EmergencyCallEndedWebhookEvent,
 ]
 
+# Payload
+
 
 class EventWebhookPayload(TypedDict):
     server: str
     events: List[WebhookEvent]
+
+
+__all__ = [
+    "PUBLIC_KEY",
+    "EventName",
+    "CallTeamName",
+    "BaseWebhookEvent",
+    "ProbeWebhookEvent",
+    "CustomCommandWebhookEvent",
+    "EmergencyCallStartedWebhookEvent",
+    "EmergencyCallEndedWebhookEvent",
+    "WebhookEvent",
+    "EventWebhookPayload",
+]

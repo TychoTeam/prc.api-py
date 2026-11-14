@@ -1,7 +1,8 @@
 from typing import List, Literal, Optional, Tuple, TYPE_CHECKING, Union, cast, overload
 from enum import Enum
 
-from .common import Location, ServerTeam
+from .location import Location
+from .common import ServerTeam
 from ..player import BasePlayer, Player
 
 
@@ -379,6 +380,8 @@ class ServerOwner(PartialServerPlayer):
         The server handler.
     id
         The player ID.
+    permission
+        The player permission.
     """
 
     id: int

@@ -31,8 +31,8 @@ import copy
 import json
 
 from .api_types.v1 import v1_ServerBanResponse
+from .api_types.common import _APIMap
 from .api_types.v2 import *
-from .api_types.v2 import _APIMap
 
 if TYPE_CHECKING:
     from .client import PRC
@@ -261,7 +261,7 @@ class Server:
         self._server_key = server_key
         self._ignore_global_key = ignore_global_key
 
-        self._requests = Requests(
+        self._requests = requests or Requests(
             base_url=self._client._base_url,
             dynamic_headers=self._get_headers,
             session=self._client._session,

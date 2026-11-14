@@ -19,6 +19,7 @@ from .utility import (
 from .utility.requests import CleanAsyncClient
 from .exceptions import HTTPException
 from .webhooks import Webhooks
+from .events import Events
 from .server import Server
 
 from .api_types.v1 import v1_ApiKeyResetResponse
@@ -62,6 +63,13 @@ class PRC:
         The developer application ID (for public apps). [Learn More](https://apidocs.erlc.gg/creating-public-applications)
     base_url
         The base URL this client will use to send requests. Can be modified to use a proxy. **The URI scheme must be set (i.e, `http[s]`).**
+
+    Attributes
+    ----------
+    webhooks
+        Handlers for private server log messages (Discord webhooks).
+    events
+        Handlers for private server HTTP webhook events.
     """
 
     def __init__(
@@ -103,15 +111,8 @@ class PRC:
                 sweeper=self._cache_sweeper,
             )
 
-        self._webhooks = Webhooks(self)
-
-    @property
-    def webhooks(self) -> Webhooks:
-        """
-        Handlers for private server log messages (Discord webhooks).
-        """
-
-        return self._webhooks
+        self.webhooks = Webhooks(self)
+        self.events = Events(self)
 
     @property
     def default_server(self) -> Optional[Server]:
